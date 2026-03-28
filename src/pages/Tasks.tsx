@@ -212,7 +212,7 @@ function GanttChart({ tasks }: { tasks: Task[] }) {
     return <div className="text-center text-gray-400 py-16">No tasks with start and end dates to display in Gantt chart.</div>;
   }
 
-  const parsedDates = tasksWithDates.map(t => ({ start: new Date(t.startDate!), end: new Date(t.endDate!) }));
+  const parsedDates = tasksWithDates.map(t => ({ start: new Date(t.startDate! + 'T00:00:00'), end: new Date(t.endDate! + 'T00:00:00') }));
   const minDate = new Date(Math.min(...parsedDates.map(d => d.start.getTime())));
   const maxDate = new Date(Math.max(...parsedDates.map(d => d.end.getTime())));
   minDate.setDate(minDate.getDate() - 1);
