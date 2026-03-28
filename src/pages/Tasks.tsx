@@ -212,9 +212,9 @@ function GanttChart({ tasks }: { tasks: Task[] }) {
     return <div className="text-center text-gray-400 py-16">No tasks with start and end dates to display in Gantt chart.</div>;
   }
 
-  const allDates = tasksWithDates.flatMap(t => [new Date(t.startDate!), new Date(t.endDate!)]);
-  const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
-  const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+  const parsedDates = tasksWithDates.map(t => ({ start: new Date(t.startDate!), end: new Date(t.endDate!) }));
+  const minDate = new Date(Math.min(...parsedDates.map(d => d.start.getTime())));
+  const maxDate = new Date(Math.max(...parsedDates.map(d => d.end.getTime())));
   minDate.setDate(minDate.getDate() - 1);
   maxDate.setDate(maxDate.getDate() + 1);
   const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -257,8 +257,7 @@ function GanttChart({ tasks }: { tasks: Task[] }) {
         ))}
         {tasksWithDates.map((task, i) => {
           const y = 20 + i * rowHeight;
-          const start = new Date(task.startDate!);
-          const end = new Date(task.endDate!);
+          const { start, end } = parsedDates[i];
           const startDay = Math.ceil((start.getTime() - minDate.getTime()) / 86400000);
           const duration = Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1;
           const barX = labelWidth + startDay * dayWidth;

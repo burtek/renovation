@@ -141,7 +141,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const data = JSON.parse(e.target?.result as string) as AppData;
         dispatch({ type: 'SET_ALL', payload: data });
       } catch {
-        alert('Invalid file format');
+        alert('Failed to parse JSON file. Please ensure the file is a valid renovation backup file.');
       }
     };
     reader.readAsText(file);
