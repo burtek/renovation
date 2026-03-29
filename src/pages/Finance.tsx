@@ -69,11 +69,11 @@ export default function Finance() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-800">Finance</h1>
         <div className="flex items-center gap-2 ml-auto">
-          <label className="text-sm text-gray-600">Budget (€):</label>
+          <label className="text-sm text-gray-600 whitespace-nowrap">Budget (zł):</label>
           <input
             type="number"
             value={budgetInput}
@@ -84,18 +84,18 @@ export default function Finance() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="text-sm text-gray-500">Loan Approved</div>
-          <div className="text-2xl font-bold text-green-600">€{totalApproved.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-green-600">zł{totalApproved.toFixed(2)}</div>
         </div>
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="text-sm text-gray-500">Not Approved</div>
-          <div className="text-2xl font-bold text-yellow-600">€{totalNotApproved.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-yellow-600">zł{totalNotApproved.toFixed(2)}</div>
         </div>
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="text-sm text-gray-500">Remaining Budget</div>
-          <div className={`text-2xl font-bold ${remaining >= 0 ? 'text-blue-600' : 'text-red-600'}`}>€{remaining.toFixed(2)}</div>
+          <div className={`text-2xl font-bold ${remaining >= 0 ? 'text-blue-600' : 'text-red-600'}`}>zł{remaining.toFixed(2)}</div>
         </div>
       </div>
 
@@ -103,10 +103,10 @@ export default function Finance() {
         <div className="bg-white rounded-lg p-4 shadow-sm border h-64">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }: { name: string; value: number }) => `${name}: €${value.toFixed(0)}`}>
+              <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }: { name: string; value: number }) => `${name}: zł${value.toFixed(0)}`}>
                 {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
-              <Tooltip formatter={(v: unknown) => `€${(v as number).toFixed(2)}`} />
+              <Tooltip formatter={(v: unknown) => `zł${(v as number).toFixed(2)}`} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -135,7 +135,7 @@ export default function Finance() {
                 <tr key={e.id} className="border-t hover:bg-gray-50">
                   <td className="px-3 py-2">{e.description}</td>
                   <td className="px-3 py-2">{e.date}</td>
-                  <td className="px-3 py-2 font-medium">€{e.price.toFixed(2)}</td>
+                  <td className="px-3 py-2 font-medium">zł{e.price.toFixed(2)}</td>
                   <td className="px-3 py-2">{e.shopName}</td>
                   <td className="px-3 py-2">{e.invoiceNo}</td>
                   <td className="px-3 py-2">
@@ -157,7 +157,7 @@ export default function Finance() {
 
       {modal.open && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4 shadow-xl">
             <h2 className="text-lg font-bold mb-4">{modal.editExpense ? 'Edit Expense' : 'New Expense'}</h2>
             <div className="space-y-3">
               <input placeholder="Description *" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />

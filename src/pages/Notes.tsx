@@ -11,6 +11,7 @@ export default function Notes() {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [showList, setShowList] = useState(true);
 
   const selectedNote = state.notes.find(n => n.id === selectedId) ?? null;
 
@@ -19,6 +20,7 @@ export default function Notes() {
     setEditing(false);
     setEditTitle(note.title);
     setEditContent(note.content);
+    setShowList(false);
   };
 
   const handleNew = () => {
@@ -58,8 +60,8 @@ export default function Notes() {
 
   return (
     <div className="flex h-full">
-      {/* Left panel */}
-      <div className="w-64 bg-white border-r flex flex-col shrink-0">
+      {/* Left panel - notes list */}
+      <div className={`${showList ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-64 bg-white border-r shrink-0`}>
         <div className="p-3 border-b flex justify-between items-center">
           <span className="font-semibold text-gray-700">Notes</span>
           <button
@@ -88,8 +90,8 @@ export default function Notes() {
         </div>
       </div>
 
-      {/* Right panel */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Right panel - note content */}
+      <div className={`${!showList ? 'flex' : 'hidden'} md:flex flex-1 flex-col overflow-hidden`}>
         {!selectedNote ? (
           <div className="flex-1 flex items-center justify-center text-gray-400">
             Select a note or create a new one
@@ -97,6 +99,7 @@ export default function Notes() {
         ) : editing ? (
           <div className="flex flex-col h-full">
             <div className="p-4 border-b flex items-center gap-2 bg-white">
+              <button onClick={() => { setShowList(true); }} className="md:hidden text-gray-500 hover:text-gray-800 mr-1">←</button>
               <input
                 value={editTitle}
                 onChange={e => setEditTitle(e.target.value)}
@@ -117,6 +120,7 @@ export default function Notes() {
         ) : (
           <div className="flex flex-col h-full">
             <div className="p-4 border-b flex items-center gap-2 bg-white">
+              <button onClick={() => setShowList(true)} className="md:hidden text-gray-500 hover:text-gray-800 mr-1">←</button>
               <h1 className="flex-1 text-xl font-bold text-gray-800">{selectedNote.title}</h1>
               <button onClick={handleEdit} className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Edit</button>
               <button onClick={handleDelete} className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">Delete</button>

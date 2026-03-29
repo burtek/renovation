@@ -100,9 +100,9 @@ export default function Tasks() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 bg-white border-b flex items-center gap-4">
+      <div className="p-4 bg-white border-b flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-800">Tasks</h1>
-        <div className="flex gap-2 ml-4">
+        <div className="flex gap-2">
           <button onClick={() => setTab('list')} className={`px-3 py-1 rounded text-sm ${tab === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>List</button>
           <button onClick={() => setTab('gantt')} className={`px-3 py-1 rounded text-sm ${tab === 'gantt' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>Gantt</button>
         </div>
@@ -115,23 +115,25 @@ export default function Tasks() {
             {state.tasks.length === 0 && <p className="text-gray-400 text-center py-8">No tasks yet. Create one!</p>}
             {state.tasks.map(task => (
               <div key={task.id} className="bg-white rounded-lg shadow-sm border">
-                <div className="flex items-center p-4 gap-3">
+                <div className="flex items-center p-4 gap-2 flex-wrap">
                   <button onClick={() => toggleTaskComplete(task)} className={`w-5 h-5 rounded border-2 flex-shrink-0 ${task.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`} title="Toggle complete">
                     {task.completed && <svg viewBox="0 0 20 20" fill="white" className="w-full h-full"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
                   </button>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <span className={`font-medium ${task.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>{task.title}</span>
                     {task.assignee && <span className="ml-2 text-xs text-gray-500">👤 {task.assignee}</span>}
                     {task.startDate && <span className="ml-2 text-xs text-gray-500">📅 {task.startDate}{task.endDate ? ` → ${task.endDate}` : ''}</span>}
                   </div>
-                  <button onClick={() => openNewSubtask(task.id)} className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded">+ Subtask</button>
-                  <button onClick={() => openEditTask(task)} className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded">Edit</button>
-                  <button onClick={() => deleteTask(task.id)} className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded">Delete</button>
-                  {task.subtasks.length > 0 && (
-                    <button onClick={() => toggleExpand(task.id)} className="text-gray-400 hover:text-gray-600 ml-1">
-                      {expandedTasks.has(task.id) ? '▲' : '▼'}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => openNewSubtask(task.id)} className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded">+ Subtask</button>
+                    <button onClick={() => openEditTask(task)} className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded">Edit</button>
+                    <button onClick={() => deleteTask(task.id)} className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded">Delete</button>
+                    {task.subtasks.length > 0 && (
+                      <button onClick={() => toggleExpand(task.id)} className="text-gray-400 hover:text-gray-600 ml-1">
+                        {expandedTasks.has(task.id) ? '▲' : '▼'}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {expandedTasks.has(task.id) && task.subtasks.length > 0 && (
                   <div className="border-t ml-8">
@@ -160,7 +162,7 @@ export default function Tasks() {
       {/* Task Modal */}
       {taskModal.open && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
             <h2 className="text-lg font-bold mb-4">{taskModal.editTask ? 'Edit Task' : 'New Task'}</h2>
             <div className="space-y-3">
               <input placeholder="Title *" value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
@@ -183,7 +185,7 @@ export default function Tasks() {
       {/* Subtask Modal */}
       {subtaskModal.open && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
             <h2 className="text-lg font-bold mb-4">{subtaskModal.editSubtask ? 'Edit Subtask' : 'New Subtask'}</h2>
             <div className="space-y-3">
               <input placeholder="Title *" value={subtaskForm.title} onChange={e => setSubtaskForm(f => ({ ...f, title: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />

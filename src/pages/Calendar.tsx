@@ -90,7 +90,7 @@ export default function CalendarPage() {
 
       {modal.open && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
             <h2 className="text-lg font-bold mb-4">{modal.editEvent ? 'Edit Event' : 'New Event'}</h2>
             <div className="space-y-3">
               <input placeholder="Title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
