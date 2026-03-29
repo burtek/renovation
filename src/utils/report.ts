@@ -1,22 +1,24 @@
-import { AppData } from '../types';
+import type { AppData } from '../types';
+
 import { formatPLN } from './format';
 
+
 export function generateReport(state: AppData): void {
-  const { expenses, tasks, calendarEvents, budget } = state;
+    const { expenses, tasks, calendarEvents, budget } = state;
 
-  const totalApproved = expenses
-    .filter(e => e.loanApproved)
-    .reduce((s, e) => s + e.price, 0);
-  const totalNotApproved = expenses
-    .filter(e => !e.loanApproved)
-    .reduce((s, e) => s + e.price, 0);
-  const total = totalApproved + totalNotApproved;
-  const remaining = budget - total;
+    const totalApproved = expenses
+        .filter(e => e.loanApproved)
+        .reduce((s, e) => s + e.price, 0);
+    const totalNotApproved = expenses
+        .filter(e => !e.loanApproved)
+        .reduce((s, e) => s + e.price, 0);
+    const total = totalApproved + totalNotApproved;
+    const remaining = budget - total;
 
-  const esc = (s: string) =>
-    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const esc = (s: string) =>
+        s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  const html = `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
@@ -81,22 +83,22 @@ export function generateReport(state: AppData): void {
     </thead>
     <tbody>
       ${
-        expenses.length === 0
-          ? '<tr><td colspan="7" style="text-align:center;color:#999">No expenses.</td></tr>'
-          : expenses
-              .map(
-                e => `<tr>
+            expenses.length === 0
+                ? '<tr><td colspan="7" style="text-align:center;color:#999">No expenses.</td></tr>'
+                : expenses
+                    .map(
+                        e => `<tr>
         <td>${esc(e.description)}</td>
         <td>${esc(e.date)}</td>
         <td>${formatPLN(e.price)}</td>
-        <td>${esc(e.shopName || '—')}</td>
-        <td>${esc(e.invoiceNo || '—')}</td>
+        <td>${esc(e.shopName === '' ? '—' : e.shopName)}</td>
+        <td>${esc(e.invoiceNo === '' ? '—' : e.invoiceNo)}</td>
         <td>${e.invoiceForm === 'gdrive' && e.invoiceLink ? `<a href="${esc(e.invoiceLink)}">GDrive</a>` : esc(e.invoiceForm)}</td>
         <td>${e.loanApproved ? '✓' : '✗'}</td>
       </tr>`
-              )
-              .join('')
-      }
+                    )
+                    .join('')
+        }
     </tbody>
   </table>
 
@@ -109,27 +111,27 @@ export function generateReport(state: AppData): void {
     </thead>
     <tbody>
       ${
-        tasks.length === 0
-          ? '<tr><td colspan="6" style="text-align:center;color:#999">No tasks.</td></tr>'
-          : tasks
-              .map(
-                t => `<tr>
+            tasks.length === 0
+                ? '<tr><td colspan="6" style="text-align:center;color:#999">No tasks.</td></tr>'
+                : tasks
+                    .map(
+                        t => `<tr>
         <td>${esc(t.title)}${t.notes ? `<br><small>${esc(t.notes)}</small>` : ''}</td>
-        <td>${esc(t.startDate || '—')}</td>
-        <td>${esc(t.endDate || '—')}</td>
-        <td>${esc(t.assignee || '—')}</td>
+        <td>${esc(t.startDate !== '' && t.startDate ? t.startDate : '—')}</td>
+        <td>${esc(t.endDate !== '' && t.endDate ? t.endDate : '—')}</td>
+        <td>${esc(t.assignee !== '' && t.assignee ? t.assignee : '—')}</td>
         <td>${t.completed ? '✓ Done' : 'In progress'}</td>
         <td>${
-          t.subtasks.length > 0
-            ? t.subtasks
-                .map(s => `${esc(s.title)} (${s.completed ? '✓' : '○'})`)
-                .join('<br>')
-            : '—'
+            t.subtasks.length > 0
+                ? t.subtasks
+                    .map(s => `${esc(s.title)} (${s.completed ? '✓' : '○'})`)
+                    .join('<br>')
+                : '—'
         }</td>
       </tr>`
-              )
-              .join('')
-      }
+                    )
+                    .join('')
+        }
     </tbody>
   </table>
 
@@ -142,30 +144,30 @@ export function generateReport(state: AppData): void {
     </thead>
     <tbody>
       ${
-        calendarEvents.length === 0
-          ? '<tr><td colspan="6" style="text-align:center;color:#999">No events.</td></tr>'
-          : calendarEvents
-              .map(
-                e => `<tr>
+            calendarEvents.length === 0
+                ? '<tr><td colspan="6" style="text-align:center;color:#999">No events.</td></tr>'
+                : calendarEvents
+                    .map(
+                        e => `<tr>
         <td>${esc(e.title)}</td>
         <td>${esc(e.date)}</td>
-        <td>${esc(e.endDate || e.date)}</td>
-        <td>${esc(e.contractor || '—')}</td>
-        <td>${esc(e.workType || '—')}</td>
-        <td>${esc(e.notes || '—')}</td>
+        <td>${esc(e.endDate !== '' && e.endDate ? e.endDate : e.date)}</td>
+        <td>${esc(e.contractor !== '' && e.contractor ? e.contractor : '—')}</td>
+        <td>${esc(e.workType === '' ? '—' : e.workType)}</td>
+        <td>${esc(e.notes !== '' && e.notes ? e.notes : '—')}</td>
       </tr>`
-              )
-              .join('')
-      }
+                    )
+                    .join('')
+        }
     </tbody>
   </table>
 </body>
 </html>`;
 
-  const win = window.open('', '_blank');
-  if (win) {
-    win.document.write(html);
-    win.document.close();
-    win.print();
-  }
+    const win = window.open('', '_blank');
+    if (win) {
+        win.document.write(html);
+        win.document.close();
+        win.print();
+    }
 }
