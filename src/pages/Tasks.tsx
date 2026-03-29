@@ -11,6 +11,7 @@ interface TaskFormData {
   endDate: string;
   assignee: string;
   completed: boolean;
+  dependsOn: string[];
 }
 
 interface SubtaskFormData {
@@ -22,8 +23,24 @@ interface SubtaskFormData {
   completed: boolean;
 }
 
-const emptyTaskForm: TaskFormData = { title: '', notes: '', startDate: '', endDate: '', assignee: '', completed: false };
-const emptySubtaskForm: SubtaskFormData = { title: '', notes: '', startDate: '', endDate: '', assignee: '', completed: false };
+const emptyTaskForm: TaskFormData = {
+  title: '', notes: '', startDate: '', endDate: '', assignee: '', completed: false, dependsOn: [],
+};
+const emptySubtaskForm: SubtaskFormData = {
+  title: '', notes: '', startDate: '', endDate: '', assignee: '', completed: false,
+};
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+function dayDiff(laterDate: string, earlierDate: string): number {
+  const later = new Date(laterDate + 'T00:00:00');
+  const earlier = new Date(earlierDate + 'T00:00:00');
+  return Math.round((later.getTime() - earlier.getTime()) / 86400000);
+}
 
 export default function Tasks() {
   const { state, dispatch } = useApp();
@@ -48,16 +65,55 @@ export default function Tasks() {
   };
 
   const openEditTask = (task: Task) => {
-    setTaskForm({ title: task.title, notes: task.notes, startDate: task.startDate ?? '', endDate: task.endDate ?? '', assignee: task.assignee ?? '', completed: task.completed });
+    setTaskForm({
+      title: task.title,
+      notes: task.notes,
+      startDate: task.startDate ?? '',
+      endDate: task.endDate ?? '',
+      assignee: task.assignee ?? '',
+      completed: task.completed,
+      dependsOn: task.dependsOn ?? [],
+    });
     setTaskModal({ open: true, editTask: task });
   };
 
   const saveTask = () => {
     if (!taskForm.title.trim()) return;
+
     if (taskModal.editTask) {
-      dispatch({ type: 'UPDATE_TASK', payload: { ...taskModal.editTask, ...taskForm } });
+      const oldTask = taskModal.editTask;
+      const oldEnd = oldTask.endDate;
+      const newEnd = taskForm.endDate;
+
+      // Check if end date was pushed out → cascade to dependents
+      if (oldEnd && newEnd && newEnd > oldEnd) {
+        const shift = dayDiff(newEnd, oldEnd);
+        const dependents = state.tasks.filter(
+          t => t.id !== oldTask.id && (t.dependsOn ?? []).includes(oldTask.id) && t.startDate
+        );
+        if (dependents.length > 0) {
+          const names = dependents.map(t => `"${t.title}"`).join(', ');
+          const proceed = confirm(
+            `Postponing "${oldTask.title}" by ${shift} day(s) will also shift:\n${names}\nby ${shift} day(s). Proceed?`
+          );
+          if (proceed) {
+            dependents.forEach(t => {
+              dispatch({
+                type: 'UPDATE_TASK',
+                payload: {
+                  ...t,
+                  startDate: t.startDate ? addDays(t.startDate, shift) : t.startDate,
+                  endDate: t.endDate ? addDays(t.endDate, shift) : t.endDate,
+                },
+              });
+            });
+          }
+        }
+      }
+
+      dispatch({ type: 'UPDATE_TASK', payload: { ...oldTask, ...taskForm } });
     } else {
-      dispatch({ type: 'ADD_TASK', payload: { ...taskForm, subtasks: [], dependsOn: [] } });
+      dispatch({ type: 'ADD_TASK', payload: { ...taskForm, subtasks: [], dependsOn: taskForm.dependsOn } });
     }
     setTaskModal({ open: false });
   };
@@ -72,7 +128,11 @@ export default function Tasks() {
   };
 
   const openEditSubtask = (taskId: string, subtask: Subtask) => {
-    setSubtaskForm({ title: subtask.title, notes: subtask.notes, startDate: subtask.startDate ?? '', endDate: subtask.endDate ?? '', assignee: subtask.assignee ?? '', completed: subtask.completed });
+    setSubtaskForm({
+      title: subtask.title, notes: subtask.notes,
+      startDate: subtask.startDate ?? '', endDate: subtask.endDate ?? '',
+      assignee: subtask.assignee ?? '', completed: subtask.completed,
+    });
     setSubtaskModal({ open: true, taskId, editSubtask: subtask });
   };
 
@@ -162,17 +222,68 @@ export default function Tasks() {
       {/* Task Modal */}
       {taskModal.open && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl max-h-screen overflow-y-auto">
             <h2 className="text-lg font-bold mb-4">{taskModal.editTask ? 'Edit Task' : 'New Task'}</h2>
             <div className="space-y-3">
               <input placeholder="Title *" value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
               <textarea placeholder="Notes" value={taskForm.notes} onChange={e => setTaskForm(f => ({ ...f, notes: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm h-20 focus:outline-none focus:border-blue-400" />
               <div className="flex gap-2">
-                <input type="date" value={taskForm.startDate} onChange={e => setTaskForm(f => ({ ...f, startDate: e.target.value }))} className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" placeholder="Start date" />
-                <input type="date" value={taskForm.endDate} onChange={e => setTaskForm(f => ({ ...f, endDate: e.target.value }))} className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" placeholder="End date" />
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 mb-1 block">Start date</label>
+                  <input
+                    type="date"
+                    value={taskForm.startDate}
+                    onChange={e => {
+                      const startDate = e.target.value;
+                      setTaskForm(f => ({
+                        ...f,
+                        startDate,
+                        // default end date to start date when end date is not yet set
+                        endDate: f.endDate || startDate,
+                      }));
+                    }}
+                    className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-gray-500 mb-1 block">End date</label>
+                  <input
+                    type="date"
+                    value={taskForm.endDate}
+                    min={taskForm.startDate}
+                    onChange={e => setTaskForm(f => ({ ...f, endDate: e.target.value }))}
+                    className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                  />
+                </div>
               </div>
               <input placeholder="Assignee" value={taskForm.assignee} onChange={e => setTaskForm(f => ({ ...f, assignee: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={taskForm.completed} onChange={e => setTaskForm(f => ({ ...f, completed: e.target.checked }))} /> Completed</label>
+
+              {/* Dependency selection */}
+              {state.tasks.filter(t => t.id !== taskModal.editTask?.id).length > 0 && (
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Depends on:</label>
+                  <div className="max-h-32 overflow-y-auto border rounded p-2 space-y-1">
+                    {state.tasks
+                      .filter(t => t.id !== taskModal.editTask?.id)
+                      .map(t => (
+                        <label key={t.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={taskForm.dependsOn.includes(t.id)}
+                            onChange={e => setTaskForm(f => ({
+                              ...f,
+                              dependsOn: e.target.checked
+                                ? [...f.dependsOn, t.id]
+                                : f.dependsOn.filter(id => id !== t.id),
+                            }))}
+                          />
+                          <span className={t.completed ? 'line-through text-gray-400' : ''}>{t.title}</span>
+                        </label>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex gap-2 mt-4 justify-end">
               <button onClick={() => setTaskModal({ open: false })} className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
@@ -191,8 +302,8 @@ export default function Tasks() {
               <input placeholder="Title *" value={subtaskForm.title} onChange={e => setSubtaskForm(f => ({ ...f, title: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
               <textarea placeholder="Notes" value={subtaskForm.notes} onChange={e => setSubtaskForm(f => ({ ...f, notes: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm h-20 focus:outline-none focus:border-blue-400" />
               <div className="flex gap-2">
-                <input type="date" value={subtaskForm.startDate} onChange={e => setSubtaskForm(f => ({ ...f, startDate: e.target.value }))} className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
-                <input type="date" value={subtaskForm.endDate} onChange={e => setSubtaskForm(f => ({ ...f, endDate: e.target.value }))} className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+                <input type="date" value={subtaskForm.startDate} onChange={e => setSubtaskForm(f => ({ ...f, startDate: e.target.value, endDate: f.endDate || e.target.value }))} className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+                <input type="date" value={subtaskForm.endDate} min={subtaskForm.startDate} onChange={e => setSubtaskForm(f => ({ ...f, endDate: e.target.value }))} className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
               </div>
               <input placeholder="Assignee" value={subtaskForm.assignee} onChange={e => setSubtaskForm(f => ({ ...f, assignee: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={subtaskForm.completed} onChange={e => setSubtaskForm(f => ({ ...f, completed: e.target.checked }))} /> Completed</label>
@@ -214,7 +325,10 @@ function GanttChart({ tasks }: { tasks: Task[] }) {
     return <div className="text-center text-gray-400 py-16">No tasks with start and end dates to display in Gantt chart.</div>;
   }
 
-  const parsedDates = tasksWithDates.map(t => ({ start: new Date(t.startDate! + 'T00:00:00'), end: new Date(t.endDate! + 'T00:00:00') }));
+  const parsedDates = tasksWithDates.map(t => ({
+    start: new Date(t.startDate! + 'T00:00:00'),
+    end: new Date(t.endDate! + 'T00:00:00'),
+  }));
   const minDate = new Date(Math.min(...parsedDates.map(d => d.start.getTime())));
   const maxDate = new Date(Math.max(...parsedDates.map(d => d.end.getTime())));
   minDate.setDate(minDate.getDate() - 1);
@@ -245,9 +359,18 @@ function GanttChart({ tasks }: { tasks: Task[] }) {
     cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
   }
 
+  // Build position map for dependency arrows
+  const taskIndexMap = new Map(tasksWithDates.map((t, i) => [t.id, i]));
+
   return (
     <div className="bg-white rounded-lg shadow-sm border overflow-auto">
       <svg width={chartWidth} height={chartHeight} className="font-sans text-xs">
+        <defs>
+          <marker id="dep-arrow" markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto">
+            <polygon points="0 0, 6 2.5, 0 5" fill="#6B7280" />
+          </marker>
+        </defs>
+
         {months.map((m, i) => (
           <g key={i}>
             <rect x={m.x} y={0} width={m.width} height={20} fill={i % 2 === 0 ? '#F3F4F6' : '#E5E7EB'} />
@@ -257,6 +380,8 @@ function GanttChart({ tasks }: { tasks: Task[] }) {
         {Array.from({ length: totalDays }).map((_, i) => (
           <line key={i} x1={labelWidth + i * dayWidth} y1={20} x2={labelWidth + i * dayWidth} y2={chartHeight} stroke="#E5E7EB" strokeWidth={0.5} />
         ))}
+
+        {/* Task bars */}
         {tasksWithDates.map((task, i) => {
           const y = 20 + i * rowHeight;
           const { start, end } = parsedDates[i];
@@ -281,6 +406,37 @@ function GanttChart({ tasks }: { tasks: Task[] }) {
             </g>
           );
         })}
+
+        {/* Dependency arrows (finish-to-start) */}
+        {tasksWithDates.map((task, toIdx) =>
+          (task.dependsOn ?? []).map(depId => {
+            const fromIdx = taskIndexMap.get(depId);
+            if (fromIdx === undefined) return null;
+
+            const { end: fromEnd } = parsedDates[fromIdx];
+            const { start: toStart } = parsedDates[toIdx];
+
+            const fromEndDay = Math.ceil((fromEnd.getTime() - minDate.getTime()) / 86400000) + 1;
+            const toStartDay = Math.ceil((toStart.getTime() - minDate.getTime()) / 86400000);
+
+            const x1 = labelWidth + fromEndDay * dayWidth;
+            const x2 = labelWidth + toStartDay * dayWidth;
+            const y1 = 20 + fromIdx * rowHeight + rowHeight / 2;
+            const y2 = 20 + toIdx * rowHeight + rowHeight / 2;
+            const midX = x1 + Math.max(8, (x2 - x1) / 2);
+
+            return (
+              <polyline
+                key={`dep-${depId}-${task.id}`}
+                points={`${x1},${y1} ${midX},${y1} ${midX},${y2} ${x2},${y2}`}
+                fill="none"
+                stroke="#6B7280"
+                strokeWidth={1.5}
+                markerEnd="url(#dep-arrow)"
+              />
+            );
+          })
+        )}
       </svg>
     </div>
   );

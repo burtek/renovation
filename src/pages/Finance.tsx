@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useApp } from '../contexts/AppContext';
 import { Expense } from '../types';
+import { formatPLN } from '../utils/format';
+import { generateReport } from '../utils/report';
 
 interface ExpenseFormData {
   description: string;
@@ -43,6 +45,9 @@ export default function Finance() {
   ];
   const COLORS = ['#10B981', '#F59E0B', '#3B82F6'];
 
+  // Unique shop names for autosuggest
+  const shopNames = Array.from(new Set(state.expenses.map(e => e.shopName).filter(Boolean)));
+
   const openNew = () => { setForm(emptyForm); setModal({ open: true }); };
   const openEdit = (e: Expense) => {
     setForm({ ...e, price: String(e.price), invoiceLink: e.invoiceLink ?? '' });
@@ -72,7 +77,7 @@ export default function Finance() {
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-800">Finance</h1>
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
           <label className="text-sm text-gray-600 whitespace-nowrap">Budget (zł):</label>
           <input
             type="number"
@@ -81,21 +86,27 @@ export default function Finance() {
             onBlur={handleBudgetSave}
             className="border rounded px-3 py-1 text-sm w-32 focus:outline-none focus:border-blue-400"
           />
+          <button
+            onClick={() => generateReport(state)}
+            className="bg-gray-700 text-white px-3 py-1 rounded text-sm hover:bg-gray-800"
+          >
+            📄 Report
+          </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="text-sm text-gray-500">Loan Approved</div>
-          <div className="text-2xl font-bold text-green-600">zł{totalApproved.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-green-600">{formatPLN(totalApproved)}</div>
         </div>
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="text-sm text-gray-500">Not Approved</div>
-          <div className="text-2xl font-bold text-yellow-600">zł{totalNotApproved.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-yellow-600">{formatPLN(totalNotApproved)}</div>
         </div>
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="text-sm text-gray-500">Remaining Budget</div>
-          <div className={`text-2xl font-bold ${remaining >= 0 ? 'text-blue-600' : 'text-red-600'}`}>zł{remaining.toFixed(2)}</div>
+          <div className={`text-2xl font-bold ${remaining >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatPLN(remaining)}</div>
         </div>
       </div>
 
@@ -103,10 +114,10 @@ export default function Finance() {
         <div className="bg-white rounded-lg p-4 shadow-sm border h-64">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }: { name: string; value: number }) => `${name}: zł${value.toFixed(0)}`}>
+              <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }: { name: string; value: number }) => `${name}: ${formatPLN(value)}`}>
                 {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
-              <Tooltip formatter={(v: unknown) => `zł${(v as number).toFixed(2)}`} />
+              <Tooltip formatter={(v: unknown) => formatPLN(v as number)} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -118,7 +129,38 @@ export default function Finance() {
           <h2 className="font-semibold text-gray-700">Expenses</h2>
           <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">+ Add Expense</button>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Card view – mobile */}
+        <div className="md:hidden divide-y">
+          {state.expenses.length === 0 && (
+            <p className="text-center text-gray-400 py-8">No expenses yet.</p>
+          )}
+          {state.expenses.map(e => (
+            <div key={e.id} className="p-4 space-y-1">
+              <div className="flex justify-between items-start gap-2">
+                <span className="font-medium text-gray-800">{e.description}</span>
+                <span className="font-bold text-gray-900 whitespace-nowrap">{formatPLN(e.price)}</span>
+              </div>
+              <div className="text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
+                <span>📅 {e.date}</span>
+                {e.shopName && <span>🏪 {e.shopName}</span>}
+                {e.invoiceNo && <span>🧾 {e.invoiceNo}</span>}
+                <span>{e.invoiceForm === 'gdrive' && e.invoiceLink
+                  ? <a href={e.invoiceLink} target="_blank" rel="noreferrer" className="text-blue-600 underline">GDrive</a>
+                  : e.invoiceForm}
+                </span>
+                <span>{e.loanApproved ? <span className="text-green-600">✓ Loan</span> : <span className="text-gray-400">✗ Loan</span>}</span>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => openEdit(e)} className="text-xs text-blue-600 hover:underline">Edit</button>
+                <button onClick={() => del(e.id)} className="text-xs text-red-500 hover:underline">Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Table view – desktop */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -135,7 +177,7 @@ export default function Finance() {
                 <tr key={e.id} className="border-t hover:bg-gray-50">
                   <td className="px-3 py-2">{e.description}</td>
                   <td className="px-3 py-2">{e.date}</td>
-                  <td className="px-3 py-2 font-medium">zł{e.price.toFixed(2)}</td>
+                  <td className="px-3 py-2 font-medium">{formatPLN(e.price)}</td>
                   <td className="px-3 py-2">{e.shopName}</td>
                   <td className="px-3 py-2">{e.invoiceNo}</td>
                   <td className="px-3 py-2">
@@ -165,7 +207,18 @@ export default function Finance() {
                 <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
                 <input type="number" placeholder="Price *" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
               </div>
-              <input placeholder="Shop name" value={form.shopName} onChange={e => setForm(f => ({ ...f, shopName: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+              <div>
+                <input
+                  list="shop-suggestions"
+                  placeholder="Shop name"
+                  value={form.shopName}
+                  onChange={e => setForm(f => ({ ...f, shopName: e.target.value }))}
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                />
+                <datalist id="shop-suggestions">
+                  {shopNames.map(name => <option key={name} value={name} />)}
+                </datalist>
+              </div>
               <input placeholder="Invoice No" value={form.invoiceNo} onChange={e => setForm(f => ({ ...f, invoiceNo: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
               <div className="flex gap-2 items-center">
                 <label className="text-sm text-gray-600">Invoice form:</label>

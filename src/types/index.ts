@@ -44,11 +44,13 @@ export interface Expense {
 
 export interface CalendarEvent {
   id: string;
-  date: string;
+  date: string;      // start date
+  endDate?: string;  // end date for multi-day events
   title: string;
   contractor?: string;
   workType: string;
   notes?: string;
+  color?: string;
 }
 
 export interface AppData {
