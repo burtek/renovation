@@ -171,11 +171,15 @@ export default function Notes() {
                                         </button>
                                     );
                                 }
+                                const isSafe = href && /^https?:|^mailto:/i.test(href);
+                                if (!isSafe) {
+                                    return <span>{children}</span>;
+                                }
                                 return (
                                     <a
                                         href={href}
                                         target="_blank"
-                                        rel="noreferrer"
+                                        rel="noopener noreferrer"
                                     >{children}
                                     </a>
                                 );

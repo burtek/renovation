@@ -120,18 +120,19 @@ export default function Tasks() {
                     const proceed = confirm(
                         `Postponing "${oldTask.title}" by ${shift} day(s) will also shift:\n${names}\nby ${shift} day(s). Proceed?`
                     );
-                    if (proceed) {
-                        dependents.forEach(t => {
-                            dispatch({
-                                type: 'UPDATE_TASK',
-                                payload: {
-                                    ...t,
-                                    startDate: t.startDate ? addDays(t.startDate, shift) : t.startDate,
-                                    endDate: t.endDate ? addDays(t.endDate, shift) : t.endDate
-                                }
-                            });
-                        });
+                    if (!proceed) {
+                        return;
                     }
+                    dependents.forEach(t => {
+                        dispatch({
+                            type: 'UPDATE_TASK',
+                            payload: {
+                                ...t,
+                                startDate: t.startDate ? addDays(t.startDate, shift) : t.startDate,
+                                endDate: t.endDate ? addDays(t.endDate, shift) : t.endDate
+                            }
+                        });
+                    });
                 }
             }
 
@@ -188,24 +189,25 @@ export default function Tasks() {
                     const proceed = confirm(
                         `Postponing "${oldSub.title}" by ${shift} day(s) will also shift:\n${names}\nby ${shift} day(s). Proceed?`
                     );
-                    if (proceed) {
-                        dependents.forEach(s => {
-                            const parentTask = state.tasks.find(t => t.subtasks.some(st => st.id === s.id));
-                            if (parentTask) {
-                                dispatch({
-                                    type: 'UPDATE_SUBTASK',
-                                    payload: {
-                                        taskId: parentTask.id,
-                                        subtask: {
-                                            ...s,
-                                            startDate: s.startDate ? addDays(s.startDate, shift) : s.startDate,
-                                            endDate: s.endDate ? addDays(s.endDate, shift) : s.endDate
-                                        }
-                                    }
-                                });
-                            }
-                        });
+                    if (!proceed) {
+                        return;
                     }
+                    dependents.forEach(s => {
+                        const parentTask = state.tasks.find(t => t.subtasks.some(st => st.id === s.id));
+                        if (parentTask) {
+                            dispatch({
+                                type: 'UPDATE_SUBTASK',
+                                payload: {
+                                    taskId: parentTask.id,
+                                    subtask: {
+                                        ...s,
+                                        startDate: s.startDate ? addDays(s.startDate, shift) : s.startDate,
+                                        endDate: s.endDate ? addDays(s.endDate, shift) : s.endDate
+                                    }
+                                }
+                            });
+                        }
+                    });
                 }
             }
 
@@ -716,14 +718,14 @@ function GanttChart({ tasks }: { tasks: Task[] }) {
     }
 
     const parsedDates = rows.map(r => ({
-        start: new Date(`${r.startDate}T00:00:00`),
-        end: new Date(`${r.endDate}T00:00:00`)
+        start: new Date(`${r.startDate}T00:00:00Z`),
+        end: new Date(`${r.endDate}T00:00:00Z`)
     }));
 
     const minDate = new Date(Math.min(...parsedDates.map(d => d.start.getTime())));
     const maxDate = new Date(Math.max(...parsedDates.map(d => d.end.getTime())));
-    minDate.setDate(minDate.getDate() - MARGIN_DAYS);
-    maxDate.setDate(maxDate.getDate() + MARGIN_DAYS);
+    minDate.setUTCDate(minDate.getUTCDate() - MARGIN_DAYS);
+    maxDate.setUTCDate(maxDate.getUTCDate() + MARGIN_DAYS);
     const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / MS_PER_DAY);
     const dayWidth = Math.max(MIN_DAY_WIDTH, Math.min(MAX_DAY_WIDTH, CHART_TARGET_WIDTH / totalDays));
     const chartWidth = LABEL_WIDTH + (totalDays * dayWidth);
@@ -732,16 +734,16 @@ function GanttChart({ tasks }: { tasks: Task[] }) {
     const months: { label: string; x: number; width: number }[] = [];
     let cur = new Date(minDate);
     while (cur <= maxDate) {
-        const monthEnd = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+        const monthEnd = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 0));
         const clampedEnd = monthEnd > maxDate ? maxDate : monthEnd;
         const dayOffset = Math.ceil((cur.getTime() - minDate.getTime()) / MS_PER_DAY);
         const dayCount = Math.ceil((clampedEnd.getTime() - cur.getTime()) / MS_PER_DAY) + 1;
         months.push({
-            label: `${cur.toLocaleString('default', { month: 'short' })} ${cur.getFullYear()}`,
+            label: `${cur.toLocaleString('default', { month: 'short', timeZone: 'UTC' })} ${cur.getUTCFullYear()}`,
             x: LABEL_WIDTH + (dayOffset * dayWidth),
             width: dayCount * dayWidth
         });
-        cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+        cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1));
     }
 
     const rowIndexMap = new Map(rows.map((r, i) => [r.id, i]));

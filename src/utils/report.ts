@@ -107,7 +107,13 @@ export function generateReport(state: AppData): void {
         <td>${formatPLN(e.price)}</td>
         <td>${esc(e.shopName === '' ? '—' : e.shopName)}</td>
         <td>${esc(e.invoiceNo === '' ? '—' : e.invoiceNo)}</td>
-        <td>${e.invoiceForm === 'gdrive' && e.invoiceLink ? `<a href="${safeHref(e.invoiceLink)}">GDrive</a>` : esc(e.invoiceForm)}</td>
+        <td>${(() => {
+            if (e.invoiceForm === 'gdrive' && e.invoiceLink) {
+                const href = safeHref(e.invoiceLink);
+                return href ? `<a href="${href}" rel="noopener noreferrer">GDrive</a>` : 'GDrive (invalid link)';
+            }
+            return esc(e.invoiceForm);
+        })()}</td>
         <td>${e.loanApproved ? '✓' : '✗'}</td>
       </tr>`
                     )

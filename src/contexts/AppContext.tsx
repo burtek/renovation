@@ -56,13 +56,26 @@ function reducer(state: AppData, action: Action): AppData {
             return { ...state, tasks: state.tasks.map(t => (t.id === action.payload.id ? action.payload : t)) };
         case 'DELETE_TASK': {
             const taskId = action.payload;
+            // Collect all subtask IDs belonging to the deleted task
+            const deletedTask = state.tasks.find(t => t.id === taskId);
+            const deletedSubtaskIds = new Set(deletedTask?.subtasks.map(s => s.id) ?? []);
             const remainingTasks = state.tasks.filter(t => t.id !== taskId);
             const cleanedTasks = remainingTasks.map(t => {
-                if (!t.dependsOn?.length) {
-                    return t;
-                }
-                const newDependsOn = t.dependsOn.filter(id => id !== taskId);
-                return newDependsOn.length === t.dependsOn.length ? t : { ...t, dependsOn: newDependsOn };
+                const cleanedDependsOn = t.dependsOn?.length
+                    ? t.dependsOn.filter(id => id !== taskId)
+                    : t.dependsOn;
+                const cleanedSubtasks = t.subtasks.map(s => {
+                    if (!s.dependsOn?.length) {
+                        return s;
+                    }
+                    const newDependsOn = s.dependsOn.filter(id => !deletedSubtaskIds.has(id));
+                    return newDependsOn.length === s.dependsOn.length ? s : { ...s, dependsOn: newDependsOn };
+                });
+                const taskDependsOnChanged = cleanedDependsOn !== t.dependsOn
+                    && cleanedDependsOn?.length !== t.dependsOn?.length;
+                return taskDependsOnChanged || cleanedSubtasks !== t.subtasks
+                    ? { ...t, dependsOn: cleanedDependsOn, subtasks: cleanedSubtasks }
+                    : t;
             });
             return { ...state, tasks: cleanedTasks };
         }

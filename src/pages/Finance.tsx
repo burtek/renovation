@@ -18,13 +18,24 @@ interface ExpenseFormData {
     loanApproved: boolean;
 }
 
+function todayLocalDate(): string {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+}
+
+function safeUrl(url: string): string {
+    try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? url : '';
+    } catch {
+        return '';
+    }
+}
+
 const emptyForm: ExpenseFormData = {
     description: '',
-    date: (() => {
-        const d = new Date();
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-        return d.toISOString().split('T')[0];
-    })(),
+    date: '',
     price: '',
     shopName: '',
     invoiceNo: '',
@@ -60,7 +71,7 @@ export default function Finance() {
     const shopNames = Array.from(new Set(state.expenses.map(e => e.shopName).filter(Boolean)));
 
     const openNew = () => {
-        setForm(emptyForm);
+        setForm({ ...emptyForm, date: todayLocalDate() });
         setModal({ open: true });
     };
     const openEdit = (e: Expense) => {
@@ -196,15 +207,20 @@ export default function Finance() {
                                 {e.shopName && <span>🏪 {e.shopName}</span>}
                                 {e.invoiceNo && <span>🧾 {e.invoiceNo}</span>}
                                 <span>{e.invoiceForm === 'gdrive' && e.invoiceLink
-                                    ? (
-                                        <a
-                                            href={e.invoiceLink}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="text-blue-600 underline"
-                                        >GDrive
-                                        </a>
-                                    )
+                                    ? (() => {
+                                        const url = safeUrl(e.invoiceLink);
+                                        return url
+                                            ? (
+                                                <a
+                                                    href={url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 underline"
+                                                >GDrive
+                                                </a>
+                                            )
+                                            : 'GDrive (invalid link)';
+                                    })()
                                     : e.invoiceForm}
                                 </span>
                                 <span>{e.loanApproved ? <span className="text-green-600">✓ Loan</span> : <span className="text-gray-400">✗ Loan</span>}</span>
@@ -268,15 +284,20 @@ export default function Finance() {
                                     <td className="px-3 py-2">{e.invoiceNo}</td>
                                     <td className="px-3 py-2">
                                         {e.invoiceForm === 'gdrive' && e.invoiceLink
-                                            ? (
-                                                <a
-                                                    href={e.invoiceLink}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="text-blue-600 underline"
-                                                >GDrive
-                                                </a>
-                                            )
+                                            ? (() => {
+                                                const url = safeUrl(e.invoiceLink);
+                                                return url
+                                                    ? (
+                                                        <a
+                                                            href={url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-blue-600 underline"
+                                                        >GDrive
+                                                        </a>
+                                                    )
+                                                    : 'GDrive (invalid link)';
+                                            })()
                                             : e.invoiceForm}
                                     </td>
                                     <td className="px-3 py-2">{e.loanApproved ? <span className="text-green-600">✓</span> : <span className="text-gray-400">✗</span>}</td>
