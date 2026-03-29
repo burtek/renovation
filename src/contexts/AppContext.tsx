@@ -54,8 +54,18 @@ function reducer(state: AppData, action: Action): AppData {
         }
         case 'UPDATE_TASK':
             return { ...state, tasks: state.tasks.map(t => (t.id === action.payload.id ? action.payload : t)) };
-        case 'DELETE_TASK':
-            return { ...state, tasks: state.tasks.filter(t => t.id !== action.payload) };
+        case 'DELETE_TASK': {
+            const taskId = action.payload;
+            const remainingTasks = state.tasks.filter(t => t.id !== taskId);
+            const cleanedTasks = remainingTasks.map(t => {
+                if (!t.dependsOn?.length) {
+                    return t;
+                }
+                const newDependsOn = t.dependsOn.filter(id => id !== taskId);
+                return newDependsOn.length === t.dependsOn.length ? t : { ...t, dependsOn: newDependsOn };
+            });
+            return { ...state, tasks: cleanedTasks };
+        }
         case 'ADD_SUBTASK': {
             const subtask: Subtask = { ...action.payload.subtask, id: uuidv4() };
             return {
@@ -72,14 +82,25 @@ function reducer(state: AppData, action: Action): AppData {
                         ? { ...t, subtasks: t.subtasks.map(s => (s.id === action.payload.subtask.id ? action.payload.subtask : s)) }
                         : t))
             };
-        case 'DELETE_SUBTASK':
+        case 'DELETE_SUBTASK': {
+            const { taskId, subtaskId } = action.payload;
             return {
                 ...state,
-                tasks: state.tasks.map(t =>
-                    (t.id === action.payload.taskId
-                        ? { ...t, subtasks: t.subtasks.filter(s => s.id !== action.payload.subtaskId) }
-                        : t))
+                tasks: state.tasks.map(t => {
+                    const filteredSubtasks = t.id === taskId
+                        ? t.subtasks.filter(s => s.id !== subtaskId)
+                        : t.subtasks;
+                    const cleanedSubtasks = filteredSubtasks.map(s => {
+                        if (!s.dependsOn?.length) {
+                            return s;
+                        }
+                        const newDependsOn = s.dependsOn.filter(id => id !== subtaskId);
+                        return newDependsOn.length === s.dependsOn.length ? s : { ...s, dependsOn: newDependsOn };
+                    });
+                    return { ...t, subtasks: cleanedSubtasks };
+                })
             };
+        }
         case 'ADD_EXPENSE': {
             const expense: Expense = { ...action.payload, id: uuidv4() };
             return { ...state, expenses: [...state.expenses, expense] };
@@ -117,7 +138,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const stored = localStorage.getItem('renovation-data');
             if (stored) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-                return JSON.parse(stored) as AppData;
+                const parsed = JSON.parse(stored) as Partial<AppData>;
+                return { ...initialState, ...parsed };
             }
         } catch {
             // localStorage unavailable or corrupt — start fresh
@@ -148,7 +170,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     return;
                 }
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-                const data = JSON.parse(text) as AppData;
+                const data = { ...initialState, ...(JSON.parse(text) as Partial<AppData>) };
                 dispatch({ type: 'SET_ALL', payload: data });
             } catch {
                 // eslint-disable-next-line no-alert

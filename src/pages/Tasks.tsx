@@ -49,14 +49,14 @@ const emptySubtaskForm: SubtaskFormData = {
 const MS_PER_DAY = 86_400_000;
 
 function addDays(dateStr: string, days: number): string {
-    const d = new Date(`${dateStr}T00:00:00`);
-    d.setDate(d.getDate() + days);
-    return d.toISOString().split('T')[0];
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
 }
 
 function dayDiff(laterDate: string, earlierDate: string): number {
-    const later = new Date(`${laterDate}T00:00:00`);
-    const earlier = new Date(`${earlierDate}T00:00:00`);
+    const later = new Date(`${laterDate}T00:00:00Z`);
+    const earlier = new Date(`${earlierDate}T00:00:00Z`);
     return Math.round((later.getTime() - earlier.getTime()) / MS_PER_DAY);
 }
 

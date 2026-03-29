@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 import { useApp } from '../contexts/AppContext';
@@ -20,7 +20,11 @@ interface ExpenseFormData {
 
 const emptyForm: ExpenseFormData = {
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: (() => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().split('T')[0];
+    })(),
     price: '',
     shopName: '',
     invoiceNo: '',
@@ -34,6 +38,11 @@ export default function Finance() {
     const [modal, setModal] = useState<{ open: boolean; editExpense?: Expense }>({ open: false });
     const [form, setForm] = useState<ExpenseFormData>(emptyForm);
     const [budgetInput, setBudgetInput] = useState(String(state.budget));
+
+    useEffect(() => {
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
+        setBudgetInput(String(state.budget));
+    }, [state.budget]);
 
     const totalApproved = state.expenses.filter(e => e.loanApproved).reduce((s, e) => s + e.price, 0);
     const totalNotApproved = state.expenses.filter(e => !e.loanApproved).reduce((s, e) => s + e.price, 0);

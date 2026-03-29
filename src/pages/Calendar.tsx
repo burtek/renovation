@@ -1,6 +1,5 @@
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale/en-US';
-import type { HTMLAttributes } from 'react';
 import { useState } from 'react';
 import type { SlotInfo } from 'react-big-calendar';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
@@ -131,17 +130,15 @@ export default function CalendarPage() {
         <div className="h-full flex flex-col p-4">
             <h1 className="text-2xl font-bold text-gray-800 mb-4">Calendar</h1>
             <div className="flex-1 bg-white rounded-lg shadow-sm border p-4 min-h-0">
-                <Calendar
+                <Calendar<BigCalEvent>
                     localizer={localizer}
                     events={events}
                     startAccessor="start"
                     endAccessor="end"
                     style={{ height: '100%' }}
                     onSelectSlot={handleSelectSlot}
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-                    onSelectEvent={handleSelectEvent as unknown as (event: object) => void}
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-                    eventPropGetter={eventPropGetter as unknown as (event: object) => HTMLAttributes<HTMLDivElement>}
+                    onSelectEvent={handleSelectEvent}
+                    eventPropGetter={eventPropGetter}
                     selectable
                     views={['month', 'week', 'day']}
                     defaultView="month"

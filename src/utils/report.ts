@@ -16,7 +16,21 @@ export function generateReport(state: AppData): void {
     const remaining = budget - total;
 
     const esc = (s: string) =>
-        s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+    const safeHref = (url: string) => {
+        try {
+            const parsed = new URL(url);
+            return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? esc(url) : '';
+        } catch {
+            return '';
+        }
+    };
 
     const html = `<!DOCTYPE html>
 <html lang="pl">
@@ -93,7 +107,7 @@ export function generateReport(state: AppData): void {
         <td>${formatPLN(e.price)}</td>
         <td>${esc(e.shopName === '' ? '—' : e.shopName)}</td>
         <td>${esc(e.invoiceNo === '' ? '—' : e.invoiceNo)}</td>
-        <td>${e.invoiceForm === 'gdrive' && e.invoiceLink ? `<a href="${esc(e.invoiceLink)}">GDrive</a>` : esc(e.invoiceForm)}</td>
+        <td>${e.invoiceForm === 'gdrive' && e.invoiceLink ? `<a href="${safeHref(e.invoiceLink)}">GDrive</a>` : esc(e.invoiceForm)}</td>
         <td>${e.loanApproved ? '✓' : '✗'}</td>
       </tr>`
                     )
