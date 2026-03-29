@@ -75,7 +75,16 @@ export default function Finance() {
         setModal({ open: true });
     };
     const openEdit = (e: Expense) => {
-        setForm({ ...e, price: String(e.price), invoiceLink: e.invoiceLink ?? '' });
+        setForm({
+            description: e.description,
+            date: e.date,
+            price: String(e.price),
+            shopName: e.shopName,
+            invoiceNo: e.invoiceNo,
+            invoiceForm: e.invoiceForm,
+            invoiceLink: e.invoiceLink ?? '',
+            loanApproved: e.loanApproved
+        });
         setModal({ open: true, editExpense: e });
     };
 

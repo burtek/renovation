@@ -64,16 +64,20 @@ function reducer(state: AppData, action: Action): AppData {
                 const cleanedDependsOn = t.dependsOn?.length
                     ? t.dependsOn.filter(id => id !== taskId)
                     : t.dependsOn;
-                const cleanedSubtasks = t.subtasks.map(s => {
-                    if (!s.dependsOn?.length) {
-                        return s;
-                    }
-                    const newDependsOn = s.dependsOn.filter(id => !deletedSubtaskIds.has(id));
-                    return newDependsOn.length === s.dependsOn.length ? s : { ...s, dependsOn: newDependsOn };
-                });
+                const subtasksNeedCleaning = deletedSubtaskIds.size > 0
+                    && t.subtasks.some(s => s.dependsOn?.some(id => deletedSubtaskIds.has(id)));
+                const cleanedSubtasks = subtasksNeedCleaning
+                    ? t.subtasks.map(s => {
+                        if (!s.dependsOn?.length) {
+                            return s;
+                        }
+                        const newDependsOn = s.dependsOn.filter(id => !deletedSubtaskIds.has(id));
+                        return newDependsOn.length === s.dependsOn.length ? s : { ...s, dependsOn: newDependsOn };
+                    })
+                    : t.subtasks;
                 const taskDependsOnChanged = cleanedDependsOn !== t.dependsOn
                     && cleanedDependsOn?.length !== t.dependsOn?.length;
-                return taskDependsOnChanged || cleanedSubtasks !== t.subtasks
+                return taskDependsOnChanged || subtasksNeedCleaning
                     ? { ...t, dependsOn: cleanedDependsOn, subtasks: cleanedSubtasks }
                     : t;
             });
@@ -171,7 +175,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         a.href = url;
         a.download = `renovation-backup-${new Date().toISOString().split('T')[0]}.json`;
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 0);
     }, [state]);
 
     const loadFromFile = useCallback((file: File) => {

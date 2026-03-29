@@ -26,7 +26,7 @@ export function generateReport(state: AppData): void {
     const safeHref = (url: string) => {
         try {
             const parsed = new URL(url);
-            return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? esc(url) : '';
+            return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? esc(parsed.href) : '';
         } catch {
             return '';
         }
