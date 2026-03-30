@@ -35,7 +35,7 @@ export default function SaveLoadButtons() {
             <input
                 ref={fileInputRef}
                 type="file"
-                accept=".json"
+                accept=".json,.json.gz"
                 className="hidden"
                 onChange={handleFileChange}
             />

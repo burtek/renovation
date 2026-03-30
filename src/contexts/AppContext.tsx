@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer 
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AppData, Note, Task, Subtask, Expense, CalendarEvent } from '../types';
+import { compressToGzip, decompressFromGzip } from '../utils/compression';
 
 
 const initialState: AppData = {
@@ -142,7 +143,7 @@ function reducer(state: AppData, action: Action): AppData {
 interface AppContextType {
     state: AppData;
     dispatch: Dispatch<Action>;
-    saveToFile: () => void;
+    saveToFile: () => Promise<void>;
     loadFromFile: (file: File) => void;
 }
 
@@ -168,12 +169,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('renovation-data', JSON.stringify(state));
     }, [state]);
 
-    const saveToFile = useCallback(() => {
-        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const saveToFile = useCallback(async () => {
+        const blob = await compressToGzip(JSON.stringify(state, null, 2));
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `renovation-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `renovation-backup-${new Date().toISOString().split('T')[0]}.json.gz`;
         a.click();
         setTimeout(() => {
             URL.revokeObjectURL(url);
@@ -181,22 +182,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, [state]);
 
     const loadFromFile = useCallback((file: File) => {
-        const reader = new FileReader();
-        reader.onload = e => {
+        const parseAndLoad = (text: string) => {
             try {
-                const text = e.target?.result;
-                if (typeof text !== 'string') {
-                    return;
-                }
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
                 const data = { ...initialState, ...(JSON.parse(text) as Partial<AppData>) };
                 dispatch({ type: 'SET_ALL', payload: data });
             } catch {
                 // eslint-disable-next-line no-alert
-                alert('Failed to parse JSON file. Please ensure the file is a valid renovation backup file.');
+                alert('Failed to parse file. Please ensure the file is a valid renovation backup file.');
             }
         };
-        reader.readAsText(file);
+
+        const handleError = () => {
+            // eslint-disable-next-line no-alert
+            alert('Failed to load file. Please ensure the file is a valid renovation backup file.');
+        };
+
+        if (file.name.endsWith('.json.gz')) {
+            const loadGzip = async () => {
+                try {
+                    parseAndLoad(await decompressFromGzip(file));
+                } catch {
+                    handleError();
+                }
+            };
+            void loadGzip();
+        } else {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const text = e.target?.result;
+                if (typeof text === 'string') {
+                    parseAndLoad(text);
+                }
+            };
+            reader.onerror = handleError;
+            reader.readAsText(file);
+        }
     }, []);
 
     const contextValue = useMemo(
