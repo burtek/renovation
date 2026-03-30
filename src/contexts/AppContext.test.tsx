@@ -619,6 +619,29 @@ describe('loadFromFile', () => {
             expect(result.current.state.budget).toBe(55000);
         });
     });
+
+    it('shows alert when loading a .json.gz file and compression is not supported', async () => {
+        // Temporarily pretend compression is not supported
+        const compressionModule = await import('../utils/compression');
+        const originalValue = compressionModule.isCompressionSupported;
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: false, writable: true, configurable: true });
+
+        const file = new File(['fake-gz-content'], 'backup.json.gz', { type: 'application/gzip' });
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        act(() => {
+            result.current.loadFromFile(file);
+        });
+
+        await waitFor(() => {
+            expect(window.alert).toHaveBeenCalledWith(
+                expect.stringContaining('does not support gzip decompression')
+            );
+        });
+
+        // Restore
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: originalValue, writable: true, configurable: true });
+    });
 });
 
 // ---------------------------------------------------------------------------

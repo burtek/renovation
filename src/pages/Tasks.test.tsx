@@ -125,6 +125,69 @@ describe('Tasks page', () => {
         expect(screen.getByRole('heading', { name: /new task/i })).toBeInTheDocument();
     });
 
+    it('fills task form notes, dates, and assignee fields', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        await user.type(screen.getByPlaceholderText(/title \*/i), 'Task With Fields');
+        await user.type(screen.getByPlaceholderText(/^notes$/i), 'Some task notes');
+
+        const dateInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="date"]'));
+        fireEvent.change(dateInputs[0], { target: { value: '2024-04-01' } });
+        fireEvent.change(dateInputs[1], { target: { value: '2024-04-10' } });
+
+        await user.type(screen.getByPlaceholderText(/assignee/i), 'Alice');
+
+        const completedCheckbox = screen.getByRole('checkbox', { name: /completed/i });
+        await user.click(completedCheckbox);
+        expect(completedCheckbox).toBeChecked();
+
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            expect(screen.getByText('Task With Fields')).toBeInTheDocument();
+        });
+    });
+
+    it('Cancel closes the task modal without saving', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        await user.type(screen.getByPlaceholderText(/title \*/i), 'Cancelled Task');
+
+        await user.click(screen.getByRole('button', { name: /cancel/i }));
+
+        expect(screen.queryByText('Cancelled Task')).not.toBeInTheDocument();
+    });
+
+    it('shows "Depends on (tasks)" when adding a task and other tasks exist', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Existing Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+
+        expect(screen.getByText(/depends on \(tasks\)/i)).toBeInTheDocument();
+        expect(screen.getAllByText('Existing Task').length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('selecting a task dependency checkbox adds it to dependsOn', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Dep Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+
+        const depCheckbox = screen.getByRole('checkbox', { name: /Dep Task/i });
+        await user.click(depCheckbox);
+        expect(depCheckbox).toBeChecked();
+
+        await user.click(depCheckbox);
+        expect(depCheckbox).not.toBeChecked();
+    });
+
     // ── Edit task ─────────────────────────────────────────────────────────
 
     it('edits a task: changes title and saves', async () => {
@@ -259,6 +322,76 @@ describe('Tasks page', () => {
 
         await waitFor(() => {
             expect(screen.queryByText('Del Sub')).not.toBeInTheDocument();
+        });
+    });
+
+    it('does not save subtask when title is empty', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+        // Do NOT type a title
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        // Modal should still be open (title is required)
+        expect(screen.getByPlaceholderText(/title \*/i)).toBeInTheDocument();
+    });
+
+    it('shifts dependent subtask dates when subtask endDate is extended (confirm=true)', async () => {
+        vi.stubGlobal('confirm', vi.fn(() => true));
+
+        const subA = makeSubtask({ id: 'sA', parentId: 't1', title: 'Sub A', startDate: '2024-01-01', endDate: '2024-01-10', dependsOn: [] });
+        const subB = makeSubtask({ id: 'sB', parentId: 't1', title: 'Sub B', startDate: '2024-01-11', endDate: '2024-01-20', dependsOn: ['sA'] });
+        preloadTasks([makeTask({ id: 't1', title: 'Parent', subtasks: [subA, subB] })]);
+
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        // Expand subtasks
+        await user.click(screen.getByText('▼'));
+
+        // Edit Sub A
+        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
+        await user.click(editButtons[editButtons.length - 2]); // first subtask's Edit button
+
+        // Extend Sub A's endDate by 5 days
+        const endDateInput = screen.getByDisplayValue('2024-01-10');
+        fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
+
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        // Sub B should shift by 5 days: start=2024-01-16, end=2024-01-25
+        await waitFor(() => {
+            expect(screen.getByText(/2024-01-16/)).toBeInTheDocument();
+            expect(screen.getByText(/2024-01-25/)).toBeInTheDocument();
+        });
+    });
+
+    it('does NOT shift dependent subtask dates when subtask date shift is declined (confirm=false)', async () => {
+        vi.stubGlobal('confirm', vi.fn(() => false));
+
+        const subA = makeSubtask({ id: 'sA', parentId: 't1', title: 'Sub A', startDate: '2024-01-01', endDate: '2024-01-10', dependsOn: [] });
+        const subB = makeSubtask({ id: 'sB', parentId: 't1', title: 'Sub B', startDate: '2024-01-11', endDate: '2024-01-20', dependsOn: ['sA'] });
+        preloadTasks([makeTask({ id: 't1', title: 'Parent', subtasks: [subA, subB] })]);
+
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByText('▼'));
+
+        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
+        await user.click(editButtons[editButtons.length - 2]);
+
+        const endDateInput = screen.getByDisplayValue('2024-01-10');
+        fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
+
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        // Sub B dates should remain unchanged (confirm=false returns early)
+        await waitFor(() => {
+            expect(screen.getByText(/2024-01-11/)).toBeInTheDocument();
+            expect(screen.getByText(/2024-01-20/)).toBeInTheDocument();
         });
     });
 
@@ -494,5 +627,170 @@ describe('Tasks page', () => {
             const subTitle = screen.getByText('Sub');
             expect(subTitle.className).toContain('line-through');
         });
+    });
+
+    // ── Subtask assignee / date display ───────────────────────────────────
+
+    it('shows assignee icon and date range for subtask with those fields', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [
+                    makeSubtask({
+                        id: 's1',
+                        parentId: 't1',
+                        title: 'Rich Sub',
+                        assignee: 'Alice',
+                        startDate: '2024-02-01',
+                        endDate: '2024-02-10'
+                    })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByText('▼'));
+
+        expect(screen.getByText(/👤 Alice/)).toBeInTheDocument();
+        expect(screen.getByText(/📅 2024-02-01 → 2024-02-10/)).toBeInTheDocument();
+    });
+
+    it('shows only start date (no arrow) when subtask has startDate but no endDate', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [makeSubtask({ id: 's1', parentId: 't1', title: 'DateSub', startDate: '2024-03-01' })]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByText('▼'));
+
+        const dateSpan = screen.getByText(/📅 2024-03-01/);
+        expect(dateSpan).toBeInTheDocument();
+        expect(dateSpan.textContent).not.toContain('→');
+    });
+
+    // ── Subtask dependency checkboxes ─────────────────────────────────────
+
+    it('shows "Depends on (subtasks)" section when adding a subtask and other subtasks exist', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [makeSubtask({ id: 's1', parentId: 't1', title: 'Existing Sub' })]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        expect(screen.getByText(/depends on \(subtasks\)/i)).toBeInTheDocument();
+        expect(screen.getByText('Existing Sub')).toBeInTheDocument();
+    });
+
+    it('selecting a subtask dependency checkbox adds it to dependsOn', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [makeSubtask({ id: 's1', parentId: 't1', title: 'Dep Sub' })]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        await user.type(screen.getByPlaceholderText(/title \*/i), 'New Sub');
+
+        // Check the dependency checkbox for the existing subtask
+        const depCheckbox = screen.getByRole('checkbox', { name: /Dep Sub/i });
+        await user.click(depCheckbox);
+        expect(depCheckbox).toBeChecked();
+
+        // Uncheck it again
+        await user.click(depCheckbox);
+        expect(depCheckbox).not.toBeChecked();
+    });
+
+    // ── Subtask form fields ───────────────────────────────────────────────
+
+    it('filling all subtask form fields updates the form state', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        await user.type(screen.getByPlaceholderText(/title \*/i), 'Full Sub');
+        await user.type(screen.getByPlaceholderText(/^notes$/i), 'Some notes');
+
+        // Use fireEvent for date inputs (userEvent has issues with type="date")
+        const [startInput, endInput] = Array.from(
+            document.querySelectorAll<HTMLInputElement>('input[type="date"]')
+        );
+        fireEvent.change(startInput, { target: { value: '2024-03-01' } });
+        fireEvent.change(endInput, { target: { value: '2024-03-10' } });
+
+        await user.type(screen.getByPlaceholderText(/assignee/i), 'Bob');
+
+        // Toggle the completed checkbox in the modal
+        const completedCheckbox = screen.getByRole('checkbox', { name: /completed/i });
+        await user.click(completedCheckbox);
+        expect(completedCheckbox).toBeChecked();
+
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        // Expand subtask list and verify the new subtask was saved
+        const expandBtn = await screen.findByText('▼');
+        await user.click(expandBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText('Full Sub')).toBeInTheDocument();
+        });
+    });
+
+    it('Cancel closes the subtask modal without saving', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+        await user.type(screen.getByPlaceholderText(/title \*/i), 'Cancelled Sub');
+
+        await user.click(screen.getByRole('button', { name: /cancel/i }));
+
+        // Modal should be gone
+        expect(screen.queryByPlaceholderText(/title \*/i)).not.toBeInTheDocument();
+        // Subtask should NOT have been saved
+        expect(screen.queryByText('Cancelled Sub')).not.toBeInTheDocument();
+    });
+
+    // ── Gantt dependency arrow null branch ────────────────────────────────
+
+    it('does not render a dependency arrow when the dependency has no Gantt row (no dates)', async () => {
+        // Task A has no dates → not a Gantt row. Task B has dates and depends on A.
+        // The Gantt should render Task B's bar but return null for the dependency arrow to A.
+        preloadTasks([
+            makeTask({ id: 'a', title: 'No Dates Task', dependsOn: [] }),
+            makeTask({ id: 'b', title: 'Dated Task', startDate: '2024-01-01', endDate: '2024-01-10', dependsOn: ['a'] })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /gantt/i }));
+
+        await waitFor(() => {
+            expect(document.querySelector('svg')).toBeInTheDocument();
+        });
+
+        // No polyline should be drawn because 'a' has no Gantt row
+        expect(document.querySelector('polyline')).not.toBeInTheDocument();
     });
 });
