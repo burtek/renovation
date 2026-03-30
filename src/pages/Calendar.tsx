@@ -3,15 +3,26 @@ import { enUS } from 'date-fns/locale/en-US';
 import { useState } from 'react';
 import type { SlotInfo } from 'react-big-calendar';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
+import type { EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAndDrop';
+import withDragAndDropCjs from 'react-big-calendar/lib/addons/dragAndDrop';
 
 import { useApp } from '../contexts/AppContext';
 import type { CalendarEvent } from '../types';
 import { cn } from '../utils/classnames';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
+
+// Vite 8 (Rolldown) production builds double-wrap CJS modules with __esModule:true,
+// leaving the module object (not the function) as the default export. Unwrap manually.
+type WithDragAndDropFn = typeof withDragAndDropCjs;
+const withDragAndDropMod = withDragAndDropCjs as WithDragAndDropFn | { default: WithDragAndDropFn };
+const withDragAndDrop: WithDragAndDropFn = typeof withDragAndDropMod === 'function'
+    ? withDragAndDropMod
+    : withDragAndDropMod.default;
 
 const EVENT_COLORS = [
     { label: 'Blue', value: '#3B82F6' },
@@ -51,6 +62,8 @@ interface BigCalEvent {
     allDay: boolean;
     resource: CalendarEvent;
 }
+
+const DnDCalendar = withDragAndDrop<BigCalEvent>(Calendar);
 
 export default function CalendarPage() {
     const { state, dispatch } = useApp();
@@ -119,6 +132,22 @@ export default function CalendarPage() {
         setModal({ open: false });
     };
 
+    const updateEventDates = ({ event, start, end }: EventInteractionArgs<BigCalEvent>) => {
+        const newStart = format(new Date(start), 'yyyy-MM-dd');
+        // end is exclusive in react-big-calendar for allDay events → subtract 1 day
+        const endDate = new Date(end);
+        endDate.setDate(endDate.getDate() - 1);
+        const newEnd = format(endDate, 'yyyy-MM-dd');
+        dispatch({
+            type: 'UPDATE_CALENDAR_EVENT',
+            payload: {
+                ...event.resource,
+                date: newStart,
+                endDate: newEnd > newStart ? newEnd : undefined
+            }
+        });
+    };
+
     const del = () => {
         // eslint-disable-next-line no-alert
         if (modal.editEvent && confirm('Delete event?')) {
@@ -131,7 +160,7 @@ export default function CalendarPage() {
         <div className="h-full flex flex-col p-4">
             <h1 className="text-2xl font-bold text-gray-800 mb-4">Calendar</h1>
             <div className="flex-1 bg-white rounded-lg shadow-sm border p-4 min-h-0">
-                <Calendar<BigCalEvent>
+                <DnDCalendar
                     localizer={localizer}
                     events={events}
                     startAccessor="start"
@@ -139,8 +168,11 @@ export default function CalendarPage() {
                     style={{ height: '100%' }}
                     onSelectSlot={handleSelectSlot}
                     onSelectEvent={handleSelectEvent}
+                    onEventDrop={updateEventDates}
+                    onEventResize={updateEventDates}
                     eventPropGetter={eventPropGetter}
                     selectable
+                    resizable
                     views={['month', 'week', 'day']}
                     defaultView="month"
                 />

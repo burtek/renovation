@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -43,6 +43,63 @@ vi.mock('react-big-calendar', () => ({
     dateFnsLocalizer: () => ({})
 }));
 vi.mock('react-big-calendar/lib/css/react-big-calendar.css', () => ({}));
+vi.mock('react-big-calendar/lib/addons/dragAndDrop/styles.css', () => ({}));
+vi.mock('react-big-calendar/lib/addons/dragAndDrop', () => ({
+    default: (Cal: ComponentType<{
+        events?: Array<{ title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }>;
+        [key: string]: unknown;
+    }>) =>
+        function DnDCalendarMock({ onEventDrop, onEventResize, ...rest }: {
+            onEventDrop?: (args: {
+                event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent };
+                start: Date;
+                end: Date;
+                isAllDay: boolean;
+            }) => void;
+            onEventResize?: (args: {
+                event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent };
+                start: Date;
+                end: Date;
+                isAllDay: boolean;
+            }) => void;
+            events?: Array<{ title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }>;
+            [key: string]: unknown;
+        }) {
+            return (
+                <>
+                    <Cal {...rest} />
+                    {rest.events?.map(e => (
+                        <span key={e.resource.id}>
+                            <button
+                                type="button"
+                                data-testid={`drop-${e.resource.id}`}
+                                onClick={() => onEventDrop?.({
+                                    event: e,
+                                    start: new Date('2024-04-01T00:00:00'),
+                                    end: new Date('2024-04-02T00:00:00'),
+                                    isAllDay: true
+                                })}
+                            >
+                                Drop {e.title}
+                            </button>
+                            <button
+                                type="button"
+                                data-testid={`resize-${e.resource.id}`}
+                                onClick={() => onEventResize?.({
+                                    event: e,
+                                    start: new Date('2024-04-01T00:00:00'),
+                                    end: new Date('2024-04-04T00:00:00'),
+                                    isAllDay: true
+                                })}
+                            >
+                                Resize {e.title}
+                            </button>
+                        </span>
+                    ))}
+                </>
+            );
+        }
+}));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -263,5 +320,66 @@ describe('Calendar page', () => {
         await user.click(defaultBtn);
 
         expect(defaultBtn.className).toContain('border-gray-800');
+    });
+
+    // ── Drag and drop ─────────────────────────────────────────────────────
+
+    it('moves a single-day event to a new date when dropped', async () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Draggable Event', date: '2024-03-01' })] });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        // Drop button simulates onEventDrop with start=2024-04-01, end=2024-04-02 (exclusive)
+        await user.click(screen.getByTestId('drop-ev1'));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
+            const updated = stored.calendarEvents.find(e => e.id === 'ev1');
+            expect(updated?.date).toBe('2024-04-01');
+            expect(updated?.endDate).toBeUndefined();
+        });
+    });
+
+    it('moves a multi-day event and preserves its span when dropped', async () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev2', title: 'Multi-day Event', date: '2024-03-01', endDate: '2024-03-03' })] });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        // Resize button simulates onEventResize with start=2024-04-01, end=2024-04-04 (exclusive → 2024-04-03 inclusive)
+        await user.click(screen.getByTestId('resize-ev2'));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
+            const updated = stored.calendarEvents.find(e => e.id === 'ev2');
+            expect(updated?.date).toBe('2024-04-01');
+            expect(updated?.endDate).toBe('2024-04-03');
+        });
+    });
+
+    it('preserves other event properties (title, color, etc.) after drag', async () => {
+        preloadState({
+            calendarEvents: [
+                makeCalendarEvent({
+                    id: 'ev3',
+                    title: 'Colored Event',
+                    date: '2024-03-01',
+                    color: '#3B82F6',
+                    contractor: 'Bob'
+                })
+            ]
+        });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTestId('drop-ev3'));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
+            const updated = stored.calendarEvents.find(e => e.id === 'ev3');
+            expect(updated?.date).toBe('2024-04-01');
+            expect(updated?.color).toBe('#3B82F6');
+            expect(updated?.contractor).toBe('Bob');
+            expect(updated?.title).toBe('Colored Event');
+        });
     });
 });
