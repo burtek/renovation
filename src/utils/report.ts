@@ -173,7 +173,7 @@ export function generateReport(state: AppData): void {
         <td>${esc(e.date)}</td>
         <td>${esc(e.endDate !== '' && e.endDate ? e.endDate : e.date)}</td>
         <td>${esc(e.contractor !== '' && e.contractor ? e.contractor : '—')}</td>
-        <td>${esc(e.workType === '' ? '—' : e.workType)}</td>
+        <td>${esc(e.eventType)}</td>
         <td>${esc(e.notes !== '' && e.notes ? e.notes : '—')}</td>
       </tr>`
                     )

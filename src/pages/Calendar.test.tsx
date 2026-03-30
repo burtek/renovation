@@ -357,14 +357,13 @@ describe('Calendar page', () => {
         });
     });
 
-    it('preserves other event properties (title, color, etc.) after drag', async () => {
+    it('preserves other event properties (title, contractor, etc.) after drag', async () => {
         preloadState({
             calendarEvents: [
                 makeCalendarEvent({
                     id: 'ev3',
                     title: 'Colored Event',
                     date: '2024-03-01',
-                    color: '#3B82F6',
                     contractor: 'Bob'
                 })
             ]
@@ -378,7 +377,6 @@ describe('Calendar page', () => {
             const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
             const updated = stored.calendarEvents.find(e => e.id === 'ev3');
             expect(updated?.date).toBe('2024-04-01');
-            expect(updated?.color).toBe('#3B82F6');
             expect(updated?.contractor).toBe('Bob');
             expect(updated?.title).toBe('Colored Event');
         });

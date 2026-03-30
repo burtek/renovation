@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AppData, CalendarEvent, Expense, Task } from '../types';
+import type { AppData, CalendarEvent, CalendarEventType, Expense, Task } from '../types';
 
 import { generateReport } from './report';
 
@@ -62,7 +62,7 @@ function makeCalendarEvent(overrides: Partial<CalendarEvent> = {}): CalendarEven
         id: 'ev1',
         title: 'Site visit',
         date: '2024-03-01',
-        workType: 'Inspection',
+        eventType: 'event' as CalendarEventType,
         contractor: 'Bob',
         notes: 'Bring the plans',
         ...overrides
@@ -435,14 +435,14 @@ describe('generateReport', () => {
         expect(html).toContain('Calendar events (2)');
     });
 
-    it('renders event title, start date, contractor, workType, notes', () => {
+    it('renders event title, start date, contractor, eventType, notes', () => {
         const state: AppData = { ...EMPTY_STATE, calendarEvents: [makeCalendarEvent()] };
         generateReport(state);
         const html = captureHtml(mockWin);
         expect(html).toContain('Site visit');
         expect(html).toContain('2024-03-01');
         expect(html).toContain('Bob');
-        expect(html).toContain('Inspection');
+        expect(html).toContain('event');
         expect(html).toContain('Bring the plans');
     });
 
@@ -478,15 +478,6 @@ describe('generateReport', () => {
         expect(html).toContain('—');
     });
 
-    it('renders dash when workType is empty string', () => {
-        const state: AppData = {
-            ...EMPTY_STATE,
-            calendarEvents: [makeCalendarEvent({ workType: '' })]
-        };
-        generateReport(state);
-        const html = captureHtml(mockWin);
-        expect(html).toContain('—');
-    });
 
     it('renders dash when notes is absent', () => {
         const state: AppData = {
