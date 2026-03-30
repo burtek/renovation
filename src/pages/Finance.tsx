@@ -3,9 +3,34 @@ import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recha
 
 import { useApp } from '../contexts/AppContext';
 import type { Expense } from '../types';
+import { cn } from '../utils/classnames';
 import { formatPLN } from '../utils/format';
 import { generateReport } from '../utils/report';
 
+
+type SortKey = keyof Pick<Expense, 'description' | 'date' | 'price' | 'shopName' | 'invoiceNo' | 'loanApproved'>;
+type SortDir = 'asc' | 'desc';
+
+interface SortableColumn {
+    label: string;
+    key: SortKey;
+}
+interface UnsortableColumn {
+    label: string;
+    key?: never;
+}
+type Column = SortableColumn | UnsortableColumn;
+
+const EXPENSE_COLUMNS: Column[] = [
+    { label: 'Description', key: 'description' },
+    { label: 'Date', key: 'date' },
+    { label: 'Price', key: 'price' },
+    { label: 'Shop', key: 'shopName' },
+    { label: 'Invoice No', key: 'invoiceNo' },
+    { label: 'Invoice' },
+    { label: 'Loan', key: 'loanApproved' },
+    { label: 'Actions' }
+];
 
 interface ExpenseFormData {
     description: string;
@@ -49,6 +74,8 @@ export default function Finance() {
     const [modal, setModal] = useState<{ open: boolean; editExpense?: Expense }>({ open: false });
     const [form, setForm] = useState<ExpenseFormData>(emptyForm);
     const [budgetInput, setBudgetInput] = useState(String(state.budget));
+    const [sortKey, setSortKey] = useState<SortKey>('date');
+    const [sortDir, setSortDir] = useState<SortDir>('desc');
 
     useEffect(() => {
         // eslint-disable-next-line @eslint-react/set-state-in-effect
@@ -69,6 +96,29 @@ export default function Finance() {
 
     // Unique shop names for autosuggest
     const shopNames = Array.from(new Set(state.expenses.map(e => e.shopName).filter(Boolean)));
+
+    const toggleSort = (key: SortKey) => {
+        if (sortKey === key) {
+            setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+        } else {
+            setSortKey(key);
+            setSortDir('asc');
+        }
+    };
+
+    const sortedExpenses = [...state.expenses].sort((a, b) => {
+        const av = a[sortKey];
+        const bv = b[sortKey];
+        let cmp: number;
+        if (typeof av === 'boolean' && typeof bv === 'boolean') {
+            cmp = Number(av) - Number(bv);
+        } else if (typeof av === 'number' && typeof bv === 'number') {
+            cmp = av - bv;
+        } else {
+            cmp = String(av).localeCompare(String(bv));
+        }
+        return sortDir === 'asc' ? cmp : -cmp;
+    });
 
     const openNew = () => {
         setForm({ ...emptyForm, date: todayLocalDate() });
@@ -154,7 +204,7 @@ export default function Finance() {
                 </div>
                 <div className="bg-white rounded-lg p-4 shadow-sm border">
                     <div className="text-sm text-gray-500">Remaining Budget</div>
-                    <div className={`text-2xl font-bold ${remaining >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatPLN(remaining)}</div>
+                    <div className={cn('text-2xl font-bold', remaining >= 0 ? 'text-blue-600' : 'text-red-600')}>{formatPLN(remaining)}</div>
                 </div>
             </div>
 
@@ -202,7 +252,7 @@ export default function Finance() {
                 <div className="md:hidden divide-y">
                     {state.expenses.length === 0
                         && <p className="text-center text-gray-400 py-8">No expenses yet.</p>}
-                    {state.expenses.map(e => (
+                    {sortedExpenses.map(e => (
                         <div
                             key={e.id}
                             className="p-4 space-y-1"
@@ -261,11 +311,33 @@ export default function Finance() {
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50">
                             <tr>
-                                {['Description', 'Date', 'Price', 'Shop', 'Invoice No', 'Invoice', 'Loan', 'Actions'].map(h => (
+                                {EXPENSE_COLUMNS.map(({ label, key }) => (
                                     <th
-                                        key={h}
+                                        key={label}
                                         className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
-                                    >{h}
+                                        aria-sort={key && sortKey === key
+                                            ? (sortDir === 'asc' ? 'ascending' : 'descending')
+                                            : undefined}
+                                    >
+                                        {key
+                                            ? (
+                                                <button
+                                                    type="button"
+                                                    className={cn('cursor-pointer select-none hover:text-gray-800')}
+                                                    onClick={() => {
+                                                        toggleSort(key);
+                                                    }}
+                                                >
+                                                    {label}
+                                                    {sortKey === key
+                                                        && (
+                                                            <span className="ml-1">
+                                                                {sortDir === 'asc' ? '↑' : '↓'}
+                                                            </span>
+                                                        )}
+                                                </button>
+                                            )
+                                            : label}
                                     </th>
                                 ))}
                             </tr>
@@ -281,7 +353,7 @@ export default function Finance() {
                                         </td>
                                     </tr>
                                 )}
-                            {state.expenses.map(e => (
+                            {sortedExpenses.map(e => (
                                 <tr
                                     key={e.id}
                                     className="border-t hover:bg-gray-50"

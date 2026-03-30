@@ -6,6 +6,7 @@ import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 
 import { useApp } from '../contexts/AppContext';
 import type { CalendarEvent } from '../types';
+import { cn } from '../utils/classnames';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 
@@ -215,7 +216,7 @@ export default function CalendarPage() {
                                         onClick={() => {
                                             setForm(f => ({ ...f, color: '' }));
                                         }}
-                                        className={`w-7 h-7 rounded-full border-2 bg-gray-200 ${form.color ? 'border-transparent' : 'border-gray-800 scale-110'}`}
+                                        className={cn('w-7 h-7 rounded-full border-2 bg-gray-200', form.color ? 'border-transparent' : 'border-gray-800 scale-110')}
                                         title="Default"
                                     />
                                     {EVENT_COLORS.map(c => (
@@ -225,7 +226,7 @@ export default function CalendarPage() {
                                             onClick={() => {
                                                 setForm(f => ({ ...f, color: c.value }));
                                             }}
-                                            className={`w-7 h-7 rounded-full border-2 transition-transform ${form.color === c.value ? 'border-gray-800 scale-110' : 'border-transparent'}`}
+                                            className={cn('w-7 h-7 rounded-full border-2 transition-transform', form.color === c.value ? 'border-gray-800 scale-110' : 'border-transparent')}
                                             style={{ backgroundColor: c.value }}
                                             title={c.label}
                                         />

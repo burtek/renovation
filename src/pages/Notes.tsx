@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 
 import { useApp } from '../contexts/AppContext';
 import type { Note } from '../types';
+import { cn } from '../utils/classnames';
 
 
 export default function Notes() {
@@ -196,7 +197,7 @@ export default function Notes() {
     return (
         <div className="flex h-full">
             {/* Left panel - notes list */}
-            <div className={`${showList ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-64 bg-white border-r shrink-0`}>
+            <div className={cn(showList ? 'flex' : 'hidden', 'md:flex flex-col w-full md:w-64 bg-white border-r shrink-0')}>
                 <div className="p-3 border-b flex justify-between items-center">
                     <span className="font-semibold text-gray-700">Notes</span>
                     <button
@@ -217,9 +218,7 @@ export default function Notes() {
                             onClick={() => {
                                 handleSelect(note);
                             }}
-                            className={`w-full text-left px-4 py-3 border-b text-sm hover:bg-gray-50 transition ${
-                                selectedId === note.id ? 'bg-blue-50 border-l-4 border-blue-400' : ''
-                            }`}
+                            className={cn('w-full text-left px-4 py-3 border-b text-sm hover:bg-gray-50 transition', selectedId === note.id && 'bg-blue-50 border-l-4 border-blue-400')}
                         >
                             <div className="font-medium truncate">{note.title}</div>
                             <div className="text-gray-400 text-xs">{new Date(note.updatedAt).toLocaleDateString()}</div>
@@ -229,7 +228,7 @@ export default function Notes() {
             </div>
 
             {/* Right panel - note content */}
-            <div className={`${showList ? 'hidden' : 'flex'} md:flex flex-1 flex-col overflow-hidden`}>
+            <div className={cn(showList ? 'hidden' : 'flex', 'md:flex flex-1 flex-col overflow-hidden')}>
                 {renderNotePanel()}
             </div>
         </div>

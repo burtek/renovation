@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { useApp } from '../contexts/AppContext';
 import type { Subtask, Task } from '../types';
+import { cn } from '../utils/classnames';
 
 
 type Tab = 'list' | 'gantt';
@@ -253,7 +254,7 @@ export default function Tasks() {
                         onClick={() => {
                             setTab('list');
                         }}
-                        className={`px-3 py-1 rounded text-sm ${tab === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                        className={cn('px-3 py-1 rounded text-sm', tab === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300')}
                     >List
                     </button>
                     <button
@@ -261,7 +262,7 @@ export default function Tasks() {
                         onClick={() => {
                             setTab('gantt');
                         }}
-                        className={`px-3 py-1 rounded text-sm ${tab === 'gantt' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                        className={cn('px-3 py-1 rounded text-sm', tab === 'gantt' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300')}
                     >Gantt
                     </button>
                 </div>
@@ -290,7 +291,7 @@ export default function Tasks() {
                                             onClick={() => {
                                                 toggleTaskComplete(task);
                                             }}
-                                            className={`w-5 h-5 rounded border-2 flex-shrink-0 ${task.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}
+                                            className={cn('w-5 h-5 rounded border-2 flex-shrink-0', task.completed ? 'bg-green-500 border-green-500' : 'border-gray-300')}
                                             title="Toggle complete"
                                         >
                                             {task.completed && (
@@ -308,7 +309,7 @@ export default function Tasks() {
                                             )}
                                         </button>
                                         <div className="flex-1 min-w-0">
-                                            <span className={`font-medium ${task.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>{task.title}</span>
+                                            <span className={cn('font-medium', task.completed ? 'line-through text-gray-400' : 'text-gray-800')}>{task.title}</span>
                                             {task.assignee && <span className="ml-2 text-xs text-gray-500">👤 {task.assignee}</span>}
                                             {task.startDate && (
                                                 <span className="ml-2 text-xs text-gray-500">
@@ -366,7 +367,7 @@ export default function Tasks() {
                                                         onClick={() => {
                                                             toggleSubtaskComplete(task.id, sub);
                                                         }}
-                                                        className={`w-4 h-4 rounded border-2 flex-shrink-0 ${sub.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}
+                                                        className={cn('w-4 h-4 rounded border-2 flex-shrink-0', sub.completed ? 'bg-green-500 border-green-500' : 'border-gray-300')}
                                                         title="Toggle complete"
                                                     >
                                                         {sub.completed && (
@@ -383,7 +384,7 @@ export default function Tasks() {
                                                             </svg>
                                                         )}
                                                     </button>
-                                                    <span className={`flex-1 text-sm ${sub.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>{sub.title}</span>
+                                                    <span className={cn('flex-1 text-sm', sub.completed ? 'line-through text-gray-400' : 'text-gray-700')}>{sub.title}</span>
                                                     {sub.assignee && <span className="text-xs text-gray-500">👤 {sub.assignee}</span>}
                                                     {sub.startDate && <span className="text-xs text-gray-500">📅 {sub.startDate}{sub.endDate ? ` → ${sub.endDate}` : ''}</span>}
                                                     <button
@@ -504,7 +505,7 @@ export default function Tasks() {
                                                             }));
                                                         }}
                                                     />
-                                                    <span className={t.completed ? 'line-through text-gray-400' : ''}>{t.title}</span>
+                                                    <span className={cn(t.completed && 'line-through text-gray-400')}>{t.title}</span>
                                                 </label>
                                             ))}
                                     </div>
@@ -622,7 +623,7 @@ export default function Tasks() {
                                                             }));
                                                         }}
                                                     />
-                                                    <span className={s.completed ? 'line-through text-gray-400' : ''}>
+                                                    <span className={cn(s.completed && 'line-through text-gray-400')}>
                                                         <span className="text-gray-400 text-xs">{s.parentTitle} › </span>
                                                         {s.title}
                                                     </span>
