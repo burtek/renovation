@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppProvider } from '../contexts/AppContext';
-import type { AppData, CalendarEvent } from '../types';
+import type { AppData, CalendarEvent, CalendarEventType } from '../types';
 
 import CalendarPage from './Calendar';
 
@@ -127,7 +127,7 @@ function makeCalendarEvent(overrides: Partial<CalendarEvent> = {}): CalendarEven
         id: 'ev1',
         title: 'Test Event',
         date: '2024-03-01',
-        workType: 'Work',
+        eventType: 'event' as CalendarEventType,
         ...overrides
     };
 }
@@ -291,35 +291,36 @@ describe('Calendar page', () => {
         expect(screen.getByRole('button', { name: 'Keep Event' })).toBeInTheDocument();
     });
 
-    // ── Color picker ──────────────────────────────────────────────────────
+    // ── Event type ────────────────────────────────────────────────────────
 
-    it('clicking a color button selects that color (button gets active class)', async () => {
+    it('event type dropdown defaults to "event"', async () => {
         const user = userEvent.setup();
         render(<CalendarPage />, { wrapper: Wrapper });
 
         await user.click(screen.getByTestId('select-slot'));
 
-        // Click the "Blue" color button
-        const blueBtn = screen.getByTitle('Blue');
-        await user.click(blueBtn);
-
-        expect(blueBtn.className).toContain('border-gray-800');
+        expect(screen.getByRole('combobox')).toHaveValue('event');
     });
 
-    it('clicking the default color button clears the selection', async () => {
+    it('selecting a different event type updates the dropdown', async () => {
         const user = userEvent.setup();
         render(<CalendarPage />, { wrapper: Wrapper });
 
         await user.click(screen.getByTestId('select-slot'));
 
-        // Select a color first
-        await user.click(screen.getByTitle('Blue'));
+        await user.selectOptions(screen.getByRole('combobox'), 'contractor work');
 
-        // Then click default
-        const defaultBtn = screen.getByTitle('Default');
-        await user.click(defaultBtn);
+        expect(screen.getByRole('combobox')).toHaveValue('contractor work');
+    });
 
-        expect(defaultBtn.className).toContain('border-gray-800');
+    it('opens Edit Event modal with pre-filled event type when clicking an existing event', async () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', eventType: 'own work' })] });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: 'Test Event' }));
+
+        expect(screen.getByRole('combobox')).toHaveValue('own work');
     });
 
     // ── Drag and drop ─────────────────────────────────────────────────────

@@ -90,7 +90,7 @@ function makeCalendarEvent(overrides: Partial<CalendarEvent> = {}): CalendarEven
         id: 'ev1',
         title: 'Meeting',
         date: '2024-01-01',
-        workType: 'Planning',
+        eventType: 'event',
         ...overrides
     };
 }
@@ -617,6 +617,69 @@ describe('loadFromFile', () => {
 
         await waitFor(() => {
             expect(result.current.state.budget).toBe(55000);
+        });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// CalendarEvent migration (workType + color → eventType)
+// ---------------------------------------------------------------------------
+
+describe('CalendarEvent migration', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        vi.unstubAllGlobals();
+    });
+
+    it('migrates old-format events (workType) from localStorage to eventType: "event"', () => {
+        const oldEvent = { id: 'ev1', title: 'Old Meeting', date: '2024-01-01', workType: 'Planning' };
+        localStorage.setItem('renovation-data', JSON.stringify({ ...INITIAL_EMPTY, calendarEvents: [oldEvent] }));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        expect(result.current.state.calendarEvents[0].eventType).toBe('event');
+    });
+
+    it('strips workType and color from migrated events', () => {
+        const oldEvent = { id: 'ev1', title: 'Old Meeting', date: '2024-01-01', workType: 'Plumbing', color: '#EF4444' };
+        localStorage.setItem('renovation-data', JSON.stringify({ ...INITIAL_EMPTY, calendarEvents: [oldEvent] }));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        const migrated = result.current.state.calendarEvents[0];
+        expect(migrated.eventType).toBe('event');
+        expect('workType' in migrated).toBe(false);
+        expect('color' in migrated).toBe(false);
+    });
+
+    it('leaves already-migrated events (with eventType) unchanged', () => {
+        const newEvent = makeCalendarEvent({ id: 'ev1', eventType: 'contractor work' });
+        localStorage.setItem('renovation-data', JSON.stringify({ ...INITIAL_EMPTY, calendarEvents: [newEvent] }));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        expect(result.current.state.calendarEvents[0].eventType).toBe('contractor work');
+    });
+
+    it('migrates old-format events from a loaded JSON file', async () => {
+        vi.stubGlobal('alert', vi.fn());
+        const oldEvent = { id: 'ev2', title: 'Site Visit', date: '2024-02-01', workType: 'Inspection' };
+        const fileData = JSON.stringify({ ...INITIAL_EMPTY, calendarEvents: [oldEvent] });
+        const file = new File([fileData], 'backup.json', { type: 'application/json' });
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        act(() => {
+            result.current.loadFromFile(file);
+        });
+
+        await waitFor(() => {
+            expect(result.current.state.calendarEvents[0].eventType).toBe('event');
+            expect('workType' in result.current.state.calendarEvents[0]).toBe(false);
         });
     });
 });

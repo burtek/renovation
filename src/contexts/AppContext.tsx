@@ -2,7 +2,7 @@ import type { Dispatch, ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { AppData, Note, Task, Subtask, Expense, CalendarEvent } from '../types';
+import type { AppData, Note, Task, Subtask, Expense, CalendarEvent, CalendarEventType } from '../types';
 import { compressToGzip, decompressFromGzip, isCompressionSupported } from '../utils/compression';
 
 
@@ -140,6 +140,39 @@ function reducer(state: AppData, action: Action): AppData {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Data migration: convert events saved in older format (workType + color)
+// ---------------------------------------------------------------------------
+
+function migrateCalendarEvents(raw: unknown[]): CalendarEvent[] {
+    return raw.map(item => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+        const e = item as Record<string, unknown>;
+        if (!e.eventType) {
+            // Old format had free-text workType and optional color; default to 'event'
+
+            const { workType: _w, color: _c, ...rest } = e;
+            const eventType: CalendarEventType = 'event';
+
+            const migrated = { ...rest, eventType } as unknown;
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+            return migrated as CalendarEvent;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+        return item as CalendarEvent;
+    });
+}
+
+function parseAppData(parsed: Partial<AppData>): AppData {
+    return {
+        ...initialState,
+        ...parsed,
+        calendarEvents: Array.isArray(parsed.calendarEvents)
+            ? migrateCalendarEvents(parsed.calendarEvents)
+            : initialState.calendarEvents
+    };
+}
+
 interface AppContextType {
     state: AppData;
     dispatch: Dispatch<Action>;
@@ -157,7 +190,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (stored) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
                 const parsed = JSON.parse(stored) as Partial<AppData>;
-                return { ...initialState, ...parsed };
+                return parseAppData(parsed);
             }
         } catch {
             // localStorage unavailable or corrupt — start fresh
@@ -203,7 +236,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const parseAndLoad = (text: string) => {
             try {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-                const data = { ...initialState, ...(JSON.parse(text) as Partial<AppData>) };
+                const data = parseAppData(JSON.parse(text) as Partial<AppData>);
                 dispatch({ type: 'SET_ALL', payload: data });
             } catch {
                 // eslint-disable-next-line no-alert
