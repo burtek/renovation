@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer 
 import { v4 as uuidv4 } from 'uuid';
 
 import type { AppData, Note, Task, Subtask, Expense, CalendarEvent } from '../types';
+import { compressToGzip, decompressFromGzip, isCompressionSupported } from '../utils/compression';
 
 
 const initialState: AppData = {
@@ -142,7 +143,7 @@ function reducer(state: AppData, action: Action): AppData {
 interface AppContextType {
     state: AppData;
     dispatch: Dispatch<Action>;
-    saveToFile: () => void;
+    saveToFile: () => Promise<void>;
     loadFromFile: (file: File) => void;
 }
 
@@ -168,35 +169,82 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('renovation-data', JSON.stringify(state));
     }, [state]);
 
-    const saveToFile = useCallback(() => {
-        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `renovation-backup-${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        setTimeout(() => {
-            URL.revokeObjectURL(url);
-        }, 0);
+    const saveToFile = useCallback(async () => {
+        try {
+            const [dateStr] = new Date().toISOString().split('T');
+            let blob: Blob;
+            let filename: string;
+            if (isCompressionSupported) {
+                blob = await compressToGzip(JSON.stringify(state, null, 2));
+                filename = `renovation-backup-${dateStr}.json.gz`;
+            } else {
+                blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+                filename = `renovation-backup-${dateStr}.json`;
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+            }, 0);
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('Failed to save backup file:', err);
+            // eslint-disable-next-line no-alert
+            alert('Failed to save backup file. Please try again.');
+        }
     }, [state]);
 
     const loadFromFile = useCallback((file: File) => {
-        const reader = new FileReader();
-        reader.onload = e => {
+        const parseAndLoad = (text: string) => {
             try {
-                const text = e.target?.result;
-                if (typeof text !== 'string') {
-                    return;
-                }
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
                 const data = { ...initialState, ...(JSON.parse(text) as Partial<AppData>) };
                 dispatch({ type: 'SET_ALL', payload: data });
             } catch {
                 // eslint-disable-next-line no-alert
-                alert('Failed to parse JSON file. Please ensure the file is a valid renovation backup file.');
+                alert('Failed to parse file. Please ensure the file is a valid renovation backup file.');
             }
         };
-        reader.readAsText(file);
+
+        const handleError = () => {
+            // eslint-disable-next-line no-alert
+            alert('Failed to load file. Please ensure the file is a valid renovation backup file.');
+        };
+
+        if (file.name.endsWith('.json.gz')) {
+            if (!isCompressionSupported) {
+                // eslint-disable-next-line no-alert
+                alert('Your browser does not support gzip decompression. Please use a modern browser to load .json.gz backup files.');
+                return;
+            }
+            const loadGzip = async () => {
+                try {
+                    parseAndLoad(await decompressFromGzip(file));
+                } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.error('Failed to decompress backup file:', err);
+                    handleError();
+                }
+            };
+            void loadGzip();
+        } else {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const text = e.target?.result;
+                if (typeof text === 'string') {
+                    parseAndLoad(text);
+                } else {
+                    handleError();
+                }
+            };
+            reader.onerror = handleError;
+            reader.readAsText(file);
+        }
     }, []);
 
     const contextValue = useMemo(
