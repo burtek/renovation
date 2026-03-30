@@ -1,0 +1,27 @@
+name: 'Deduplicate'
+description: 'Deduplicate dependencies using yarn-deduplicate'
+
+inputs:
+  strategy:
+    description: 'yarn-deduplicate strategy'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run yarn-deduplicate (highest)
+      if: ${{ inputs.strategy == 'highest' }}
+      shell: bash
+      run: |
+        yarn global add yarn-deduplicate
+        yarn-deduplicate --strategy highest
+        yarn-deduplicate --strategy fewer --packages @types/node # @types/node@* causes unneeded duplication in highest mode
+        yarn
+
+    - name: Run yarn-deduplicate (fewer)
+      if: ${{ inputs.strategy == 'fewer' }}
+      shell: bash
+      run: |
+        yarn global add yarn-deduplicate
+        yarn-deduplicate --strategy fewer --exclude @types/unist # @types/unist gets downgraded in this mode
+        yarn
