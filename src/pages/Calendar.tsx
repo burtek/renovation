@@ -7,8 +7,7 @@ import type { EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAnd
 import withDragAndDropCjs from 'react-big-calendar/lib/addons/dragAndDrop';
 
 import { useApp } from '../contexts/AppContext';
-import type { CalendarEvent } from '../types';
-import { cn } from '../utils/classnames';
+import type { CalendarEvent, CalendarEventType } from '../types';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 
@@ -24,25 +23,27 @@ const withDragAndDrop: WithDragAndDropFn = typeof withDragAndDropMod === 'functi
     ? withDragAndDropMod
     : withDragAndDropMod.default;
 
-const EVENT_COLORS = [
-    { label: 'Blue', value: '#3B82F6' },
-    { label: 'Green', value: '#10B981' },
-    { label: 'Yellow', value: '#F59E0B' },
-    { label: 'Red', value: '#EF4444' },
-    { label: 'Purple', value: '#8B5CF6' },
-    { label: 'Pink', value: '#EC4899' },
-    { label: 'Teal', value: '#14B8A6' },
-    { label: 'Orange', value: '#F97316' }
+const EVENT_TYPES: { label: string; value: CalendarEventType }[] = [
+    { label: 'Event', value: 'event' },
+    { label: 'Own work', value: 'own work' },
+    { label: 'Visit / measurements', value: 'visit/measurements' },
+    { label: 'Contractor work', value: 'contractor work' }
 ];
+
+const EVENT_TYPE_COLOR: Record<CalendarEventType, string> = {
+    event: '#3B82F6',
+    'own work': '#10B981',
+    'visit/measurements': '#F59E0B',
+    'contractor work': '#8B5CF6'
+};
 
 interface EventFormData {
     title: string;
     startDate: string;
     endDate: string;
     contractor: string;
-    workType: string;
+    eventType: CalendarEventType;
     notes: string;
-    color: string;
 }
 
 const emptyForm: EventFormData = {
@@ -50,9 +51,8 @@ const emptyForm: EventFormData = {
     startDate: '',
     endDate: '',
     contractor: '',
-    workType: '',
-    notes: '',
-    color: ''
+    eventType: 'event',
+    notes: ''
 };
 
 interface BigCalEvent {
@@ -80,10 +80,7 @@ export default function CalendarPage() {
     });
 
     const eventPropGetter = (event: BigCalEvent) => {
-        const { color } = event.resource;
-        if (!color) {
-            return {};
-        }
+        const color = EVENT_TYPE_COLOR[event.resource.eventType];
         return { style: { backgroundColor: color, borderColor: color } };
     };
 
@@ -104,9 +101,8 @@ export default function CalendarPage() {
             startDate: e.date,
             endDate: e.endDate ?? '',
             contractor: e.contractor ?? '',
-            workType: e.workType,
-            notes: e.notes ?? '',
-            color: e.color ?? ''
+            eventType: e.eventType,
+            notes: e.notes ?? ''
         });
         setModal({ open: true, editEvent: e });
     };
@@ -120,9 +116,8 @@ export default function CalendarPage() {
             date: form.startDate,
             endDate: form.endDate && form.endDate > form.startDate ? form.endDate : undefined,
             contractor: form.contractor || undefined,
-            workType: form.workType,
-            notes: form.notes || undefined,
-            color: form.color || undefined
+            eventType: form.eventType,
+            notes: form.notes || undefined
         };
         if (modal.editEvent) {
             dispatch({ type: 'UPDATE_CALENDAR_EVENT', payload: { ...modal.editEvent, ...data } });
@@ -224,14 +219,28 @@ export default function CalendarPage() {
                                 }}
                                 className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
                             />
-                            <input
-                                placeholder="Work type"
-                                value={form.workType}
-                                onChange={e => {
-                                    setForm(f => ({ ...f, workType: e.target.value }));
-                                }}
-                                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
-                            />
+                            <div>
+                                <label className="text-xs text-gray-500 mb-1 block">Event type</label>
+                                <select
+                                    value={form.eventType}
+                                    onChange={e => {
+                                        const found = EVENT_TYPES.find(t => t.value === e.target.value);
+                                        if (found) {
+                                            setForm(f => ({ ...f, eventType: found.value }));
+                                        }
+                                    }}
+                                    className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                >
+                                    {EVENT_TYPES.map(t => (
+                                        <option
+                                            key={t.value}
+                                            value={t.value}
+                                        >
+                                            {t.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                             <textarea
                                 placeholder="Notes"
                                 value={form.notes}
@@ -240,31 +249,6 @@ export default function CalendarPage() {
                                 }}
                                 className="w-full border rounded px-3 py-2 text-sm h-20 focus:outline-none focus:border-blue-400"
                             />
-                            <div>
-                                <label className="text-xs text-gray-500 mb-1 block">Event colour</label>
-                                <div className="flex flex-wrap gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setForm(f => ({ ...f, color: '' }));
-                                        }}
-                                        className={cn('w-7 h-7 rounded-full border-2 bg-gray-200', form.color ? 'border-transparent' : 'border-gray-800 scale-110')}
-                                        title="Default"
-                                    />
-                                    {EVENT_COLORS.map(c => (
-                                        <button
-                                            key={c.value}
-                                            type="button"
-                                            onClick={() => {
-                                                setForm(f => ({ ...f, color: c.value }));
-                                            }}
-                                            className={cn('w-7 h-7 rounded-full border-2 transition-transform', form.color === c.value ? 'border-gray-800 scale-110' : 'border-transparent')}
-                                            style={{ backgroundColor: c.value }}
-                                            title={c.label}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
                         </div>
                         <div className="flex gap-2 mt-4">
                             {modal.editEvent && (

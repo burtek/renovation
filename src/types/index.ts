@@ -42,15 +42,16 @@ export interface Expense {
     loanApproved: boolean;
 }
 
+export type CalendarEventType = 'event' | 'own work' | 'visit/measurements' | 'contractor work';
+
 export interface CalendarEvent {
     id: string;
     date: string; // start date
     endDate?: string; // end date for multi-day events
     title: string;
     contractor?: string;
-    workType: string;
+    eventType: CalendarEventType;
     notes?: string;
-    color?: string;
 }
 
 export interface AppData {

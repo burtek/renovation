@@ -8,3 +8,4 @@ package-lock.json
 .yarn/build-state.yml
 .yarn/install-state.gz
 coverage/
+package-lock.json
