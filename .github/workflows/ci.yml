@@ -28,13 +28,12 @@ jobs:
       - name: Build
         run: yarn build
 
-  test:
-    name: Test & Coverage
+  coverage-current:
+    name: Coverage (current)
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
-      pull-requests: write
 
     steps:
       - uses: actions/checkout@v6
@@ -52,30 +51,83 @@ jobs:
       - name: Run tests with coverage
         run: yarn test:coverage --reporter=verbose --coverage.reporter=text --coverage.reporter=json-summary
 
-      - name: Get base branch coverage
-        if: github.event_name == 'pull_request'
-        run: |
-          git fetch origin ${{ github.base_ref }} --depth=1
-          git worktree add /tmp/base-worktree origin/${{ github.base_ref }}
-          cd /tmp/base-worktree
-          yarn install --frozen-lockfile --silent
-          yarn test:coverage --coverage.reporter=json-summary || true
+      - name: Upload current coverage summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-current
+          path: coverage/coverage-summary.json
+          if-no-files-found: error
+
+  coverage-base:
+    name: Coverage (base)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.base_ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --silent
+
+      - name: Run tests with coverage (base)
+        run: yarn test:coverage --coverage.reporter=json-summary || true
+
+      - name: Upload base coverage summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-base
+          path: coverage/coverage-summary.json
+          if-no-files-found: warn
+
+  coverage-compare:
+    name: Coverage (compare)
+    runs-on: ubuntu-latest
+    needs: [coverage-current, coverage-base]
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    # Skip on fork PRs — they don't have write access for PR comments
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+
+    steps:
+      - name: Download current coverage summary
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-current
+          path: coverage-current
+
+      - name: Download base coverage summary
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-base
+          path: coverage-base
 
       - name: Fail on coverage regression
-        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
 
-            const currentPath = path.join(process.env.GITHUB_WORKSPACE, 'coverage', 'coverage-summary.json');
+            const currentPath = path.join(process.env.GITHUB_WORKSPACE, 'coverage-current', 'coverage-summary.json');
             if (!fs.existsSync(currentPath)) {
               console.log('No coverage summary found, skipping regression check.');
               return;
             }
 
-            const basePath = '/tmp/base-worktree/coverage/coverage-summary.json';
+            const basePath = path.join(process.env.GITHUB_WORKSPACE, 'coverage-base', 'coverage-summary.json');
             if (!fs.existsSync(basePath)) {
               console.log('No base coverage found, skipping regression check.');
               return;
@@ -92,21 +144,22 @@ jobs:
             }
 
       - name: Post coverage comment
-        if: always() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
 
-            const currentPath = path.join(process.env.GITHUB_WORKSPACE, 'coverage', 'coverage-summary.json');
+            const currentPath = path.join(process.env.GITHUB_WORKSPACE, 'coverage-current', 'coverage-summary.json');
             if (!fs.existsSync(currentPath)) {
               console.log('No coverage summary found, skipping comment.');
               return;
             }
 
             const current = JSON.parse(fs.readFileSync(currentPath, 'utf8'));
-            const basePath = '/tmp/base-worktree/coverage/coverage-summary.json';
+
+            const basePath = path.join(process.env.GITHUB_WORKSPACE, 'coverage-base', 'coverage-summary.json');
             const base = fs.existsSync(basePath) ? JSON.parse(fs.readFileSync(basePath, 'utf8')) : null;
 
             const icon = p => p >= 90 ? '🟢' : p >= 70 ? '🟡' : '🔴';
@@ -143,7 +196,7 @@ jobs:
             ];
 
             if (!base) {
-              lines.push('', '_ℹ️ Base branch coverage not available — no comparison data could be generated for `${{ github.base_ref }}`._');
+              lines.push('', `_ℹ️ Base branch coverage not available — no comparison data could be generated for \`${context.payload.pull_request?.base?.ref ?? 'base branch'}\`._`);
             }
 
             // Files with incomplete coverage
