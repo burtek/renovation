@@ -3,6 +3,7 @@ import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recha
 
 import { useApp } from '../contexts/AppContext';
 import type { Expense } from '../types';
+import { cn } from '../utils/classnames';
 import { formatPLN } from '../utils/format';
 import { generateReport } from '../utils/report';
 
@@ -207,7 +208,7 @@ export default function Finance() {
                 </div>
                 <div className="bg-white rounded-lg p-4 shadow-sm border">
                     <div className="text-sm text-gray-500">Remaining Budget</div>
-                    <div className={`text-2xl font-bold ${remaining >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatPLN(remaining)}</div>
+                    <div className={cn('text-2xl font-bold', remaining >= 0 ? 'text-blue-600' : 'text-red-600')}>{formatPLN(remaining)}</div>
                 </div>
             </div>
 
@@ -317,7 +318,7 @@ export default function Finance() {
                                 {EXPENSE_COLUMNS.map(({ label, key }) => (
                                     <th
                                         key={label}
-                                        className={`px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase${key ? ' cursor-pointer select-none hover:text-gray-800' : ''}`}
+                                        className={cn('px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase', key && 'cursor-pointer select-none hover:text-gray-800')}
                                         onClick={key
                                             ? () => {
                                                 toggleSort(key);

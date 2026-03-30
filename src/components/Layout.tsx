@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
+import { cn } from '../utils/classnames';
+
 import SaveLoadButtons from './SaveLoadButtons';
 
 
@@ -27,12 +29,12 @@ export default function Layout() {
             )}
 
             {/* Sidebar */}
-            <aside className={`
-        fixed md:relative inset-y-0 left-0 z-40 md:z-auto
-        w-56 bg-gray-900 text-white flex flex-col shrink-0
-        transition-transform md:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}
+            <aside className={cn(
+                'fixed md:relative inset-y-0 left-0 z-40 md:z-auto',
+                'w-56 bg-gray-900 text-white flex flex-col shrink-0',
+                'transition-transform md:translate-x-0',
+                sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            )}
             >
                 <div className="p-4 text-xl font-bold border-b border-gray-700 flex items-center justify-between">
                     <span>🏠 Renovation</span>
@@ -56,7 +58,7 @@ export default function Layout() {
                                 setSidebarOpen(false);
                             }}
                             className={({ isActive }) =>
-                                `block px-4 py-3 text-sm transition hover:bg-gray-700 ${isActive ? 'bg-gray-700 border-l-4 border-blue-400' : ''}`}
+                                cn('block px-4 py-3 text-sm transition hover:bg-gray-700', isActive && 'bg-gray-700 border-l-4 border-blue-400')}
                         >
                             {item.label}
                         </NavLink>
