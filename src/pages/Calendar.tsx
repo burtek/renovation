@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { SlotInfo } from 'react-big-calendar';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import type { EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAndDrop';
-import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
+import withDragAndDropCjs from 'react-big-calendar/lib/addons/dragAndDrop';
 
 import { useApp } from '../contexts/AppContext';
 import type { CalendarEvent } from '../types';
@@ -15,6 +15,14 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
+
+// Vite 8 (Rolldown) production builds double-wrap CJS modules with __esModule:true,
+// leaving the module object (not the function) as the default export. Unwrap manually.
+type WithDragAndDropFn = typeof withDragAndDropCjs;
+const withDragAndDropMod = withDragAndDropCjs as WithDragAndDropFn | { default: WithDragAndDropFn };
+const withDragAndDrop: WithDragAndDropFn = typeof withDragAndDropMod === 'function'
+    ? withDragAndDropMod
+    : withDragAndDropMod.default;
 
 const EVENT_COLORS = [
     { label: 'Blue', value: '#3B82F6' },
