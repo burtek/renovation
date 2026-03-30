@@ -35,6 +35,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -47,40 +49,87 @@ jobs:
       - name: Run tests with coverage
         run: yarn test:coverage --reporter=verbose --coverage.reporter=text --coverage.reporter=json-summary
 
+      - name: Get base branch coverage
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          git worktree add /tmp/base-worktree origin/${{ github.base_ref }}
+          cd /tmp/base-worktree
+          yarn install --frozen-lockfile --silent
+          yarn test:coverage --coverage.reporter=json-summary || true
+
       - name: Post coverage comment
-        if: always()
+        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
 
-            const summaryPath = path.join(process.env.GITHUB_WORKSPACE, 'coverage', 'coverage-summary.json');
-            if (!fs.existsSync(summaryPath)) {
+            const currentPath = path.join(process.env.GITHUB_WORKSPACE, 'coverage', 'coverage-summary.json');
+            if (!fs.existsSync(currentPath)) {
               console.log('No coverage summary found, skipping comment.');
               return;
             }
 
-            const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-            const total = summary.total;
+            const current = JSON.parse(fs.readFileSync(currentPath, 'utf8'));
+            const basePath = '/tmp/base-worktree/coverage/coverage-summary.json';
+            const base = fs.existsSync(basePath) ? JSON.parse(fs.readFileSync(basePath, 'utf8')) : null;
 
-            const pct = (key) => {
-              const d = total[key];
-              const p = d.pct;
-              const icon = p >= 90 ? '🟢' : p >= 70 ? '🟡' : '🔴';
-              return `${icon} ${p}% (${d.covered}/${d.total})`;
+            const icon = p => p >= 90 ? '🟢' : p >= 70 ? '🟡' : '🔴';
+            const fmtPct = (d) => `${icon(d.pct)} ${d.pct.toFixed(1)}%`;
+            const delta = (cur, bas) => {
+              if (!bas) return '';
+              const d = cur.pct - bas.pct;
+              if (Math.abs(d) < 0.05) return '±0.0%';
+              return (d > 0 ? '+' : '') + d.toFixed(1) + '%';
             };
 
-            const body = [
+            const row = (label, key) => {
+              const c = current.total[key];
+              const b = base ? base.total[key] : null;
+              const basCol = b ? ` ${fmtPct(b)} |` : '';
+              const deltaCol = b ? ` ${delta(c, b)} |` : '';
+              return `| ${label} |${basCol} ${fmtPct(c)} |${deltaCol} ${c.covered}/${c.total} |`;
+            };
+
+            const headerBase = base ? ' Base |' : '';
+            const sepBase = base ? '-------|' : '';
+            const headerDelta = base ? ' Δ |' : '';
+            const sepDelta = base ? '----|' : '';
+
+            const lines = [
               '## 🧪 Test Coverage Report',
               '',
-              '| Metric | Coverage |',
-              '|--------|----------|',
-              `| Statements | ${pct('statements')} |`,
-              `| Branches   | ${pct('branches')} |`,
-              `| Functions  | ${pct('functions')} |`,
-              `| Lines      | ${pct('lines')} |`,
-            ].join('\n');
+              `| Metric |${headerBase} Current |${headerDelta} Covered |`,
+              `|--------|${sepBase}---------|${sepDelta}---------|`,
+              row('Statements', 'statements'),
+              row('Branches', 'branches'),
+              row('Functions', 'functions'),
+              row('Lines', 'lines'),
+            ];
+
+            // Files with incomplete coverage
+            const incomplete = Object.entries(current)
+              .filter(([file]) => file !== 'total')
+              .map(([file, data]) => ({
+                file: file.replace(process.env.GITHUB_WORKSPACE + '/', ''),
+                ...data,
+              }))
+              .filter(f => f.statements.pct < 100 || f.branches.pct < 100 || f.functions.pct < 100 || f.lines.pct < 100)
+              .sort((a, b) => a.statements.pct - b.statements.pct);
+
+            if (incomplete.length > 0) {
+              lines.push('', '### 📋 Files with incomplete coverage', '');
+              lines.push('| File | Stmts | Branch | Funcs | Lines |');
+              lines.push('|------|------:|-------:|------:|------:|');
+              for (const f of incomplete) {
+                const cell = (d) => `${icon(d.pct)} ${d.pct.toFixed(0)}%`;
+                lines.push(`| \`${f.file}\` | ${cell(f.statements)} | ${cell(f.branches)} | ${cell(f.functions)} | ${cell(f.lines)} |`);
+              }
+            }
+
+            const body = lines.join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
