@@ -15,21 +15,15 @@ jobs:
       github.event.deployment.environment == 'Production'
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Generate tag name
-        id: tag
-        run: echo "name=release-$(date -u +'%Y-%m-%d-%H%M%S')" >> "$GITHUB_OUTPUT"
-
       - name: Create tag and GitHub Release
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const sha = context.payload.deployment.sha;
-            const tagName = '${{ steps.tag.outputs.name }}';
+            const deploymentId = context.payload.deployment.id;
+            const date = new Date().toISOString().slice(0, 10);
+            const tagName = `release-${date}-${deploymentId}`;
 
             await github.rest.git.createRef({
               owner: context.repo.owner,
