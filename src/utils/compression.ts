@@ -1,3 +1,5 @@
+export const isCompressionSupported = typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
+
 export async function compressToGzip(text: string): Promise<Blob> {
     const stream = new CompressionStream('gzip');
     const writer = stream.writable.getWriter();
@@ -7,10 +9,6 @@ export async function compressToGzip(text: string): Promise<Blob> {
 }
 
 export async function decompressFromGzip(blob: Blob): Promise<string> {
-    const stream = new DecompressionStream('gzip');
-    const writer = stream.writable.getWriter();
-    await writer.write(await blob.arrayBuffer());
-    await writer.close();
-    const buffer = await new Response(stream.readable).arrayBuffer();
-    return new TextDecoder().decode(buffer);
+    const decompressedStream = blob.stream().pipeThrough(new DecompressionStream('gzip'));
+    return await new Response(decompressedStream).text();
 }
