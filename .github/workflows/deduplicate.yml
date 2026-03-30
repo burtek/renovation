@@ -12,7 +12,7 @@ jobs:
       STRATEGY: ${{ contains(github.event.comment.body, 'fewer') && 'fewer' || 'highest' }}
 
     steps:
-      - name: Acknowlegde command and get ref
+      - name: Acknowledge command and get ref
         uses: actions/github-script@v8
         id: github-script
         with:
