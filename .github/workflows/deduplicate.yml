@@ -1,0 +1,70 @@
+name: Run Yarn Deduplicate on PR Command
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  run-yarn-deduplicate:
+    if: ${{ github.event.issue.pull_request && github.event.comment.author_association == 'OWNER' && (github.event.comment.body == '/deduplicate' || github.event.comment.body == '/deduplicate fewer') }}
+    runs-on: ubuntu-latest
+    env:
+      STRATEGY: ${{ contains(github.event.comment.body, 'fewer') && 'fewer' || 'highest' }}
+
+    steps:
+      - name: Acknowlegde command and get ref
+        uses: actions/github-script@v8
+        id: github-script
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'Ok, trying to deduplicate using strategy `${{ env.STRATEGY }}`'
+            });
+            var pull = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            return pull.data.head.ref;
+
+      - name: Check out the repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ fromJson(steps.github-script.outputs.result) }}
+          persist-credentials: false
+
+      - name: 'Prepare workflow'
+        uses: ./.github/actions/prepare
+
+      - name: 'Deduplicate dependencies'
+        uses: ./.github/actions/deduplicate
+        with:
+          strategy: ${{ env.STRATEGY }}
+
+      - name: Commit changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add yarn.lock
+          git commit -m "chore(deps): Deduplicated dependencies using yarn-deduplicate"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.PAT }}
+          branch: ${{ fromJson(steps.github-script.outputs.result) }}
+
+      - name: Notify of failure
+        uses: actions/github-script@v8
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'I failed :('
+            })
+        if: failure()
