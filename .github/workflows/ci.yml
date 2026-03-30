@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   lint-and-build:
@@ -33,6 +32,9 @@ jobs:
     name: Test & Coverage
     runs-on: ubuntu-latest
 
+    permissions:
+      pull-requests: write
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,7 +61,7 @@ jobs:
           yarn test:coverage --coverage.reporter=json-summary || true
 
       - name: Post coverage comment
-        if: always() && github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         uses: actions/github-script@v7
         with:
           script: |
@@ -108,6 +110,10 @@ jobs:
               row('Functions', 'functions'),
               row('Lines', 'lines'),
             ];
+
+            if (!base) {
+              lines.push('', '_ℹ️ Base branch coverage not available — no comparison data could be generated for `${{ github.base_ref }}`._');
+            }
 
             // Files with incomplete coverage
             const incomplete = Object.entries(current)
