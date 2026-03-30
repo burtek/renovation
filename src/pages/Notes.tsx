@@ -6,12 +6,14 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 import { useApp } from '../contexts/AppContext';
+import { useColorScheme } from '../hooks/useColorScheme';
 import type { Note } from '../types';
 import { cn } from '../utils/classnames';
 
 
 export default function Notes() {
     const { state, dispatch } = useApp();
+    const colorScheme = useColorScheme();
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [editing, setEditing] = useState(false);
     const [editTitle, setEditTitle] = useState('');
@@ -73,7 +75,7 @@ export default function Notes() {
     const renderNotePanel = () => {
         if (!selectedNote) {
             return (
-                <div className="flex-1 flex items-center justify-center text-gray-400">
+                <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
                     Select a note or create a new one
                 </div>
             );
@@ -81,13 +83,13 @@ export default function Notes() {
         if (editing) {
             return (
                 <div className="flex flex-col h-full">
-                    <div className="p-4 border-b flex items-center gap-2 bg-white">
+                    <div className="p-4 border-b flex items-center gap-2 bg-white dark:bg-gray-800 dark:border-gray-700">
                         <button
                             type="button"
                             onClick={() => {
                                 setShowList(true);
                             }}
-                            className="md:hidden text-gray-500 hover:text-gray-800 mr-1"
+                            className="md:hidden text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 mr-1"
                         >←
                         </button>
                         <input
@@ -95,7 +97,7 @@ export default function Notes() {
                             onChange={e => {
                                 setEditTitle(e.target.value);
                             }}
-                            className="flex-1 text-xl font-bold border-b border-gray-300 focus:outline-none focus:border-blue-400 pb-1"
+                            className="flex-1 text-xl font-bold border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-400 pb-1 bg-transparent dark:text-gray-100"
                         />
                         <button
                             type="button"
@@ -114,7 +116,7 @@ export default function Notes() {
                     </div>
                     <div
                         className="flex-1 overflow-hidden"
-                        data-color-mode="light"
+                        data-color-mode={colorScheme}
                     >
                         <MDEditor
                             value={editContent}
@@ -130,16 +132,16 @@ export default function Notes() {
         }
         return (
             <div className="flex flex-col h-full">
-                <div className="p-4 border-b flex items-center gap-2 bg-white">
+                <div className="p-4 border-b flex items-center gap-2 bg-white dark:bg-gray-800 dark:border-gray-700">
                     <button
                         type="button"
                         onClick={() => {
                             setShowList(true);
                         }}
-                        className="md:hidden text-gray-500 hover:text-gray-800 mr-1"
+                        className="md:hidden text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 mr-1"
                     >←
                     </button>
-                    <h1 className="flex-1 text-xl font-bold text-gray-800">{selectedNote.title}</h1>
+                    <h1 className="flex-1 text-xl font-bold text-gray-800 dark:text-gray-100">{selectedNote.title}</h1>
                     <button
                         type="button"
                         onClick={handleEdit}
@@ -153,7 +155,7 @@ export default function Notes() {
                     >Delete
                     </button>
                 </div>
-                <div className="flex-1 overflow-y-auto p-6 prose max-w-none">
+                <div className="flex-1 overflow-y-auto p-6 prose dark:prose-invert max-w-none">
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
@@ -197,9 +199,9 @@ export default function Notes() {
     return (
         <div className="flex h-full">
             {/* Left panel - notes list */}
-            <div className={cn(showList ? 'flex' : 'hidden', 'md:flex flex-col w-full md:w-64 bg-white border-r shrink-0')}>
-                <div className="p-3 border-b flex justify-between items-center">
-                    <span className="font-semibold text-gray-700">Notes</span>
+            <div className={cn(showList ? 'flex' : 'hidden', 'md:flex flex-col w-full md:w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700 shrink-0')}>
+                <div className="p-3 border-b dark:border-gray-700 flex justify-between items-center">
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">Notes</span>
                     <button
                         type="button"
                         onClick={handleNew}
@@ -210,7 +212,7 @@ export default function Notes() {
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     {state.notes.length === 0
-                        && <p className="text-gray-400 text-sm p-4">No notes yet.</p>}
+                        && <p className="text-gray-400 dark:text-gray-500 text-sm p-4">No notes yet.</p>}
                     {state.notes.map(note => (
                         <button
                             type="button"
@@ -218,17 +220,17 @@ export default function Notes() {
                             onClick={() => {
                                 handleSelect(note);
                             }}
-                            className={cn('w-full text-left px-4 py-3 border-b text-sm hover:bg-gray-50 transition', selectedId === note.id && 'bg-blue-50 border-l-4 border-blue-400')}
+                            className={cn('w-full text-left px-4 py-3 border-b dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition', selectedId === note.id && 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-400')}
                         >
-                            <div className="font-medium truncate">{note.title}</div>
-                            <div className="text-gray-400 text-xs">{new Date(note.updatedAt).toLocaleDateString()}</div>
+                            <div className="font-medium truncate dark:text-gray-200">{note.title}</div>
+                            <div className="text-gray-400 dark:text-gray-500 text-xs">{new Date(note.updatedAt).toLocaleDateString()}</div>
                         </button>
                     ))}
                 </div>
             </div>
 
             {/* Right panel - note content */}
-            <div className={cn(showList ? 'hidden' : 'flex', 'md:flex flex-1 flex-col overflow-hidden')}>
+            <div className={cn(showList ? 'hidden' : 'flex', 'md:flex flex-1 flex-col overflow-hidden bg-white dark:bg-gray-800')}>
                 {renderNotePanel()}
             </div>
         </div>

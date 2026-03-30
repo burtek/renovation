@@ -153,8 +153,8 @@ export default function CalendarPage() {
 
     return (
         <div className="h-full flex flex-col p-4">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">Calendar</h1>
-            <div className="flex-1 bg-white rounded-lg shadow-sm border p-4 min-h-0">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Calendar</h1>
+            <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 min-h-0">
                 <DnDCalendar
                     localizer={localizer}
                     events={events}
@@ -175,8 +175,8 @@ export default function CalendarPage() {
 
             {modal.open && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl max-h-screen overflow-y-auto">
-                        <h2 className="text-lg font-bold mb-4">{modal.editEvent ? 'Edit Event' : 'New Event'}</h2>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 shadow-xl max-h-screen overflow-y-auto">
+                        <h2 className="text-lg font-bold mb-4 dark:text-gray-100">{modal.editEvent ? 'Edit Event' : 'New Event'}</h2>
                         <div className="space-y-3">
                             <input
                                 placeholder="Title *"
@@ -184,22 +184,22 @@ export default function CalendarPage() {
                                 onChange={e => {
                                     setForm(f => ({ ...f, title: e.target.value }));
                                 }}
-                                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                             <div className="flex gap-2">
                                 <div className="flex-1">
-                                    <label className="text-xs text-gray-500 mb-1 block">Start date *</label>
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Start date *</label>
                                     <input
                                         type="date"
                                         value={form.startDate}
                                         onChange={e => {
                                             setForm(f => ({ ...f, startDate: e.target.value }));
                                         }}
-                                        className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <label className="text-xs text-gray-500 mb-1 block">End date</label>
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">End date</label>
                                     <input
                                         type="date"
                                         value={form.endDate}
@@ -207,7 +207,7 @@ export default function CalendarPage() {
                                         onChange={e => {
                                             setForm(f => ({ ...f, endDate: e.target.value }));
                                         }}
-                                        className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                     />
                                 </div>
                             </div>
@@ -217,10 +217,10 @@ export default function CalendarPage() {
                                 onChange={e => {
                                     setForm(f => ({ ...f, contractor: e.target.value }));
                                 }}
-                                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                             <div>
-                                <label className="text-xs text-gray-500 mb-1 block">Event type</label>
+                                <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Event type</label>
                                 <select
                                     value={form.eventType}
                                     onChange={e => {
@@ -229,7 +229,7 @@ export default function CalendarPage() {
                                             setForm(f => ({ ...f, eventType: found.value }));
                                         }
                                     }}
-                                    className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                    className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                 >
                                     {EVENT_TYPES.map(t => (
                                         <option
@@ -247,7 +247,7 @@ export default function CalendarPage() {
                                 onChange={e => {
                                     setForm(f => ({ ...f, notes: e.target.value }));
                                 }}
-                                className="w-full border rounded px-3 py-2 text-sm h-20 focus:outline-none focus:border-blue-400"
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm h-20 focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                         </div>
                         <div className="flex gap-2 mt-4">
@@ -265,7 +265,7 @@ export default function CalendarPage() {
                                     onClick={() => {
                                         setModal({ open: false });
                                     }}
-                                    className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                                    className="px-4 py-2 text-sm bg-gray-200 dark:bg-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
                                 >Cancel
                                 </button>
                                 <button

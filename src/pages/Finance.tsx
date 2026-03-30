@@ -169,9 +169,9 @@ export default function Finance() {
     return (
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-800">Finance</h1>
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Finance</h1>
                 <div className="flex items-center gap-2 ml-auto flex-wrap">
-                    <label className="text-sm text-gray-600 whitespace-nowrap">Budget (zł):</label>
+                    <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Budget (zł):</label>
                     <input
                         type="number"
                         value={budgetInput}
@@ -179,7 +179,7 @@ export default function Finance() {
                             setBudgetInput(e.target.value);
                         }}
                         onBlur={handleBudgetSave}
-                        className="border rounded px-3 py-1 text-sm w-32 focus:outline-none focus:border-blue-400"
+                        className="border dark:border-gray-600 rounded px-3 py-1 text-sm w-32 focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                     />
                     <button
                         type="button"
@@ -194,22 +194,22 @@ export default function Finance() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white rounded-lg p-4 shadow-sm border">
-                    <div className="text-sm text-gray-500">Loan Approved</div>
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Loan Approved</div>
                     <div className="text-2xl font-bold text-green-600">{formatPLN(totalApproved)}</div>
                 </div>
-                <div className="bg-white rounded-lg p-4 shadow-sm border">
-                    <div className="text-sm text-gray-500">Not Approved</div>
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Not Approved</div>
                     <div className="text-2xl font-bold text-yellow-600">{formatPLN(totalNotApproved)}</div>
                 </div>
-                <div className="bg-white rounded-lg p-4 shadow-sm border">
-                    <div className="text-sm text-gray-500">Remaining Budget</div>
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Remaining Budget</div>
                     <div className={cn('text-2xl font-bold', remaining >= 0 ? 'text-blue-600' : 'text-red-600')}>{formatPLN(remaining)}</div>
                 </div>
             </div>
 
             {total > 0 && (
-                <div className="bg-white rounded-lg p-4 shadow-sm border h-64">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700 h-64">
                     <ResponsiveContainer
                         width="100%"
                         height="100%"
@@ -237,9 +237,9 @@ export default function Finance() {
                 </div>
             )}
 
-            <div className="bg-white rounded-lg shadow-sm border">
-                <div className="p-4 border-b flex justify-between items-center">
-                    <h2 className="font-semibold text-gray-700">Expenses</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700">
+                <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                    <h2 className="font-semibold text-gray-700 dark:text-gray-300">Expenses</h2>
                     <button
                         type="button"
                         onClick={openNew}
@@ -249,19 +249,19 @@ export default function Finance() {
                 </div>
 
                 {/* Card view – mobile */}
-                <div className="md:hidden divide-y">
+                <div className="md:hidden divide-y dark:divide-gray-700">
                     {state.expenses.length === 0
-                        && <p className="text-center text-gray-400 py-8">No expenses yet.</p>}
+                        && <p className="text-center text-gray-400 dark:text-gray-500 py-8">No expenses yet.</p>}
                     {sortedExpenses.map(e => (
                         <div
                             key={e.id}
                             className="p-4 space-y-1"
                         >
                             <div className="flex justify-between items-start gap-2">
-                                <span className="font-medium text-gray-800">{e.description}</span>
-                                <span className="font-bold text-gray-900 whitespace-nowrap">{formatPLN(e.price)}</span>
+                                <span className="font-medium text-gray-800 dark:text-gray-100">{e.description}</span>
+                                <span className="font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">{formatPLN(e.price)}</span>
                             </div>
-                            <div className="text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-3 gap-y-1">
                                 <span>📅 {e.date}</span>
                                 {e.shopName && <span>🏪 {e.shopName}</span>}
                                 {e.invoiceNo && <span>🧾 {e.invoiceNo}</span>}
@@ -282,7 +282,7 @@ export default function Finance() {
                                     })()
                                     : e.invoiceForm}
                                 </span>
-                                <span>{e.loanApproved ? <span className="text-green-600">✓ Loan</span> : <span className="text-gray-400">✗ Loan</span>}</span>
+                                <span>{e.loanApproved ? <span className="text-green-600">✓ Loan</span> : <span className="text-gray-400 dark:text-gray-500">✗ Loan</span>}</span>
                             </div>
                             <div className="flex gap-2 pt-1">
                                 <button
@@ -308,13 +308,13 @@ export default function Finance() {
 
                 {/* Table view – desktop */}
                 <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
+                    <table className="w-full text-sm dark:text-gray-300">
+                        <thead className="bg-gray-50 dark:bg-gray-700/50">
                             <tr>
                                 {EXPENSE_COLUMNS.map(({ label, key }) => (
                                     <th
                                         key={label}
-                                        className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
+                                        className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                                         aria-sort={key && sortKey === key
                                             ? (sortDir === 'asc' ? 'ascending' : 'descending')
                                             : undefined}
@@ -323,7 +323,7 @@ export default function Finance() {
                                             ? (
                                                 <button
                                                     type="button"
-                                                    className={cn('cursor-pointer select-none hover:text-gray-800')}
+                                                    className={cn('cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200')}
                                                     onClick={() => {
                                                         toggleSort(key);
                                                     }}
@@ -348,7 +348,7 @@ export default function Finance() {
                                     <tr>
                                         <td
                                             colSpan={8}
-                                            className="text-center text-gray-400 py-8"
+                                            className="text-center text-gray-400 dark:text-gray-500 py-8"
                                         >No expenses yet.
                                         </td>
                                     </tr>
@@ -356,7 +356,7 @@ export default function Finance() {
                             {sortedExpenses.map(e => (
                                 <tr
                                     key={e.id}
-                                    className="border-t hover:bg-gray-50"
+                                    className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                                 >
                                     <td className="px-3 py-2">{e.description}</td>
                                     <td className="px-3 py-2">{e.date}</td>
@@ -381,7 +381,7 @@ export default function Finance() {
                                             })()
                                             : e.invoiceForm}
                                     </td>
-                                    <td className="px-3 py-2">{e.loanApproved ? <span className="text-green-600">✓</span> : <span className="text-gray-400">✗</span>}</td>
+                                    <td className="px-3 py-2">{e.loanApproved ? <span className="text-green-600">✓</span> : <span className="text-gray-400 dark:text-gray-500">✗</span>}</td>
                                     <td className="px-3 py-2">
                                         <button
                                             type="button"
@@ -409,8 +409,8 @@ export default function Finance() {
 
             {modal.open && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4 shadow-xl">
-                        <h2 className="text-lg font-bold mb-4">{modal.editExpense ? 'Edit Expense' : 'New Expense'}</h2>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-lg mx-4 shadow-xl">
+                        <h2 className="text-lg font-bold mb-4 dark:text-gray-100">{modal.editExpense ? 'Edit Expense' : 'New Expense'}</h2>
                         <div className="space-y-3">
                             <input
                                 placeholder="Description *"
@@ -418,7 +418,7 @@ export default function Finance() {
                                 onChange={e => {
                                     setForm(f => ({ ...f, description: e.target.value }));
                                 }}
-                                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                             <div className="flex gap-2">
                                 <input
@@ -427,7 +427,7 @@ export default function Finance() {
                                     onChange={e => {
                                         setForm(f => ({ ...f, date: e.target.value }));
                                     }}
-                                    className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                    className="flex-1 border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                 />
                                 <input
                                     type="number"
@@ -436,7 +436,7 @@ export default function Finance() {
                                     onChange={e => {
                                         setForm(f => ({ ...f, price: e.target.value }));
                                     }}
-                                    className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                    className="flex-1 border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                 />
                             </div>
                             <div>
@@ -447,7 +447,7 @@ export default function Finance() {
                                     onChange={e => {
                                         setForm(f => ({ ...f, shopName: e.target.value }));
                                     }}
-                                    className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                    className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                 />
                                 <datalist id="shop-suggestions">
                                     {shopNames.map(name => (
@@ -464,10 +464,10 @@ export default function Finance() {
                                 onChange={e => {
                                     setForm(f => ({ ...f, invoiceNo: e.target.value }));
                                 }}
-                                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                             <div className="flex gap-2 items-center">
-                                <label className="text-sm text-gray-600">Invoice form:</label>
+                                <label className="text-sm text-gray-600 dark:text-gray-400">Invoice form:</label>
                                 <select
                                     value={form.invoiceForm}
                                     onChange={e => {
@@ -476,7 +476,7 @@ export default function Finance() {
                                             setForm(f => ({ ...f, invoiceForm: value }));
                                         }
                                     }}
-                                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400"
+                                    className="border dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                 >
                                     <option value="paper">Paper</option>
                                     <option value="gdrive">Google Drive</option>
@@ -490,10 +490,10 @@ export default function Finance() {
                                         onChange={e => {
                                             setForm(f => ({ ...f, invoiceLink: e.target.value }));
                                         }}
-                                        className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                     />
                                 )}
-                            <label className="flex items-center gap-2 text-sm">
+                            <label className="flex items-center gap-2 text-sm dark:text-gray-300">
                                 <input
                                     type="checkbox"
                                     checked={form.loanApproved}
@@ -511,7 +511,7 @@ export default function Finance() {
                                 onClick={() => {
                                     setModal({ open: false });
                                 }}
-                                className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                                className="px-4 py-2 text-sm bg-gray-200 dark:bg-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
                             >Cancel
                             </button>
                             <button
