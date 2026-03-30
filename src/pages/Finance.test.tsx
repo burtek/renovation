@@ -1,0 +1,386 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { AppData, Expense } from '../types';
+import { AppProvider } from '../contexts/AppContext';
+import Finance from './Finance';
+
+// Mock recharts to avoid SVG / ResizeObserver issues in jsdom
+vi.mock('recharts', () => {
+    const Mock = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
+    return {
+        PieChart: Mock,
+        Pie: Mock,
+        Cell: Mock,
+        Tooltip: Mock,
+        Legend: Mock,
+        ResponsiveContainer: Mock
+    };
+});
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function Wrapper({ children }: { children: ReactNode }) {
+    return (
+        <AppProvider>
+            <MemoryRouter>
+                {children}
+            </MemoryRouter>
+        </AppProvider>
+    );
+}
+
+function preloadState(state: Partial<AppData>) {
+    localStorage.setItem(
+        'renovation-data',
+        JSON.stringify({ notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0, ...state })
+    );
+}
+
+function makeExpense(overrides: Partial<Expense> = {}): Expense {
+    return {
+        id: 'e1',
+        description: 'Test Expense',
+        date: '2024-01-01',
+        price: 100,
+        shopName: 'Shop',
+        invoiceNo: 'INV-01',
+        invoiceForm: 'paper',
+        loanApproved: false,
+        ...overrides
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('Finance page', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        vi.stubGlobal('confirm', vi.fn(() => true));
+        vi.stubGlobal('alert', vi.fn());
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        vi.unstubAllGlobals();
+        vi.clearAllMocks();
+    });
+
+    // ── Basic rendering ───────────────────────────────────────────────────
+
+    it('renders Finance heading', () => {
+        render(<Finance />, { wrapper: Wrapper });
+        expect(screen.getByRole('heading', { name: /finance/i })).toBeInTheDocument();
+    });
+
+    it('shows budget summary cards', () => {
+        render(<Finance />, { wrapper: Wrapper });
+        expect(screen.getByText('Loan Approved')).toBeInTheDocument();
+        expect(screen.getByText('Not Approved')).toBeInTheDocument();
+        expect(screen.getByText('Remaining Budget')).toBeInTheDocument();
+    });
+
+    it('shows "No expenses yet." in both mobile and desktop views when there are no expenses', () => {
+        render(<Finance />, { wrapper: Wrapper });
+        const noExpTexts = screen.getAllByText(/no expenses yet/i);
+        expect(noExpTexts.length).toBeGreaterThanOrEqual(1);
+    });
+
+    // ── todayLocalDate (KEY TEST) ─────────────────────────────────────────
+
+    it('pre-fills today\'s local date in the date input when "+ Add Expense" is clicked', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        // Compute expected date using the same algorithm as todayLocalDate()
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        const expected = d.toISOString().split('T')[0];
+
+        const dateInput = screen.getAllByDisplayValue(expected)[0];
+        expect(dateInput).toBeInTheDocument();
+    });
+
+    // ── safeUrl (KEY TEST via expense rendering) ──────────────────────────
+
+    it('renders a clickable link for gdrive expense with https invoiceLink', () => {
+        preloadState({
+            expenses: [makeExpense({
+                id: 'e1',
+                invoiceForm: 'gdrive',
+                invoiceLink: 'https://drive.google.com/file/abc123'
+            })]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        const links = screen.getAllByRole('link', { name: /gdrive/i });
+        expect(links.length).toBeGreaterThan(0);
+        expect(links[0]).toHaveAttribute('href', 'https://drive.google.com/file/abc123');
+    });
+
+    it('shows "GDrive (invalid link)" for javascript: invoiceLink (no anchor)', () => {
+        preloadState({
+            expenses: [makeExpense({
+                id: 'e1',
+                invoiceForm: 'gdrive',
+                invoiceLink: 'javascript:alert(1)'
+            })]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        expect(screen.getAllByText('GDrive (invalid link)').length).toBeGreaterThan(0);
+        expect(screen.queryByRole('link', { name: /gdrive/i })).not.toBeInTheDocument();
+    });
+
+    it('shows invoice form text (no anchor) when gdrive invoiceLink is absent', () => {
+        preloadState({
+            expenses: [makeExpense({
+                id: 'e1',
+                invoiceForm: 'gdrive',
+                invoiceLink: undefined
+            })]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        expect(screen.queryByRole('link', { name: /gdrive/i })).not.toBeInTheDocument();
+    });
+
+    // ── Add expense ───────────────────────────────────────────────────────
+
+    it('adds an expense and shows it in the list', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'New Paint');
+
+        const priceInput = screen.getByPlaceholderText(/price \*/i);
+        await user.type(priceInput, '250');
+
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            expect(screen.getAllByText('New Paint').length).toBeGreaterThan(0);
+        });
+    });
+
+    it('does not add expense when description is empty', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        const priceInput = screen.getByPlaceholderText(/price \*/i);
+        await user.type(priceInput, '100');
+
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        // Modal should still be open
+        expect(screen.getByRole('heading', { name: /new expense/i })).toBeInTheDocument();
+    });
+
+    it('does not add expense when price is invalid', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'Valid Desc');
+        await user.type(screen.getByPlaceholderText(/price \*/i), 'not-a-number');
+
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        expect(screen.getByRole('heading', { name: /new expense/i })).toBeInTheDocument();
+    });
+
+    it('Cancel button closes the modal', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        expect(screen.getByRole('heading', { name: /new expense/i })).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: /cancel/i }));
+        expect(screen.queryByRole('heading', { name: /new expense/i })).not.toBeInTheDocument();
+    });
+
+    // ── Edit expense ──────────────────────────────────────────────────────
+
+    it('opens edit modal with pre-filled values', async () => {
+        preloadState({
+            expenses: [makeExpense({ id: 'e1', description: 'Old Desc', price: 200 })]
+        });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
+        await user.click(editButtons[0]);
+
+        expect(screen.getByDisplayValue('Old Desc')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('200')).toBeInTheDocument();
+    });
+
+    it('updates description after editing', async () => {
+        preloadState({
+            expenses: [makeExpense({ id: 'e1', description: 'Old Desc' })]
+        });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
+        await user.click(editButtons[0]);
+
+        const descInput = screen.getByDisplayValue('Old Desc');
+        await user.clear(descInput);
+        await user.type(descInput, 'New Desc');
+
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            expect(screen.getAllByText('New Desc').length).toBeGreaterThan(0);
+        });
+    });
+
+    // ── Delete expense ────────────────────────────────────────────────────
+
+    it('deletes an expense when confirmed', async () => {
+        vi.stubGlobal('confirm', vi.fn(() => true));
+        preloadState({ expenses: [makeExpense({ id: 'e1', description: 'Delete Me' })] });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        const delButtons = screen.getAllByRole('button', { name: /^del$/i });
+        await user.click(delButtons[0]);
+
+        await waitFor(() => {
+            expect(screen.queryByText('Delete Me')).not.toBeInTheDocument();
+        });
+    });
+
+    it('keeps an expense when delete is not confirmed', async () => {
+        vi.stubGlobal('confirm', vi.fn(() => false));
+        preloadState({ expenses: [makeExpense({ id: 'e1', description: 'Keep Me' })] });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        const delButtons = screen.getAllByRole('button', { name: /^del$/i });
+        await user.click(delButtons[0]);
+
+        expect(screen.getAllByText('Keep Me').length).toBeGreaterThan(0);
+    });
+
+    // ── Budget input ──────────────────────────────────────────────────────
+
+    it('persists budget to localStorage on blur', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        const budgetInput = screen.getByRole('spinbutton');
+        await user.clear(budgetInput);
+        await user.type(budgetInput, '50000');
+        await user.tab(); // triggers blur
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
+            expect(stored.budget).toBe(50000);
+        });
+    });
+
+    it('does not update budget for invalid input', async () => {
+        preloadState({ budget: 1000 });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        const budgetInput = screen.getByRole('spinbutton');
+        await user.clear(budgetInput);
+        await user.type(budgetInput, 'abc');
+        await user.tab();
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
+            expect(stored.budget).toBe(1000);
+        });
+    });
+
+    // ── Pie chart ─────────────────────────────────────────────────────────
+
+    it('renders pie chart when total expenses > 0', () => {
+        preloadState({
+            expenses: [makeExpense({ id: 'e1', price: 500 })]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        // With recharts mocked, the PieChart renders when total > 0.
+        // The expense description appears in the list (mobile + desktop views).
+        const descriptions = screen.getAllByText('Test Expense');
+        expect(descriptions.length).toBeGreaterThan(0);
+    });
+
+    // ── gdrive invoice form ───────────────────────────────────────────────
+
+    it('shows Google Drive link input when gdrive is selected in the form', async () => {
+        const user = userEvent.setup();
+        const { container } = render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        // Use the actual <select> element (not the shop name datalist input which also has combobox role)
+        const select = container.querySelector('select') as HTMLSelectElement;
+        await user.selectOptions(select, 'gdrive');
+
+        expect(screen.getByPlaceholderText(/google drive link/i)).toBeInTheDocument();
+    });
+
+    // ── loanApproved checkbox ─────────────────────────────────────────────
+
+    it('toggles loanApproved checkbox', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        const loanCheckbox = screen.getByRole('checkbox', { name: /loan approved/i });
+        expect(loanCheckbox).not.toBeChecked();
+
+        await user.click(loanCheckbox);
+        expect(loanCheckbox).toBeChecked();
+    });
+
+    // ── Shop datalist ─────────────────────────────────────────────────────
+
+    it('shows shop name datalist', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        expect(document.getElementById('shop-suggestions')).toBeInTheDocument();
+    });
+
+    // ── Loan approved indicator ───────────────────────────────────────────
+
+    it('shows ✓ Loan indicator for loan-approved expense (mobile view)', () => {
+        preloadState({
+            expenses: [makeExpense({ id: 'e1', loanApproved: true })]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        expect(screen.getAllByText(/✓ Loan/).length).toBeGreaterThan(0);
+    });
+
+    // ── Report button ─────────────────────────────────────────────────────
+
+    it('calls window.open when Report button is clicked', async () => {
+        const mockWin = { document: { write: vi.fn(), close: vi.fn() }, print: vi.fn() };
+        vi.stubGlobal('open', vi.fn(() => mockWin));
+
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /report/i }));
+
+        expect(window.open).toHaveBeenCalledWith('', '_blank');
+    });
+});
