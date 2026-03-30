@@ -238,6 +238,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 const text = e.target?.result;
                 if (typeof text === 'string') {
                     parseAndLoad(text);
+                } else {
+                    handleError();
                 }
             };
             reader.onerror = handleError;
