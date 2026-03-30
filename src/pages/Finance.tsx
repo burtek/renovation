@@ -111,11 +111,7 @@ export default function Finance() {
         const bv = b[sortKey];
         let cmp: number;
         if (typeof av === 'boolean' && typeof bv === 'boolean') {
-            if (av === bv) {
-                cmp = 0;
-            } else {
-                cmp = av ? -1 : 1;
-            }
+            cmp = Number(av) - Number(bv);
         } else if (typeof av === 'number' && typeof bv === 'number') {
             cmp = av - bv;
         } else {
@@ -318,17 +314,30 @@ export default function Finance() {
                                 {EXPENSE_COLUMNS.map(({ label, key }) => (
                                     <th
                                         key={label}
-                                        className={cn('px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase', key && 'cursor-pointer select-none hover:text-gray-800')}
-                                        onClick={key
-                                            ? () => {
-                                                toggleSort(key);
-                                            }
+                                        className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
+                                        aria-sort={key && sortKey === key
+                                            ? (sortDir === 'asc' ? 'ascending' : 'descending')
                                             : undefined}
                                     >
-                                        {label}
                                         {key
-                                            && sortKey === key
-                                            && <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                                            ? (
+                                                <button
+                                                    type="button"
+                                                    className={cn('cursor-pointer select-none hover:text-gray-800')}
+                                                    onClick={() => {
+                                                        toggleSort(key);
+                                                    }}
+                                                >
+                                                    {label}
+                                                    {sortKey === key
+                                                        && (
+                                                            <span className="ml-1">
+                                                                {sortDir === 'asc' ? '↑' : '↓'}
+                                                            </span>
+                                                        )}
+                                                </button>
+                                            )
+                                            : label}
                                     </th>
                                 ))}
                             </tr>
