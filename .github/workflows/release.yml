@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  deployment_status:
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: |
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'Production'
+
+    steps:
+      - name: Create tag and GitHub Release
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const sha = context.payload.deployment.sha;
+            const deploymentId = context.payload.deployment.id;
+            const date = new Date().toISOString().slice(0, 10);
+            const tagName = `release-${date}-${deploymentId}`;
+
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${tagName}`,
+              sha,
+            });
+
+            try {
+              await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tagName,
+                target_commitish: sha,
+                name: tagName,
+                generate_release_notes: true,
+              });
+            } catch (releaseError) {
+              core.warning(`Release creation failed: ${releaseError.message}. Deleting orphaned tag ${tagName}.`);
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${tagName}`,
+              });
+              throw releaseError;
+            }
