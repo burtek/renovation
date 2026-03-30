@@ -1,6 +1,6 @@
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale/en-US';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { SlotInfo } from 'react-big-calendar';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import type { EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAndDrop';
@@ -81,6 +81,10 @@ export default function CalendarPage() {
     const [form, setForm] = useState<EventFormData>(emptyForm);
 
     const contractorNames = Array.from(new Set(state.calendarEvents.map(e => e.contractor).filter((c): c is string => Boolean(c))));
+
+    useEffect(() => {
+        document.title = 'Calendar | Renovation';
+    }, []);
 
     const events: BigCalEvent[] = state.calendarEvents.map(e => {
         const start = new Date(`${e.date}T00:00:00`);

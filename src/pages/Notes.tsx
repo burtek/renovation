@@ -1,9 +1,11 @@
 import MDEditor from '@uiw/react-md-editor';
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { useNavigate, useParams } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
+import { v4 as uuidv4 } from 'uuid';
 
 import { useApp } from '../contexts/AppContext';
 import { useColorScheme } from '../hooks/useColorScheme';
@@ -14,24 +16,45 @@ import { cn } from '../utils/classnames';
 export default function Notes() {
     const { state, dispatch } = useApp();
     const colorScheme = useColorScheme();
-    const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [editing, setEditing] = useState(false);
-    const [editTitle, setEditTitle] = useState('');
-    const [editContent, setEditContent] = useState('');
-    const [showList, setShowList] = useState(true);
+    const navigate = useNavigate();
+    const { id: noteId } = useParams<{ id?: string }>();
 
-    const selectedNote = state.notes.find(n => n.id === selectedId) ?? null;
+    const selectedNote = state.notes.find(n => n.id === noteId) ?? null;
+
+    const [editing, setEditing] = useState(false);
+    const [editTitle, setEditTitle] = useState(selectedNote?.title ?? '');
+    const [editContent, setEditContent] = useState(selectedNote?.content ?? '');
+    const [showList, setShowList] = useState(!noteId);
+
+    // Reset edit state when navigating to a different note via URL
+    const [prevNoteId, setPrevNoteId] = useState(noteId);
+    if (prevNoteId !== noteId) {
+        setPrevNoteId(noteId);
+        setEditing(false);
+        if (selectedNote) {
+            setEditTitle(selectedNote.title);
+            setEditContent(selectedNote.content);
+            setShowList(false);
+        } else {
+            setShowList(true);
+        }
+    }
+
+    // Update document title based on selected note
+    useEffect(() => {
+        document.title = selectedNote
+            ? `${selectedNote.title} – Notes | Renovation`
+            : 'Notes | Renovation';
+    }, [selectedNote]);
 
     const handleSelect = (note: Note) => {
-        setSelectedId(note.id);
-        setEditing(false);
-        setEditTitle(note.title);
-        setEditContent(note.content);
-        setShowList(false);
+        navigate(`/notes/${note.id}`);
     };
 
     const handleNew = () => {
-        dispatch({ type: 'ADD_NOTE', payload: { title: 'New Note', content: '' } });
+        const newId = uuidv4();
+        dispatch({ type: 'ADD_NOTE', payload: { id: newId, title: 'New Note', content: '' } });
+        navigate(`/notes/${newId}`);
     };
 
     const handleDelete = () => {
@@ -41,8 +64,7 @@ export default function Notes() {
         // eslint-disable-next-line no-alert
         if (confirm('Delete this note?')) {
             dispatch({ type: 'DELETE_NOTE', payload: selectedNote.id });
-            setSelectedId(null);
-            setEditing(false);
+            navigate('/notes');
         }
     };
 
@@ -66,7 +88,7 @@ export default function Notes() {
     const navigateToNote = (title: string) => {
         const note = state.notes.find(n => n.title.toLowerCase() === title.toLowerCase());
         if (note) {
-            handleSelect(note);
+            navigate(`/notes/${note.id}`);
         }
     };
 
@@ -220,7 +242,7 @@ export default function Notes() {
                             onClick={() => {
                                 handleSelect(note);
                             }}
-                            className={cn('w-full text-left px-4 py-3 border-b dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition', selectedId === note.id && 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-400')}
+                            className={cn('w-full text-left px-4 py-3 border-b text-sm hover:bg-gray-50 transition', noteId === note.id && 'bg-blue-50 border-l-4 border-blue-400')}
                         >
                             <div className="font-medium truncate dark:text-gray-200">{note.title}</div>
                             <div className="text-gray-400 dark:text-gray-500 text-xs">{new Date(note.updatedAt).toLocaleDateString()}</div>

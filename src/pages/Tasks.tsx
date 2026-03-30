@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useApp } from '../contexts/AppContext';
 import type { Subtask, Task } from '../types';
@@ -64,6 +64,10 @@ function dayDiff(laterDate: string, earlierDate: string): number {
 export default function Tasks() {
     const { state, dispatch } = useApp();
     const [tab, setTab] = useState<Tab>('list');
+
+    useEffect(() => {
+        document.title = 'Tasks | Renovation';
+    }, []);
     const [expandedTasks, setExpandedTasks] = useState<Set<string>>(() => new Set());
     const [taskModal, setTaskModal] = useState<{ open: boolean; editTask?: Task }>({ open: false });
     const [subtaskModal, setSubtaskModal] = useState<{ open: boolean; taskId: string; editSubtask?: Subtask }>({ open: false, taskId: '' });

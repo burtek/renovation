@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppProvider } from '../contexts/AppContext';
@@ -26,15 +26,28 @@ vi.mock('@uiw/react-markdown-preview/markdown.css', () => ({}));
 // Helpers
 // ---------------------------------------------------------------------------
 
-function Wrapper({ children }: { children: ReactNode }) {
-    return (
-        <AppProvider>
-            <MemoryRouter>
-                {children}
-            </MemoryRouter>
-        </AppProvider>
-    );
+function makeWrapper(initialPath = '/notes') {
+    return function Wrapper({ children }: { children: ReactNode }) {
+        return (
+            <AppProvider>
+                <MemoryRouter initialEntries={[initialPath]}>
+                    <Routes>
+                        <Route
+                            path="/notes"
+                            element={<>{children}</>}
+                        />
+                        <Route
+                            path="/notes/:id"
+                            element={<>{children}</>}
+                        />
+                    </Routes>
+                </MemoryRouter>
+            </AppProvider>
+        );
+    };
 }
+
+const Wrapper = makeWrapper();
 
 function preloadNotes(notes: Note[]) {
     localStorage.setItem(
@@ -90,7 +103,7 @@ describe('Notes page', () => {
         await user.click(screen.getByRole('button', { name: /\+ new/i }));
 
         await waitFor(() => {
-            expect(screen.getByText('New Note')).toBeInTheDocument();
+            expect(screen.getAllByText('New Note').length).toBeGreaterThan(0);
         });
     });
 

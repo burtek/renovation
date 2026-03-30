@@ -78,6 +78,10 @@ export default function Finance() {
     const [sortDir, setSortDir] = useState<SortDir>('desc');
 
     useEffect(() => {
+        document.title = 'Finance | Renovation';
+    }, []);
+
+    useEffect(() => {
         // eslint-disable-next-line @eslint-react/set-state-in-effect
         setBudgetInput(String(state.budget));
     }, [state.budget]);

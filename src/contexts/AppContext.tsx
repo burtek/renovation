@@ -16,7 +16,7 @@ const initialState: AppData = {
 
 type Action
     = | { type: 'SET_ALL'; payload: AppData }
-        | { type: 'ADD_NOTE'; payload: Omit<Note, 'id' | 'createdAt' | 'updatedAt'> }
+        | { type: 'ADD_NOTE'; payload: Omit<Note, 'createdAt' | 'updatedAt'> }
         | { type: 'UPDATE_NOTE'; payload: Note }
         | { type: 'DELETE_NOTE'; payload: string }
         | { type: 'ADD_TASK'; payload: Omit<Task, 'id'> }
@@ -40,7 +40,7 @@ function reducer(state: AppData, action: Action): AppData {
             return action.payload;
         case 'ADD_NOTE': {
             const now = new Date().toISOString();
-            const note: Note = { ...action.payload, id: uuidv4(), createdAt: now, updatedAt: now };
+            const note: Note = { ...action.payload, createdAt: now, updatedAt: now };
             return { ...state, notes: [...state.notes, note] };
         }
         case 'UPDATE_NOTE': {
