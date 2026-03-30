@@ -1,11 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppProvider } from '../contexts/AppContext';
+
 import Layout from './Layout';
+
 
 // Stub out URL.createObjectURL since SaveLoadButtons lives inside Layout
 vi.stubGlobal('alert', vi.fn());
@@ -55,7 +56,8 @@ describe('Layout', () => {
         localStorage.clear();
         vi.stubGlobal('alert', vi.fn());
         vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
-        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {
+        });
     });
 
     afterEach(() => {

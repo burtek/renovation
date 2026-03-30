@@ -4,9 +4,11 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Subtask, Task } from '../types';
 import { AppProvider } from '../contexts/AppContext';
+import type { Subtask, Task } from '../types';
+
 import Tasks from './Tasks';
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -344,9 +346,7 @@ describe('Tasks page', () => {
         const mockConfirm = vi.fn(() => true);
         vi.stubGlobal('confirm', mockConfirm);
 
-        preloadTasks([
-            makeTask({ id: 't1', title: 'Task A', startDate: '2024-01-01', endDate: '2024-01-10' })
-        ]);
+        preloadTasks([makeTask({ id: 't1', title: 'Task A', startDate: '2024-01-01', endDate: '2024-01-10' })]);
 
         const user = userEvent.setup();
         render(<Tasks />, { wrapper: Wrapper });

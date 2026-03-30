@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AppData, CalendarEvent, Expense, Task } from '../types';
+
 import { generateReport } from './report';
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -346,15 +348,19 @@ describe('generateReport', () => {
     it('renders subtasks with ✓ for completed subtasks', () => {
         const state: AppData = {
             ...EMPTY_STATE,
-            tasks: [makeTask({
-                subtasks: [{
-                    id: 's1',
-                    parentId: 't1',
-                    title: 'Subtask One',
-                    notes: '',
-                    completed: true
-                }]
-            })]
+            tasks: [
+                makeTask({
+                    subtasks: [
+                        {
+                            id: 's1',
+                            parentId: 't1',
+                            title: 'Subtask One',
+                            notes: '',
+                            completed: true
+                        }
+                    ]
+                })
+            ]
         };
         generateReport(state);
         const html = captureHtml(mockWin);
@@ -364,15 +370,19 @@ describe('generateReport', () => {
     it('renders subtasks with ○ for incomplete subtasks', () => {
         const state: AppData = {
             ...EMPTY_STATE,
-            tasks: [makeTask({
-                subtasks: [{
-                    id: 's1',
-                    parentId: 't1',
-                    title: 'Subtask Two',
-                    notes: '',
-                    completed: false
-                }]
-            })]
+            tasks: [
+                makeTask({
+                    subtasks: [
+                        {
+                            id: 's1',
+                            parentId: 't1',
+                            title: 'Subtask Two',
+                            notes: '',
+                            completed: false
+                        }
+                    ]
+                })
+            ]
         };
         generateReport(state);
         const html = captureHtml(mockWin);

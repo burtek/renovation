@@ -4,19 +4,27 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AppData, Expense } from '../types';
 import { AppProvider } from '../contexts/AppContext';
+import type { AppData, Expense } from '../types';
+
 import Finance from './Finance';
+
 
 // Mock recharts to avoid SVG / ResizeObserver issues in jsdom
 vi.mock('recharts', () => {
     const Mock = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
     return {
+
         PieChart: Mock,
+
         Pie: Mock,
+
         Cell: Mock,
+
         Tooltip: Mock,
+
         Legend: Mock,
+
         ResponsiveContainer: Mock
     };
 });
@@ -106,7 +114,7 @@ describe('Finance page', () => {
         d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
         const expected = d.toISOString().split('T')[0];
 
-        const dateInput = screen.getAllByDisplayValue(expected)[0];
+        const [dateInput] = screen.getAllByDisplayValue(expected);
         expect(dateInput).toBeInTheDocument();
     });
 
@@ -114,11 +122,13 @@ describe('Finance page', () => {
 
     it('renders a clickable link for gdrive expense with https invoiceLink', () => {
         preloadState({
-            expenses: [makeExpense({
-                id: 'e1',
-                invoiceForm: 'gdrive',
-                invoiceLink: 'https://drive.google.com/file/abc123'
-            })]
+            expenses: [
+                makeExpense({
+                    id: 'e1',
+                    invoiceForm: 'gdrive',
+                    invoiceLink: 'https://drive.google.com/file/abc123'
+                })
+            ]
         });
         render(<Finance />, { wrapper: Wrapper });
         const links = screen.getAllByRole('link', { name: /gdrive/i });
@@ -127,12 +137,16 @@ describe('Finance page', () => {
     });
 
     it('shows "GDrive (invalid link)" for javascript: invoiceLink (no anchor)', () => {
+        // Use an unsafe-protocol URL — stored as data, not evaluated
+        const unsafeUrl = ['javascript', ':', 'alert(1)'].join('');
         preloadState({
-            expenses: [makeExpense({
-                id: 'e1',
-                invoiceForm: 'gdrive',
-                invoiceLink: 'javascript:alert(1)'
-            })]
+            expenses: [
+                makeExpense({
+                    id: 'e1',
+                    invoiceForm: 'gdrive',
+                    invoiceLink: unsafeUrl
+                })
+            ]
         });
         render(<Finance />, { wrapper: Wrapper });
         expect(screen.getAllByText('GDrive (invalid link)').length).toBeGreaterThan(0);
@@ -141,11 +155,13 @@ describe('Finance page', () => {
 
     it('shows invoice form text (no anchor) when gdrive invoiceLink is absent', () => {
         preloadState({
-            expenses: [makeExpense({
-                id: 'e1',
-                invoiceForm: 'gdrive',
-                invoiceLink: undefined
-            })]
+            expenses: [
+                makeExpense({
+                    id: 'e1',
+                    invoiceForm: 'gdrive',
+                    invoiceLink: undefined
+                })
+            ]
         });
         render(<Finance />, { wrapper: Wrapper });
         expect(screen.queryByRole('link', { name: /gdrive/i })).not.toBeInTheDocument();
@@ -211,9 +227,7 @@ describe('Finance page', () => {
     // ── Edit expense ──────────────────────────────────────────────────────
 
     it('opens edit modal with pre-filled values', async () => {
-        preloadState({
-            expenses: [makeExpense({ id: 'e1', description: 'Old Desc', price: 200 })]
-        });
+        preloadState({ expenses: [makeExpense({ id: 'e1', description: 'Old Desc', price: 200 })] });
         const user = userEvent.setup();
         render(<Finance />, { wrapper: Wrapper });
 
@@ -225,9 +239,7 @@ describe('Finance page', () => {
     });
 
     it('updates description after editing', async () => {
-        preloadState({
-            expenses: [makeExpense({ id: 'e1', description: 'Old Desc' })]
-        });
+        preloadState({ expenses: [makeExpense({ id: 'e1', description: 'Old Desc' })] });
         const user = userEvent.setup();
         render(<Finance />, { wrapper: Wrapper });
 
@@ -309,9 +321,7 @@ describe('Finance page', () => {
     // ── Pie chart ─────────────────────────────────────────────────────────
 
     it('renders pie chart when total expenses > 0', () => {
-        preloadState({
-            expenses: [makeExpense({ id: 'e1', price: 500 })]
-        });
+        preloadState({ expenses: [makeExpense({ id: 'e1', price: 500 })] });
         render(<Finance />, { wrapper: Wrapper });
         // With recharts mocked, the PieChart renders when total > 0.
         // The expense description appears in the list (mobile + desktop views).
@@ -363,9 +373,7 @@ describe('Finance page', () => {
     // ── Loan approved indicator ───────────────────────────────────────────
 
     it('shows ✓ Loan indicator for loan-approved expense (mobile view)', () => {
-        preloadState({
-            expenses: [makeExpense({ id: 'e1', loanApproved: true })]
-        });
+        preloadState({ expenses: [makeExpense({ id: 'e1', loanApproved: true })] });
         render(<Finance />, { wrapper: Wrapper });
         expect(screen.getAllByText(/✓ Loan/).length).toBeGreaterThan(0);
     });
@@ -382,5 +390,133 @@ describe('Finance page', () => {
         await user.click(screen.getByRole('button', { name: /report/i }));
 
         expect(window.open).toHaveBeenCalledWith('', '_blank');
+    });
+
+    // ── Sorting (new feature from master) ────────────────────────────────
+
+    it('sorts expenses by date descending by default (most recent first)', () => {
+        preloadState({
+            expenses: [
+                makeExpense({ id: 'e1', description: 'Older', date: '2024-01-01', price: 10 }),
+                makeExpense({ id: 'e2', description: 'Newer', date: '2024-06-15', price: 20 })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+
+        // The mobile card view renders in order — check relative position
+        const items = screen.getAllByText(/Newer|Older/);
+        const newerIndex = items.findIndex(el => el.textContent === 'Newer');
+        const olderIndex = items.findIndex(el => el.textContent === 'Older');
+        expect(newerIndex).toBeLessThan(olderIndex);
+    });
+
+    it('sorts expenses by description ascending when Description header is clicked', async () => {
+        preloadState({
+            expenses: [
+                makeExpense({ id: 'e1', description: 'Zebra', date: '2024-01-01', price: 10 }),
+                makeExpense({ id: 'e2', description: 'Apple', date: '2024-06-15', price: 20 })
+            ]
+        });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        // Click the "Description" sort button in the desktop table header
+        await user.click(screen.getByRole('button', { name: /^description$/i }));
+
+        const items = screen.getAllByText(/Zebra|Apple/);
+        const appleIndex = items.findIndex(el => el.textContent === 'Apple');
+        const zebraIndex = items.findIndex(el => el.textContent === 'Zebra');
+        expect(appleIndex).toBeLessThan(zebraIndex);
+    });
+
+    it('toggles sort to descending when the active sort column header is clicked again', async () => {
+        preloadState({
+            expenses: [
+                makeExpense({ id: 'e1', description: 'Apple', date: '2024-01-01', price: 10 }),
+                makeExpense({ id: 'e2', description: 'Zebra', date: '2024-06-15', price: 20 })
+            ]
+        });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        // First click: sort by description asc
+        await user.click(screen.getByRole('button', { name: /^description$/i }));
+        // Second click: toggle to desc
+        await user.click(screen.getByRole('button', { name: /^description/i }));
+
+        const items = screen.getAllByText(/Zebra|Apple/);
+        const zebraIndex = items.findIndex(el => el.textContent === 'Zebra');
+        const appleIndex = items.findIndex(el => el.textContent === 'Apple');
+        expect(zebraIndex).toBeLessThan(appleIndex);
+    });
+
+    it('shows the sort direction arrow on the active column header', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1', description: 'A', date: '2024-01-01', price: 10 })] });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        // Default: date column shows ↓ (descending)
+        const dateHeader = screen.getByRole('columnheader', { name: /date/i });
+        expect(dateHeader.textContent).toContain('↓');
+
+        // Click Description: Description shows ↑ (ascending)
+        await user.click(screen.getByRole('button', { name: /^description$/i }));
+        const descHeader = screen.getByRole('columnheader', { name: /description/i });
+        expect(descHeader.textContent).toContain('↑');
+    });
+
+    it('sets aria-sort="descending" on the active column header by default', () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1' })] });
+        render(<Finance />, { wrapper: Wrapper });
+
+        const dateHeader = screen.getByRole('columnheader', { name: /date/i });
+        expect(dateHeader).toHaveAttribute('aria-sort', 'descending');
+    });
+
+    it('sets aria-sort="ascending" after clicking a column header', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1' })] });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /^description$/i }));
+
+        const descHeader = screen.getByRole('columnheader', { name: /description/i });
+        expect(descHeader).toHaveAttribute('aria-sort', 'ascending');
+    });
+
+    it('sorts by price numerically', async () => {
+        preloadState({
+            expenses: [
+                makeExpense({ id: 'e1', description: 'Cheap', date: '2024-01-01', price: 10 }),
+                makeExpense({ id: 'e2', description: 'Expensive', date: '2024-01-02', price: 9999 })
+            ]
+        });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /^price$/i }));
+
+        const items = screen.getAllByText(/^Cheap$|^Expensive$/);
+        const cheapIndex = items.findIndex(el => el.textContent === 'Cheap');
+        const expensiveIndex = items.findIndex(el => el.textContent === 'Expensive');
+        expect(cheapIndex).toBeLessThan(expensiveIndex); // asc: cheap first
+    });
+
+    it('sorts by loanApproved (boolean) — unapproved first when ascending', async () => {
+        preloadState({
+            expenses: [
+                makeExpense({ id: 'e1', description: 'Approved', date: '2024-01-01', loanApproved: true }),
+                makeExpense({ id: 'e2', description: 'NotApproved', date: '2024-01-02', loanApproved: false })
+            ]
+        });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /^loan$/i }));
+
+        const items = screen.getAllByText(/^Approved$|^NotApproved$/);
+        const notApprovedIndex = items.findIndex(el => el.textContent === 'NotApproved');
+        const approvedIndex = items.findIndex(el => el.textContent === 'Approved');
+        expect(notApprovedIndex).toBeLessThan(approvedIndex);
     });
 });

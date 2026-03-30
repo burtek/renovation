@@ -4,9 +4,11 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AppData, CalendarEvent } from '../types';
 import { AppProvider } from '../contexts/AppContext';
+import type { AppData, CalendarEvent } from '../types';
+
 import CalendarPage from './Calendar';
+
 
 vi.mock('react-big-calendar', () => ({
     Calendar: ({ onSelectSlot, onSelectEvent, events }: {
@@ -176,9 +178,7 @@ describe('Calendar page', () => {
     // ── Event selection / Edit ────────────────────────────────────────────
 
     it('opens Edit Event modal with pre-filled title when clicking an existing event', async () => {
-        preloadState({
-            calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Existing Event' })]
-        });
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Existing Event' })] });
         const user = userEvent.setup();
         render(<CalendarPage />, { wrapper: Wrapper });
 
@@ -189,9 +189,7 @@ describe('Calendar page', () => {
     });
 
     it('updates event title after editing', async () => {
-        preloadState({
-            calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Old Event' })]
-        });
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Old Event' })] });
         const user = userEvent.setup();
         render(<CalendarPage />, { wrapper: Wrapper });
 
@@ -212,9 +210,7 @@ describe('Calendar page', () => {
 
     it('deletes an event when Delete is clicked and confirmed', async () => {
         vi.stubGlobal('confirm', vi.fn(() => true));
-        preloadState({
-            calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Delete Event' })]
-        });
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Delete Event' })] });
         const user = userEvent.setup();
         render(<CalendarPage />, { wrapper: Wrapper });
 
@@ -228,9 +224,7 @@ describe('Calendar page', () => {
 
     it('keeps an event when Delete is not confirmed', async () => {
         vi.stubGlobal('confirm', vi.fn(() => false));
-        preloadState({
-            calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Keep Event' })]
-        });
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Keep Event' })] });
         const user = userEvent.setup();
         render(<CalendarPage />, { wrapper: Wrapper });
 

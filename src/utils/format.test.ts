@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { formatPLN } from './format';
 
+
 // Compute expected strings using the same Intl.NumberFormat the implementation uses,
 // so tests pass regardless of locale differences between environments.
 function plFormat(amount: number): string {
@@ -38,7 +39,7 @@ describe('formatPLN', () => {
         // The result must contain a decimal separator followed by exactly 2 digits
         const result = formatPLN(5);
         // Polish locale uses comma as decimal separator
-        expect(result).toMatch(/[,\.]\d{2}/);
+        expect(result).toMatch(/[,.]\d{2}/);
     });
 
     it('includes a non-breaking space before zł', () => {

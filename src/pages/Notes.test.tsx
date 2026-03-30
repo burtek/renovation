@@ -4,9 +4,11 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Note } from '../types';
 import { AppProvider } from '../contexts/AppContext';
+import type { Note } from '../types';
+
 import Notes from './Notes';
+
 
 vi.mock('@uiw/react-md-editor', () => ({
     default: ({ value, onChange }: { value: string; onChange?: (v: string | undefined) => void }) => (
@@ -236,9 +238,7 @@ describe('Notes page', () => {
     });
 
     it('wiki link to non-existent note is a button but does not change selection', async () => {
-        preloadNotes([
-            makeNote({ id: 'n1', title: 'Source', content: '[[Ghost Note]]' })
-        ]);
+        preloadNotes([makeNote({ id: 'n1', title: 'Source', content: '[[Ghost Note]]' })]);
         const user = userEvent.setup();
         render(<Notes />, { wrapper: Wrapper });
 
@@ -257,9 +257,7 @@ describe('Notes page', () => {
     // ── External links ────────────────────────────────────────────────────
 
     it('renders safe https:// link as <a> with target="_blank" and noopener', async () => {
-        preloadNotes([
-            makeNote({ id: 'n1', content: '[Click me](https://example.com)' })
-        ]);
+        preloadNotes([makeNote({ id: 'n1', content: '[Click me](https://example.com)' })]);
         const user = userEvent.setup();
         render(<Notes />, { wrapper: Wrapper });
 
@@ -274,9 +272,7 @@ describe('Notes page', () => {
     });
 
     it('renders unsafe javascript: link as <span> (no <a>)', async () => {
-        preloadNotes([
-            makeNote({ id: 'n1', content: '[Bad link](javascript:alert(1))' })
-        ]);
+        preloadNotes([makeNote({ id: 'n1', content: '[Bad link](javascript:alert(1))' })]);
         const user = userEvent.setup();
         render(<Notes />, { wrapper: Wrapper });
 

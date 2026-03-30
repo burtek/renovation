@@ -3,12 +3,14 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AppData, CalendarEvent, Expense, Note, Subtask, Task } from '../types';
+import { isCompressionSupported } from '../utils/compression';
+
 import { AppProvider, useApp } from './AppContext';
+
 
 // ---------------------------------------------------------------------------
 // Determine if Blob.stream() is available for gz loading tests
 // ---------------------------------------------------------------------------
-import { isCompressionSupported } from '../utils/compression';
 
 const blobStreamSupported = isCompressionSupported && typeof new Blob().stream === 'function';
 
@@ -141,7 +143,8 @@ describe('AppContext – localStorage', () => {
 describe('useApp', () => {
     it('throws when used outside AppProvider', () => {
         // Suppress React's error boundary console output
-        const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const spy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
         expect(() => renderHook(() => useApp())).toThrow('useApp must be used within AppProvider');
         spy.mockRestore();
     });
@@ -199,9 +202,7 @@ describe('reducer actions via dispatch', () => {
     });
 
     it('DELETE_NOTE: removes the note, leaves others untouched', () => {
-        preloadState({
-            notes: [makeNote({ id: 'n1', title: 'Keep' }), makeNote({ id: 'n2', title: 'Delete me' })]
-        });
+        preloadState({ notes: [makeNote({ id: 'n1', title: 'Keep' }), makeNote({ id: 'n2', title: 'Delete me' })] });
         const { result } = renderHook(() => useApp(), { wrapper });
 
         act(() => {
@@ -462,7 +463,8 @@ describe('saveToFile', () => {
         localStorage.clear();
         vi.stubGlobal('alert', vi.fn());
         vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
-        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {
+        });
         vi.spyOn(document.body, 'appendChild').mockImplementation(node => node);
         vi.spyOn(document.body, 'removeChild').mockImplementation(node => node);
         vi.useFakeTimers();

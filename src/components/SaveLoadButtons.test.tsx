@@ -4,9 +4,11 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AppData } from '../types';
 import { AppProvider } from '../contexts/AppContext';
+import type { AppData } from '../types';
+
 import SaveLoadButtons from './SaveLoadButtons';
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,7 +33,8 @@ describe('SaveLoadButtons', () => {
         localStorage.clear();
         vi.stubGlobal('alert', vi.fn());
         vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
-        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {
+        });
     });
 
     afterEach(() => {
@@ -89,7 +92,8 @@ describe('SaveLoadButtons', () => {
         const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
         expect(fileInput).toBeInTheDocument();
 
-        const clickSpy = vi.spyOn(fileInput, 'click').mockImplementation(() => {});
+        const clickSpy = vi.spyOn(fileInput, 'click').mockImplementation(() => {
+        });
 
         await user.click(screen.getByRole('button', { name: /📂 load/i }));
 

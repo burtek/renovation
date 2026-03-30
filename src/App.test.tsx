@@ -1,9 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ReactNode } from 'react';
 import App from './App';
+
 
 // Mock heavy/complex UI libraries to avoid jsdom issues
 vi.mock('@uiw/react-md-editor', () => ({
@@ -45,7 +44,8 @@ describe('App', () => {
         localStorage.clear();
         vi.stubGlobal('alert', vi.fn());
         vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
-        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {
+        });
     });
 
     afterEach(() => {
