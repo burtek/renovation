@@ -4,10 +4,10 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AppProvider } from '../contexts/AppContext';
-import type { Subtask, Task } from '../types';
+import { AppProvider } from '../../contexts/AppContext';
+import type { Subtask, Task } from '../../types';
 
-import Tasks from './Tasks';
+import Tasks from '.';
 
 
 // ---------------------------------------------------------------------------
