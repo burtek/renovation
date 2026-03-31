@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 
 import { cn } from '../utils/classnames';
 
+import AboutDialog from './AboutDialog';
 import SaveLoadButtons from './SaveLoadButtons';
 
 
@@ -15,6 +16,7 @@ const navItems = [
 
 export default function Layout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [aboutOpen, setAboutOpen] = useState(false);
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -65,7 +67,25 @@ export default function Layout() {
                     ))}
                 </nav>
                 <SaveLoadButtons />
+                <div className="px-4 pb-4">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setAboutOpen(true);
+                        }}
+                        className="w-full text-xs text-gray-400 hover:text-white transition text-left"
+                    >
+                        ℹ️ About
+                    </button>
+                </div>
             </aside>
+
+            <AboutDialog
+                isOpen={aboutOpen}
+                onClose={() => {
+                    setAboutOpen(false);
+                }}
+            />
 
             {/* Main content */}
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
