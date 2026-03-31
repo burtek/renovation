@@ -189,6 +189,17 @@ describe('SaveLoadButtons', () => {
             expect(screen.queryByText(/·/)).not.toBeInTheDocument();
         });
 
+        it('shows short deployment ID in full without ellipsis when it is 10 chars or fewer', () => {
+            vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_short');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            const deploymentSpan = screen.getByTitle('dpl_short');
+            expect(deploymentSpan).toBeInTheDocument();
+            expect(deploymentSpan).toHaveTextContent('dpl_short');
+            expect(deploymentSpan).not.toHaveTextContent('\u2026');
+            expect(screen.queryByText(/·/)).not.toBeInTheDocument();
+        });
+
         it('shows both SHA and deployment ID with separator when both env vars are set', () => {
             const sha = 'abc1234567890abcdef';
             vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);

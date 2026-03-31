@@ -50,7 +50,10 @@ export default function DeploymentInfo() {
             )}
             {commitSha && deploymentId && <span> · </span>}
             {deploymentId && (
-                <span title={deploymentId}>
+                <span
+                    title={deploymentId}
+                    aria-label={deploymentId}
+                >
                     {deploymentId.length > 10 ? `${deploymentId.slice(0, 10)}…` : deploymentId}
                 </span>
             )}
