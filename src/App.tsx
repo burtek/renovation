@@ -26,10 +26,16 @@ export default function App() {
                                 />
                             )}
                         />
-                        <Route
-                            path="notes"
-                            element={<Notes />}
-                        />
+                        <Route path="notes">
+                            <Route
+                                index
+                                element={<Notes />}
+                            />
+                            <Route
+                                path=":id"
+                                element={<Notes />}
+                            />
+                        </Route>
                         <Route
                             path="tasks"
                             element={<Tasks />}

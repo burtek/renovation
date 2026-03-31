@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppProvider } from '../contexts/AppContext';
@@ -26,15 +26,28 @@ vi.mock('@uiw/react-markdown-preview/markdown.css', () => ({}));
 // Helpers
 // ---------------------------------------------------------------------------
 
-function Wrapper({ children }: { children: ReactNode }) {
-    return (
-        <AppProvider>
-            <MemoryRouter>
-                {children}
-            </MemoryRouter>
-        </AppProvider>
-    );
+function makeWrapper(initialPath = '/notes') {
+    return function Wrapper({ children }: { children: ReactNode }) {
+        return (
+            <AppProvider>
+                <MemoryRouter initialEntries={[initialPath]}>
+                    <Routes>
+                        <Route
+                            path="/notes"
+                            element={<>{children}</>}
+                        />
+                        <Route
+                            path="/notes/:id"
+                            element={<>{children}</>}
+                        />
+                    </Routes>
+                </MemoryRouter>
+            </AppProvider>
+        );
+    };
 }
+
+const Wrapper = makeWrapper();
 
 function preloadNotes(notes: Note[]) {
     localStorage.setItem(
@@ -81,6 +94,43 @@ describe('Notes page', () => {
         expect(screen.getByText(/select a note or create a new one/i)).toBeInTheDocument();
     });
 
+    // ── Deep-linking via URL ──────────────────────────────────────────────
+
+    it('deep-link to /notes/:id selects the note immediately on initial render', async () => {
+        preloadNotes([makeNote({ id: 'n1', title: 'Deep Note' })]);
+        const DeepWrapper = makeWrapper('/notes/n1');
+
+        render(<Notes />, { wrapper: DeepWrapper });
+
+        await waitFor(() => {
+            expect(screen.getByRole('heading', { name: 'Deep Note' })).toBeInTheDocument();
+        });
+    });
+
+    it('deep-link to /notes/:id hides the list panel initially', async () => {
+        preloadNotes([makeNote({ id: 'n1', title: 'Deep Note' })]);
+        const DeepWrapper = makeWrapper('/notes/n1');
+
+        render(<Notes />, { wrapper: DeepWrapper });
+
+        await waitFor(() => {
+            expect(screen.getByRole('heading', { name: 'Deep Note' })).toBeInTheDocument();
+        });
+        // Placeholder text should NOT be shown since a note is selected
+        expect(screen.queryByText(/select a note or create a new one/i)).not.toBeInTheDocument();
+    });
+
+    it('deep-link to /notes/:id with an unknown id shows the list and placeholder', () => {
+        preloadNotes([makeNote({ id: 'n1', title: 'Real Note' })]);
+        const DeepWrapper = makeWrapper('/notes/does-not-exist');
+
+        render(<Notes />, { wrapper: DeepWrapper });
+
+        expect(screen.getByText(/select a note or create a new one/i)).toBeInTheDocument();
+        // The note list should be visible (no note selected)
+        expect(screen.getByText('Real Note')).toBeInTheDocument();
+    });
+
     // ── Creating notes ────────────────────────────────────────────────────
 
     it('creates a note titled "New Note" when "+ New" is clicked', async () => {
@@ -90,7 +140,7 @@ describe('Notes page', () => {
         await user.click(screen.getByRole('button', { name: /\+ new/i }));
 
         await waitFor(() => {
-            expect(screen.getByText('New Note')).toBeInTheDocument();
+            expect(screen.getAllByText('New Note').length).toBeGreaterThan(0);
         });
     });
 

@@ -169,7 +169,7 @@ describe('reducer actions via dispatch', () => {
         const { result } = renderHook(() => useApp(), { wrapper });
 
         act(() => {
-            result.current.dispatch({ type: 'ADD_NOTE', payload: { title: 'Hello', content: 'World' } });
+            result.current.dispatch({ type: 'ADD_NOTE', payload: { id: 'test-id', title: 'Hello', content: 'World' } });
         });
 
         const notes = result.current.state.notes;
