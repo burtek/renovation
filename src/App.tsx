@@ -36,10 +36,25 @@ export default function App() {
                                 element={<Notes />}
                             />
                         </Route>
-                        <Route
-                            path="tasks"
-                            element={<Tasks />}
-                        />
+                        <Route path="tasks">
+                            <Route
+                                index
+                                element={(
+                                    <Navigate
+                                        to="/tasks/list"
+                                        replace
+                                    />
+                                )}
+                            />
+                            <Route
+                                path="list"
+                                element={<Tasks />}
+                            />
+                            <Route
+                                path="gantt"
+                                element={<Tasks />}
+                            />
+                        </Route>
                         <Route
                             path="finance"
                             element={<Finance />}
