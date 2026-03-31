@@ -68,6 +68,7 @@ describe('Tasks page', () => {
         localStorage.clear();
         vi.unstubAllGlobals();
         vi.clearAllMocks();
+        vi.useRealTimers();
     });
 
     // ── Empty state ───────────────────────────────────────────────────────
@@ -770,6 +771,68 @@ describe('Tasks page', () => {
         expect(screen.queryByPlaceholderText(/title \*/i)).not.toBeInTheDocument();
         // Subtask should NOT have been saved
         expect(screen.queryByText('Cancelled Sub')).not.toBeInTheDocument();
+    });
+
+    // ── Default dates on new task modal ──────────────────────────────────
+
+    it("pre-populates new task modal's startDate and endDate with today's date", async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2025-06-15T12:00:00Z'));
+
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+
+        const dateInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="date"]'));
+        expect(dateInputs[0].value).toBe('2025-06-15');
+        expect(dateInputs[1].value).toBe('2025-06-15');
+    });
+
+    // ── Duplicate subtask ─────────────────────────────────────────────────
+
+    it('clicking Dup opens the subtask modal pre-filled with source subtask data and completed=false', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [
+                    makeSubtask({
+                        id: 's1',
+                        parentId: 't1',
+                        title: 'Original Sub',
+                        notes: 'some notes',
+                        startDate: '2024-05-01',
+                        endDate: '2024-05-10',
+                        assignee: 'Alice',
+                        completed: true
+                    })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        // Expand subtasks so the Dup button is visible
+        await user.click(screen.getByText('▼'));
+
+        // Click the Dup button
+        await user.click(screen.getByRole('button', { name: /^dup$/i }));
+
+        // Modal should be open with the modal heading
+        expect(screen.getByRole('heading', { name: /new subtask/i })).toBeInTheDocument();
+
+        // Title pre-filled
+        expect(screen.getByDisplayValue('Original Sub')).toBeInTheDocument();
+
+        // Date inputs pre-filled from source subtask
+        const dateInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="date"]'));
+        expect(dateInputs[0].value).toBe('2024-05-01');
+        expect(dateInputs[1].value).toBe('2024-05-10');
+
+        // completed reset to false (checkbox unchecked)
+        const completedCheckbox = screen.getByRole('checkbox', { name: /completed/i });
+        expect(completedCheckbox).not.toBeChecked();
     });
 
     // ── Gantt dependency arrow null branch ────────────────────────────────
