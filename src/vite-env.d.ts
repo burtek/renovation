@@ -5,6 +5,8 @@ interface ImportMeta {
 
 interface ImportMetaEnv {
     // eslint-disable-next-line @typescript-eslint/naming-convention
+    readonly VITE_VERCEL_ENV?: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_VERCEL_GIT_COMMIT_SHA?: string;
     // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_VERCEL_DEPLOYMENT_ID?: string;
@@ -14,4 +16,6 @@ interface ImportMetaEnv {
     readonly VITE_VERCEL_GIT_REPO_OWNER?: string;
     // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_VERCEL_GIT_REPO_SLUG?: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    readonly VITE_BUILD_DATE?: string;
 }
