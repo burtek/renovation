@@ -72,7 +72,7 @@ export default function SaveLoadButtons() {
                                 <a
                                     href={`${commitUrlBase}/${commitSha}`}
                                     target="_blank"
-                                    rel="noreferrer"
+                                    rel="noopener noreferrer"
                                     title={commitSha}
                                     className="underline hover:text-gray-700 transition"
                                 >
@@ -92,7 +92,7 @@ export default function SaveLoadButtons() {
                         <a
                             href={changelogUrl}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="underline hover:text-gray-700 transition"
                         >
                             changelog
