@@ -1,3 +1,9 @@
+function formatLocalDate(iso: string): string {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear().toString()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 const GIT_PROVIDER_CONFIG: Partial<Record<string, { host: string; commitSegment: string; changelogSegment?: string }>> = {
     github: { host: 'github.com', commitSegment: 'commit', changelogSegment: 'releases' },
     gitlab: { host: 'gitlab.com', commitSegment: '-/commit', changelogSegment: '-/releases' },
@@ -70,7 +76,7 @@ export default function DeploymentInfo() {
             {deploymentId && (
                 <>
                     <span>Deployment:</span>
-                    <span>
+                    <span className="truncate">
                         {deploymentUrl
                             ? (
                                 <a
@@ -94,7 +100,7 @@ export default function DeploymentInfo() {
             {buildDate && (
                 <>
                     <span>Build date:</span>
-                    <span>{buildDate}</span>
+                    <span title={buildDate}>{formatLocalDate(buildDate)}</span>
                 </>
             )}
             {changelogUrl && (

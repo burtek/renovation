@@ -266,7 +266,9 @@ describe('SaveLoadButtons', () => {
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
             expect(screen.getByText('Build date:')).toBeInTheDocument();
-            expect(screen.getByText('2024-01-15T12:00:00.000Z')).toBeInTheDocument();
+            const buildDateSpan = screen.getByTitle('2024-01-15T12:00:00.000Z');
+            expect(buildDateSpan).toBeInTheDocument();
+            expect(buildDateSpan).toHaveTextContent(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
         });
 
         it('shows changelog link pointing to GitHub releases when provider is github', () => {
