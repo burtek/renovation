@@ -1,11 +1,14 @@
+import { lazy } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import Layout from './components/Layout';
 import { AppProvider } from './contexts/AppContext';
-import CalendarPage from './pages/Calendar';
-import Finance from './pages/Finance';
-import Notes from './pages/Notes';
-import Tasks from './pages/Tasks';
+
+
+const CalendarPage = lazy(() => import('./pages/Calendar'));
+const Finance = lazy(() => import('./pages/Finance'));
+const Notes = lazy(() => import('./pages/Notes'));
+const Tasks = lazy(() => import('./pages/Tasks'));
 
 
 export default function App() {

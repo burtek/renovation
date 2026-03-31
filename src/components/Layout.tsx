@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { cn } from '../utils/classnames';
@@ -96,7 +96,14 @@ export default function Layout() {
                     <span className="font-bold text-lg">🏠 Renovation</span>
                 </div>
                 <main className="flex-1 overflow-auto">
-                    <Outlet />
+                    <Suspense fallback={(
+                        <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
+                            Loading…
+                        </div>
+                    )}
+                    >
+                        <Outlet />
+                    </Suspense>
                 </main>
             </div>
         </div>
