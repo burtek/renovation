@@ -58,9 +58,9 @@ export default function Tasks() {
         setTaskModal({ open: true, editTask: task });
     };
 
-    const saveTask = () => {
+    const performSaveTask = (): boolean => {
         if (!taskForm.title.trim()) {
-            return;
+            return false;
         }
 
         if (taskModal.editTask) {
@@ -80,7 +80,7 @@ export default function Tasks() {
                         `Postponing "${oldTask.title}" by ${shift} day(s) will also shift:\n${names}\nby ${shift} day(s). Proceed?`
                     );
                     if (!proceed) {
-                        return;
+                        return false;
                     }
                     dependents.forEach(t => {
                         dispatch({
@@ -99,7 +99,21 @@ export default function Tasks() {
         } else {
             dispatch({ type: 'ADD_TASK', payload: { ...taskForm, subtasks: [] } });
         }
-        setTaskModal({ open: false });
+        return true;
+    };
+
+    const saveTask = () => {
+        if (performSaveTask()) {
+            setTaskModal({ open: false });
+        }
+    };
+
+    const saveTaskAndNew = () => {
+        if (performSaveTask()) {
+            const today = getToday();
+            setTaskForm({ ...emptyTaskForm, startDate: today, endDate: today });
+            setTaskModal({ open: true });
+        }
     };
 
     const deleteTask = (id: string) => {
@@ -114,7 +128,7 @@ export default function Tasks() {
         const startDate = parentTask?.startDate ?? getToday();
         const parentEndDate = parentTask?.endDate ?? '';
         const endDate = parentEndDate || startDate;
-        setSubtaskForm({ ...emptySubtaskForm, startDate, endDate });
+        setSubtaskForm({ ...emptySubtaskForm, startDate, endDate, assignee: parentTask?.assignee ?? '' });
         setSubtaskModal({ open: true, taskId });
     };
 
@@ -131,9 +145,9 @@ export default function Tasks() {
         setSubtaskModal({ open: true, taskId, editSubtask: subtask });
     };
 
-    const saveSubtask = () => {
+    const performSaveSubtask = (): boolean => {
         if (!subtaskForm.title.trim()) {
-            return;
+            return false;
         }
         if (subtaskModal.editSubtask) {
             const oldSub = subtaskModal.editSubtask;
@@ -153,7 +167,7 @@ export default function Tasks() {
                         `Postponing "${oldSub.title}" by ${shift} day(s) will also shift:\n${names}\nby ${shift} day(s). Proceed?`
                     );
                     if (!proceed) {
-                        return;
+                        return false;
                     }
                     dependents.forEach(s => {
                         const parentTask = state.tasks.find(t => t.subtasks.some(st => st.id === s.id));
@@ -185,7 +199,25 @@ export default function Tasks() {
                 payload: { taskId: subtaskModal.taskId, subtask: { ...subtaskForm, parentId: subtaskModal.taskId } }
             });
         }
-        setSubtaskModal({ open: false, taskId: '' });
+        return true;
+    };
+
+    const saveSubtask = () => {
+        if (performSaveSubtask()) {
+            setSubtaskModal({ open: false, taskId: '' });
+        }
+    };
+
+    const saveSubtaskAndNew = () => {
+        if (performSaveSubtask()) {
+            const { taskId } = subtaskModal;
+            const parentTask = state.tasks.find(t => t.id === taskId);
+            const startDate = parentTask?.startDate ?? getToday();
+            const parentEndDate = parentTask?.endDate ?? '';
+            const endDate = parentEndDate || startDate;
+            setSubtaskForm({ ...emptySubtaskForm, startDate, endDate, assignee: parentTask?.assignee ?? '' });
+            setSubtaskModal({ open: true, taskId });
+        }
     };
 
     const deleteSubtask = (taskId: string, subtaskId: string) => {
@@ -276,6 +308,7 @@ export default function Tasks() {
                         setTaskForm(f => ({ ...f, ...update }));
                     }}
                     onSave={saveTask}
+                    onSaveAndNew={saveTaskAndNew}
                     onClose={() => {
                         setTaskModal({ open: false });
                     }}
@@ -285,12 +318,14 @@ export default function Tasks() {
             {subtaskModal.open && (
                 <SubtaskModal
                     editSubtask={subtaskModal.editSubtask}
+                    parentTaskTitle={state.tasks.find(t => t.id === subtaskModal.taskId)?.title ?? ''}
                     form={subtaskForm}
                     allSubtasks={allSubtasks}
                     onFormChange={update => {
                         setSubtaskForm(f => ({ ...f, ...update }));
                     }}
                     onSave={saveSubtask}
+                    onSaveAndNew={saveSubtaskAndNew}
                     onClose={() => {
                         setSubtaskModal({ open: false, taskId: '' });
                     }}

@@ -10,10 +10,11 @@ interface Props {
     allTasks: Task[];
     onFormChange: (update: Partial<TaskFormData>) => void;
     onSave: () => void;
+    onSaveAndNew: () => void;
     onClose: () => void;
 }
 
-export default function TaskModal({ editTask, form, allTasks, onFormChange, onSave, onClose }: Props) {
+export default function TaskModal({ editTask, form, allTasks, onFormChange, onSave, onSaveAndNew, onClose }: Props) {
     const otherTasks = allTasks.filter(t => t.id !== editTask?.id);
 
     return (
@@ -26,6 +27,18 @@ export default function TaskModal({ editTask, form, allTasks, onFormChange, onSa
                         value={form.title}
                         onChange={e => {
                             onFormChange({ title: e.target.value });
+                        }}
+                        onKeyDown={e => {
+                            if (e.repeat || e.nativeEvent.isComposing) {
+                                return;
+                            }
+                            if (e.key === 'Enter' && e.shiftKey) {
+                                e.preventDefault();
+                                onSaveAndNew();
+                            } else if (e.key === 'Enter') {
+                                e.preventDefault();
+                                onSave();
+                            }
                         }}
                         className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                     />
