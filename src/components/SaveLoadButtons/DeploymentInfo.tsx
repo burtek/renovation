@@ -49,7 +49,11 @@ export default function DeploymentInfo() {
                     )
             )}
             {commitSha && deploymentId && <span> · </span>}
-            {deploymentId && <span>{deploymentId}</span>}
+            {deploymentId && (
+                <span title={deploymentId}>
+                    {deploymentId.length > 10 ? `${deploymentId.slice(0, 10)}…` : deploymentId}
+                </span>
+            )}
             {hasDeploymentInfo && !!changelogUrl && <span> · </span>}
             {changelogUrl && (
                 <a

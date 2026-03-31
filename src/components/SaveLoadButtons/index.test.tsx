@@ -183,7 +183,9 @@ describe('SaveLoadButtons', () => {
             vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_test123');
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
-            expect(screen.getByText('dpl_test123')).toBeInTheDocument();
+            const deploymentSpan = screen.getByTitle('dpl_test123');
+            expect(deploymentSpan).toBeInTheDocument();
+            expect(deploymentSpan).toHaveTextContent('dpl_test12\u2026');
             expect(screen.queryByText(/·/)).not.toBeInTheDocument();
         });
 
@@ -194,7 +196,8 @@ describe('SaveLoadButtons', () => {
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
             expect(screen.getByTitle(sha)).toHaveTextContent('abc1234');
-            expect(screen.getByText('dpl_test123')).toBeInTheDocument();
+            const deploymentSpan = screen.getByTitle('dpl_test123');
+            expect(deploymentSpan).toHaveTextContent('dpl_test12\u2026');
             expect(screen.getByText(/·/)).toBeInTheDocument();
         });
 
