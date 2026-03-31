@@ -4,13 +4,32 @@ import { useRef } from 'react';
 import { useApp } from '../contexts/AppContext';
 
 
+const GIT_PROVIDER_CONFIG: Partial<Record<string, { host: string; commitSegment: string; changelogSegment?: string }>> = {
+    github: { host: 'github.com', commitSegment: 'commit', changelogSegment: 'releases' },
+    gitlab: { host: 'gitlab.com', commitSegment: '-/commit', changelogSegment: '-/releases' },
+    bitbucket: { host: 'bitbucket.org', commitSegment: 'commits' }
+};
+
 export default function SaveLoadButtons() {
     const { saveToFile, loadFromFile } = useApp();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const commitSha = import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA;
     const deploymentId = import.meta.env.VITE_VERCEL_DEPLOYMENT_ID;
-    const repoUrl = import.meta.env.VITE_GITHUB_REPO_URL;
+    const gitProvider = import.meta.env.VITE_VERCEL_GIT_PROVIDER;
+    const gitRepoOwner = import.meta.env.VITE_VERCEL_GIT_REPO_OWNER;
+    const gitRepoSlug = import.meta.env.VITE_VERCEL_GIT_REPO_SLUG;
     const hasDeploymentInfo = !!commitSha || !!deploymentId;
+
+    const providerConfig = gitProvider === undefined ? undefined : GIT_PROVIDER_CONFIG[gitProvider];
+    const repoUrl = providerConfig !== undefined && gitRepoOwner !== undefined && gitRepoSlug !== undefined
+        ? `https://${providerConfig.host}/${gitRepoOwner}/${gitRepoSlug}`
+        : undefined;
+    const commitUrlBase = providerConfig !== undefined && repoUrl !== undefined
+        ? `${repoUrl}/${providerConfig.commitSegment}`
+        : undefined;
+    const changelogUrl = providerConfig?.changelogSegment !== undefined && repoUrl !== undefined
+        ? `${repoUrl}/${providerConfig.changelogSegment}`
+        : undefined;
 
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -45,13 +64,13 @@ export default function SaveLoadButtons() {
                     onChange={handleFileChange}
                 />
             </div>
-            {(hasDeploymentInfo || !!repoUrl) && (
+            {(hasDeploymentInfo || !!changelogUrl) && (
                 <div className="text-xs text-gray-500 leading-tight">
                     {commitSha && (
-                        repoUrl
+                        commitUrlBase
                             ? (
                                 <a
-                                    href={`${repoUrl}/commit/${commitSha}`}
+                                    href={`${commitUrlBase}/${commitSha}`}
                                     target="_blank"
                                     rel="noreferrer"
                                     title={commitSha}
@@ -68,10 +87,10 @@ export default function SaveLoadButtons() {
                     )}
                     {commitSha && deploymentId && <span> · </span>}
                     {deploymentId && <span>{deploymentId}</span>}
-                    {hasDeploymentInfo && !!repoUrl && <span> · </span>}
-                    {repoUrl && (
+                    {hasDeploymentInfo && !!changelogUrl && <span> · </span>}
+                    {changelogUrl && (
                         <a
-                            href={`${repoUrl}/releases`}
+                            href={changelogUrl}
                             target="_blank"
                             rel="noreferrer"
                             className="underline hover:text-gray-700 transition"
