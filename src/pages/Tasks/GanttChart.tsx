@@ -1,3 +1,5 @@
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+
 import type { Task } from '../../types';
 
 import { MS_PER_DAY } from './types';
@@ -21,10 +23,33 @@ const LABEL_WIDTH = 220;
 const HEADER_HEIGHT = 20;
 const MIN_DAY_WIDTH = 20;
 const MAX_DAY_WIDTH = 40;
-const CHART_TARGET_WIDTH = 800;
-const MARGIN_DAYS = 1;
+const MARGIN_DAYS = 3;
 
 export default function GanttChart({ tasks }: { tasks: Task[] }) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [containerWidth, setContainerWidth] = useState(0);
+
+    useLayoutEffect(() => {
+        if (containerRef.current) {
+            setContainerWidth(containerRef.current.getBoundingClientRect().width);
+        }
+    }, []);
+
+    useEffect(() => {
+        const el = containerRef.current;
+        const observer = new ResizeObserver(entries => {
+            for (const entry of entries) {
+                setContainerWidth(entry.contentRect.width);
+            }
+        });
+        if (el) {
+            observer.observe(el);
+        }
+        return () => {
+            observer.disconnect();
+        };
+    }, []);
+
     const rows: GanttRow[] = [];
     for (const task of tasks) {
         if (task.startDate && task.endDate) {
@@ -73,7 +98,14 @@ export default function GanttChart({ tasks }: { tasks: Task[] }) {
     minDate.setUTCDate(minDate.getUTCDate() - MARGIN_DAYS);
     maxDate.setUTCDate(maxDate.getUTCDate() + MARGIN_DAYS);
     const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / MS_PER_DAY);
-    const dayWidth = Math.max(MIN_DAY_WIDTH, Math.min(MAX_DAY_WIDTH, CHART_TARGET_WIDTH / totalDays));
+    const availableForDays = containerWidth > LABEL_WIDTH ? containerWidth - LABEL_WIDTH : 0;
+    const dayWidth = Math.max(
+        MIN_DAY_WIDTH,
+        Math.min(
+            MAX_DAY_WIDTH,
+            availableForDays > 0 ? availableForDays / totalDays : MIN_DAY_WIDTH
+        )
+    );
     const chartWidth = LABEL_WIDTH + (totalDays * dayWidth);
     const chartHeight = ((rows.length + 0.5) * ROW_HEIGHT) + HEADER_HEIGHT;
 
@@ -95,7 +127,10 @@ export default function GanttChart({ tasks }: { tasks: Task[] }) {
     const rowIndexMap = new Map(rows.map((r, i) => [r.id, i]));
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 overflow-auto">
+        <div
+            ref={containerRef}
+            className="w-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 overflow-auto"
+        >
             <svg
                 width={chartWidth}
                 height={chartHeight}
