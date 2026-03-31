@@ -197,5 +197,99 @@ describe('SaveLoadButtons', () => {
             expect(screen.getByText('dpl_test123')).toBeInTheDocument();
             expect(screen.getByText(/·/)).toBeInTheDocument();
         });
+
+        it('shows SHA as a link to the commit when git provider env vars are set', () => {
+            const sha = 'abc1234567890abcdef';
+            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
+            vi.stubEnv('VITE_VERCEL_GIT_PROVIDER', 'github');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_OWNER', 'owner');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_SLUG', 'repo');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            const link = screen.getByRole('link', { name: /abc1234/i });
+            expect(link).toHaveAttribute('href', `https://github.com/owner/repo/commit/${sha}`);
+            expect(link).toHaveAttribute('title', sha);
+        });
+
+        it('shows SHA as a link with GitLab /-/commit URL pattern when provider is gitlab', () => {
+            const sha = 'abc1234567890abcdef';
+            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
+            vi.stubEnv('VITE_VERCEL_GIT_PROVIDER', 'gitlab');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_OWNER', 'owner');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_SLUG', 'repo');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            const link = screen.getByRole('link', { name: /abc1234/i });
+            expect(link).toHaveAttribute('href', `https://gitlab.com/owner/repo/-/commit/${sha}`);
+        });
+
+        it('shows SHA as a plain span (not a link) when git provider env vars are absent', () => {
+            const sha = 'abc1234567890abcdef';
+            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            // No link for sha
+            expect(screen.queryByRole('link')).not.toBeInTheDocument();
+            expect(screen.getByTitle(sha)).toHaveTextContent('abc1234');
+        });
+
+        it('shows changelog link pointing to GitHub releases when provider is github', () => {
+            vi.stubEnv('VITE_VERCEL_GIT_PROVIDER', 'github');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_OWNER', 'owner');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_SLUG', 'repo');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            const link = screen.getByRole('link', { name: /changelog/i });
+            expect(link).toHaveAttribute('href', 'https://github.com/owner/repo/releases');
+            expect(link).toHaveAttribute('target', '_blank');
+            expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+        });
+
+        it('shows changelog link pointing to GitLab releases when provider is gitlab', () => {
+            vi.stubEnv('VITE_VERCEL_GIT_PROVIDER', 'gitlab');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_OWNER', 'owner');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_SLUG', 'repo');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            const link = screen.getByRole('link', { name: /changelog/i });
+            expect(link).toHaveAttribute('href', 'https://gitlab.com/owner/repo/-/releases');
+        });
+
+        it('does not show changelog link when provider is bitbucket (no releases page)', () => {
+            vi.stubEnv('VITE_VERCEL_GIT_PROVIDER', 'bitbucket');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_OWNER', 'owner');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_SLUG', 'repo');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.queryByRole('link', { name: /changelog/i })).not.toBeInTheDocument();
+        });
+
+        it('shows changelog link with separator after deployment info when sha is also set', () => {
+            const sha = 'abc1234567890abcdef';
+            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
+            vi.stubEnv('VITE_VERCEL_GIT_PROVIDER', 'github');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_OWNER', 'owner');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_SLUG', 'repo');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.getByText(/·/)).toBeInTheDocument();
+            expect(screen.getByRole('link', { name: /changelog/i })).toBeInTheDocument();
+        });
+
+        it('does not show changelog link when git provider env vars are absent', () => {
+            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', 'abc1234567890abcdef');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.queryByRole('link', { name: /changelog/i })).not.toBeInTheDocument();
+        });
+
+        it('does not show changelog link when provider is unknown', () => {
+            vi.stubEnv('VITE_VERCEL_GIT_PROVIDER', 'azure');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_OWNER', 'owner');
+            vi.stubEnv('VITE_VERCEL_GIT_REPO_SLUG', 'repo');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.queryByRole('link', { name: /changelog/i })).not.toBeInTheDocument();
+        });
     });
 });
