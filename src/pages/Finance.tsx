@@ -143,7 +143,7 @@ export default function Finance() {
     };
 
     const save = () => {
-        const price = parseFloat(form.price);
+        const price = parseFloat(form.price.replace(/,/g, '.'));
         if (!form.description.trim() || isNaN(price)) {
             return;
         }
@@ -434,7 +434,8 @@ export default function Finance() {
                                     className="flex-1 border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                 />
                                 <input
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     placeholder="Price *"
                                     value={form.price}
                                     onChange={e => {
