@@ -1,7 +1,7 @@
 import MDEditor from '@uiw/react-md-editor';
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate, useParams } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
@@ -13,6 +13,47 @@ import type { Note } from '../types';
 import { cn } from '../utils/classnames';
 
 
+interface UIState {
+    editing: boolean;
+    editTitle: string;
+    editContent: string;
+    showList: boolean;
+}
+
+type UIAction
+    = | { type: 'NOTE_NAVIGATED'; note: Note | null }
+        | { type: 'SHOW_NOTE' }
+        | { type: 'START_EDIT'; title: string; content: string }
+        | { type: 'CANCEL_EDIT' }
+        | { type: 'FINISH_SAVE' }
+        | { type: 'SET_TITLE'; title: string }
+        | { type: 'SET_CONTENT'; content: string }
+        | { type: 'SHOW_LIST' };
+
+// eslint-disable-next-line consistent-return, @typescript-eslint/consistent-return
+function uiReducer(state: UIState, action: UIAction): UIState {
+    switch (action.type) {
+        case 'NOTE_NAVIGATED':
+            return action.note
+                ? { editing: false, editTitle: action.note.title, editContent: action.note.content, showList: false }
+                : { editing: false, editTitle: '', editContent: '', showList: true };
+        case 'SHOW_NOTE':
+            return { ...state, showList: false, editing: false };
+        case 'START_EDIT':
+            return { ...state, editing: true, editTitle: action.title, editContent: action.content };
+        case 'CANCEL_EDIT':
+            return { ...state, editing: false };
+        case 'FINISH_SAVE':
+            return { ...state, editing: false };
+        case 'SET_TITLE':
+            return { ...state, editTitle: action.title };
+        case 'SET_CONTENT':
+            return { ...state, editContent: action.content };
+        case 'SHOW_LIST':
+            return { ...state, showList: true };
+    }
+}
+
 export default function Notes() {
     const { state, dispatch } = useApp();
     const colorScheme = useColorScheme();
@@ -21,24 +62,22 @@ export default function Notes() {
 
     const selectedNote = state.notes.find(n => n.id === noteId) ?? null;
 
-    const [editing, setEditing] = useState(false);
-    const [editTitle, setEditTitle] = useState(selectedNote?.title ?? '');
-    const [editContent, setEditContent] = useState(selectedNote?.content ?? '');
-    const [showList, setShowList] = useState(!selectedNote);
+    const [ui, uiDispatch] = useReducer(uiReducer, {
+        editing: false,
+        editTitle: selectedNote?.title ?? '',
+        editContent: selectedNote?.content ?? '',
+        showList: !selectedNote
+    });
+    const { editing, editTitle, editContent, showList } = ui;
 
-    // Reset edit state when navigating to a different note via URL
-    const [prevNoteId, setPrevNoteId] = useState(noteId);
-    if (prevNoteId !== noteId) {
-        setPrevNoteId(noteId);
-        setEditing(false);
-        if (selectedNote) {
-            setEditTitle(selectedNote.title);
-            setEditContent(selectedNote.content);
-            setShowList(false);
-        } else {
-            setShowList(true);
-        }
-    }
+    // Keep a ref to selectedNote so the effect below doesn't need it as a dep
+    const selectedNoteRef = useRef(selectedNote);
+    selectedNoteRef.current = selectedNote;
+
+    // Reset UI state when navigating to a different note via URL
+    useEffect(() => {
+        uiDispatch({ type: 'NOTE_NAVIGATED', note: selectedNoteRef.current });
+    }, [noteId]);
 
     // Update document title based on selected note
     useEffect(() => {
@@ -50,8 +89,7 @@ export default function Notes() {
     const handleSelect = (note: Note) => {
         // Always hide the list and reset editing when a note is selected,
         // even if it's the currently-selected note (noteId doesn't change).
-        setShowList(false);
-        setEditing(false);
+        uiDispatch({ type: 'SHOW_NOTE' });
         navigate(`/notes/${note.id}`);
     };
 
@@ -77,16 +115,14 @@ export default function Notes() {
             return;
         }
         dispatch({ type: 'UPDATE_NOTE', payload: { ...selectedNote, title: editTitle, content: editContent } });
-        setEditing(false);
+        uiDispatch({ type: 'FINISH_SAVE' });
     };
 
     const handleEdit = () => {
         if (!selectedNote) {
             return;
         }
-        setEditTitle(selectedNote.title);
-        setEditContent(selectedNote.content);
-        setEditing(true);
+        uiDispatch({ type: 'START_EDIT', title: selectedNote.title, content: selectedNote.content });
     };
 
     const navigateToNote = (title: string) => {
@@ -113,7 +149,7 @@ export default function Notes() {
                         <button
                             type="button"
                             onClick={() => {
-                                setShowList(true);
+                                uiDispatch({ type: 'SHOW_LIST' });
                             }}
                             className="md:hidden text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 mr-1"
                         >←
@@ -121,7 +157,7 @@ export default function Notes() {
                         <input
                             value={editTitle}
                             onChange={e => {
-                                setEditTitle(e.target.value);
+                                uiDispatch({ type: 'SET_TITLE', title: e.target.value });
                             }}
                             className="flex-1 text-xl font-bold border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-400 pb-1 bg-transparent dark:text-gray-100"
                         />
@@ -134,7 +170,7 @@ export default function Notes() {
                         <button
                             type="button"
                             onClick={() => {
-                                setEditing(false);
+                                uiDispatch({ type: 'CANCEL_EDIT' });
                             }}
                             className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300"
                         >Cancel
@@ -147,7 +183,7 @@ export default function Notes() {
                         <MDEditor
                             value={editContent}
                             onChange={v => {
-                                setEditContent(v ?? '');
+                                uiDispatch({ type: 'SET_CONTENT', content: v ?? '' });
                             }}
                             height="100%"
                             preview="edit"
@@ -162,7 +198,7 @@ export default function Notes() {
                     <button
                         type="button"
                         onClick={() => {
-                            setShowList(true);
+                            uiDispatch({ type: 'SHOW_LIST' });
                         }}
                         className="md:hidden text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 mr-1"
                     >←
