@@ -242,7 +242,7 @@ describe('SaveLoadButtons', () => {
             const link = screen.getByRole('link', { name: /changelog/i });
             expect(link).toHaveAttribute('href', 'https://github.com/owner/repo/releases');
             expect(link).toHaveAttribute('target', '_blank');
-            expect(link).toHaveAttribute('rel', 'noreferrer');
+            expect(link).toHaveAttribute('rel', 'noopener noreferrer');
         });
 
         it('shows changelog link pointing to GitLab releases when provider is gitlab', () => {
