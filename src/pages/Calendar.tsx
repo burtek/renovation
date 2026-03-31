@@ -63,12 +63,24 @@ interface BigCalEvent {
     resource: CalendarEvent;
 }
 
+function EventComponent({ event }: { event: BigCalEvent }) {
+    return (
+        <div>
+            <div>{event.title}</div>
+            {event.resource.contractor
+                && <div className="text-xs opacity-80">{event.resource.contractor}</div>}
+        </div>
+    );
+}
+
 const DnDCalendar = withDragAndDrop<BigCalEvent>(Calendar);
 
 export default function CalendarPage() {
     const { state, dispatch } = useApp();
     const [modal, setModal] = useState<{ open: boolean; editEvent?: CalendarEvent }>({ open: false });
     const [form, setForm] = useState<EventFormData>(emptyForm);
+
+    const contractorNames = Array.from(new Set(state.calendarEvents.map(e => e.contractor).filter((c): c is string => Boolean(c))));
 
     const events: BigCalEvent[] = state.calendarEvents.map(e => {
         const start = new Date(`${e.date}T00:00:00`);
@@ -170,6 +182,7 @@ export default function CalendarPage() {
                     resizable
                     views={['month', 'week', 'day']}
                     defaultView="month"
+                    components={{ event: EventComponent }}
                 />
             </div>
 
@@ -212,6 +225,7 @@ export default function CalendarPage() {
                                 </div>
                             </div>
                             <input
+                                list="contractor-suggestions"
                                 placeholder="Contractor"
                                 value={form.contractor}
                                 onChange={e => {
@@ -219,9 +233,22 @@ export default function CalendarPage() {
                                 }}
                                 className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
+                            <datalist id="contractor-suggestions">
+                                {contractorNames.map(name => (
+                                    <option
+                                        key={name}
+                                        value={name}
+                                    />
+                                ))}
+                            </datalist>
                             <div>
-                                <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Event type</label>
+                                <label
+                                    htmlFor="event-type"
+                                    className="text-xs text-gray-500 dark:text-gray-400 mb-1 block"
+                                >Event type
+                                </label>
                                 <select
+                                    id="event-type"
                                     value={form.eventType}
                                     onChange={e => {
                                         const found = EVENT_TYPES.find(t => t.value === e.target.value);
