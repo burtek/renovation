@@ -242,7 +242,7 @@ export default function Notes() {
                             onClick={() => {
                                 handleSelect(note);
                             }}
-                            className={cn('w-full text-left px-4 py-3 border-b text-sm hover:bg-gray-50 transition', noteId === note.id && 'bg-blue-50 border-l-4 border-blue-400')}
+                            className={cn('w-full text-left px-4 py-3 border-b dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition', noteId === note.id && 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-400')}
                         >
                             <div className="font-medium truncate dark:text-gray-200">{note.title}</div>
                             <div className="text-gray-400 dark:text-gray-500 text-xs">{new Date(note.updatedAt).toLocaleDateString()}</div>
