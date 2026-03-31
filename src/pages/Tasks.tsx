@@ -246,15 +246,15 @@ export default function Tasks() {
 
     return (
         <div className="h-full flex flex-col">
-            <div className="p-4 bg-white border-b flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-800">Tasks</h1>
+            <div className="p-4 bg-white dark:bg-gray-800 border-b dark:border-gray-700 flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Tasks</h1>
                 <div className="flex gap-2">
                     <button
                         type="button"
                         onClick={() => {
                             setTab('list');
                         }}
-                        className={cn('px-3 py-1 rounded text-sm', tab === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300')}
+                        className={cn('px-3 py-1 rounded text-sm', tab === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600')}
                     >List
                     </button>
                     <button
@@ -262,7 +262,7 @@ export default function Tasks() {
                         onClick={() => {
                             setTab('gantt');
                         }}
-                        className={cn('px-3 py-1 rounded text-sm', tab === 'gantt' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300')}
+                        className={cn('px-3 py-1 rounded text-sm', tab === 'gantt' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600')}
                     >Gantt
                     </button>
                 </div>
@@ -279,11 +279,11 @@ export default function Tasks() {
                     ? (
                         <div className="space-y-3">
                             {state.tasks.length === 0
-                                && <p className="text-gray-400 text-center py-8">No tasks yet. Create one!</p>}
+                                && <p className="text-gray-400 dark:text-gray-500 text-center py-8">No tasks yet. Create one!</p>}
                             {state.tasks.map(task => (
                                 <div
                                     key={task.id}
-                                    className="bg-white rounded-lg shadow-sm border"
+                                    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700"
                                 >
                                     <div className="flex items-center p-4 gap-2 flex-wrap">
                                         <button
@@ -291,7 +291,7 @@ export default function Tasks() {
                                             onClick={() => {
                                                 toggleTaskComplete(task);
                                             }}
-                                            className={cn('w-5 h-5 rounded border-2 flex-shrink-0', task.completed ? 'bg-green-500 border-green-500' : 'border-gray-300')}
+                                            className={cn('w-5 h-5 rounded border-2 flex-shrink-0', task.completed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-gray-500')}
                                             title="Toggle complete"
                                         >
                                             {task.completed && (
@@ -309,10 +309,10 @@ export default function Tasks() {
                                             )}
                                         </button>
                                         <div className="flex-1 min-w-0">
-                                            <span className={cn('font-medium', task.completed ? 'line-through text-gray-400' : 'text-gray-800')}>{task.title}</span>
-                                            {task.assignee && <span className="ml-2 text-xs text-gray-500">👤 {task.assignee}</span>}
+                                            <span className={cn('font-medium', task.completed ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-100')}>{task.title}</span>
+                                            {task.assignee && <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">👤 {task.assignee}</span>}
                                             {task.startDate && (
-                                                <span className="ml-2 text-xs text-gray-500">
+                                                <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                                                     📅 {task.startDate}{task.endDate ? ` → ${task.endDate}` : ''}
                                                 </span>
                                             )}
@@ -323,7 +323,7 @@ export default function Tasks() {
                                                 onClick={() => {
                                                     openNewSubtask(task.id);
                                                 }}
-                                                className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+                                                className="text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 dark:text-gray-300 px-2 py-1 rounded"
                                             >+ Subtask
                                             </button>
                                             <button
@@ -331,7 +331,7 @@ export default function Tasks() {
                                                 onClick={() => {
                                                     openEditTask(task);
                                                 }}
-                                                className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded"
+                                                className="text-xs bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-400 px-2 py-1 rounded"
                                             >Edit
                                             </button>
                                             <button
@@ -339,7 +339,7 @@ export default function Tasks() {
                                                 onClick={() => {
                                                     deleteTask(task.id);
                                                 }}
-                                                className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded"
+                                                className="text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 px-2 py-1 rounded"
                                             >Delete
                                             </button>
                                             {task.subtasks.length > 0 && (
@@ -348,7 +348,7 @@ export default function Tasks() {
                                                     onClick={() => {
                                                         toggleExpand(task.id);
                                                     }}
-                                                    className="text-gray-400 hover:text-gray-600 ml-1"
+                                                    className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 ml-1"
                                                 >
                                                     {expandedTasks.has(task.id) ? '▲' : '▼'}
                                                 </button>
@@ -356,18 +356,18 @@ export default function Tasks() {
                                         </div>
                                     </div>
                                     {expandedTasks.has(task.id) && task.subtasks.length > 0 && (
-                                        <div className="border-t ml-8">
+                                        <div className="border-t dark:border-gray-700 ml-8">
                                             {task.subtasks.map(sub => (
                                                 <div
                                                     key={sub.id}
-                                                    className="flex items-center p-3 gap-3 border-b last:border-b-0 bg-gray-50"
+                                                    className="flex items-center p-3 gap-3 border-b dark:border-gray-700 last:border-b-0 bg-gray-50 dark:bg-gray-700/50"
                                                 >
                                                     <button
                                                         type="button"
                                                         onClick={() => {
                                                             toggleSubtaskComplete(task.id, sub);
                                                         }}
-                                                        className={cn('w-4 h-4 rounded border-2 flex-shrink-0', sub.completed ? 'bg-green-500 border-green-500' : 'border-gray-300')}
+                                                        className={cn('w-4 h-4 rounded border-2 flex-shrink-0', sub.completed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-gray-500')}
                                                         title="Toggle complete"
                                                     >
                                                         {sub.completed && (
@@ -384,15 +384,15 @@ export default function Tasks() {
                                                             </svg>
                                                         )}
                                                     </button>
-                                                    <span className={cn('flex-1 text-sm', sub.completed ? 'line-through text-gray-400' : 'text-gray-700')}>{sub.title}</span>
-                                                    {sub.assignee && <span className="text-xs text-gray-500">👤 {sub.assignee}</span>}
-                                                    {sub.startDate && <span className="text-xs text-gray-500">📅 {sub.startDate}{sub.endDate ? ` → ${sub.endDate}` : ''}</span>}
+                                                    <span className={cn('flex-1 text-sm', sub.completed ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300')}>{sub.title}</span>
+                                                    {sub.assignee && <span className="text-xs text-gray-500 dark:text-gray-400">👤 {sub.assignee}</span>}
+                                                    {sub.startDate && <span className="text-xs text-gray-500 dark:text-gray-400">📅 {sub.startDate}{sub.endDate ? ` → ${sub.endDate}` : ''}</span>}
                                                     <button
                                                         type="button"
                                                         onClick={() => {
                                                             openEditSubtask(task.id, sub);
                                                         }}
-                                                        className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded"
+                                                        className="text-xs bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-400 px-2 py-1 rounded"
                                                     >Edit
                                                     </button>
                                                     <button
@@ -400,7 +400,7 @@ export default function Tasks() {
                                                         onClick={() => {
                                                             deleteSubtask(task.id, sub.id);
                                                         }}
-                                                        className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded"
+                                                        className="text-xs bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 px-2 py-1 rounded"
                                                     >Del
                                                     </button>
                                                 </div>
@@ -417,8 +417,8 @@ export default function Tasks() {
             {/* Task Modal */}
             {taskModal.open && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl max-h-screen overflow-y-auto">
-                        <h2 className="text-lg font-bold mb-4">{taskModal.editTask ? 'Edit Task' : 'New Task'}</h2>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 shadow-xl max-h-screen overflow-y-auto">
+                        <h2 className="text-lg font-bold mb-4 dark:text-gray-100">{taskModal.editTask ? 'Edit Task' : 'New Task'}</h2>
                         <div className="space-y-3">
                             <input
                                 placeholder="Title *"
@@ -426,7 +426,7 @@ export default function Tasks() {
                                 onChange={e => {
                                     setTaskForm(f => ({ ...f, title: e.target.value }));
                                 }}
-                                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                             <textarea
                                 placeholder="Notes"
@@ -434,11 +434,11 @@ export default function Tasks() {
                                 onChange={e => {
                                     setTaskForm(f => ({ ...f, notes: e.target.value }));
                                 }}
-                                className="w-full border rounded px-3 py-2 text-sm h-20 focus:outline-none focus:border-blue-400"
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm h-20 focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                             <div className="flex gap-2">
                                 <div className="flex-1">
-                                    <label className="text-xs text-gray-500 mb-1 block">Start date</label>
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Start date</label>
                                     <input
                                         type="date"
                                         value={taskForm.startDate}
@@ -446,11 +446,11 @@ export default function Tasks() {
                                             const startDate = e.target.value;
                                             setTaskForm(f => ({ ...f, startDate, endDate: f.endDate || startDate }));
                                         }}
-                                        className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <label className="text-xs text-gray-500 mb-1 block">End date</label>
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">End date</label>
                                     <input
                                         type="date"
                                         value={taskForm.endDate}
@@ -458,7 +458,7 @@ export default function Tasks() {
                                         onChange={e => {
                                             setTaskForm(f => ({ ...f, endDate: e.target.value }));
                                         }}
-                                        className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                     />
                                 </div>
                             </div>
@@ -468,9 +468,9 @@ export default function Tasks() {
                                 onChange={e => {
                                     setTaskForm(f => ({ ...f, assignee: e.target.value }));
                                 }}
-                                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
-                            <label className="flex items-center gap-2 text-sm">
+                            <label className="flex items-center gap-2 text-sm dark:text-gray-300">
                                 <input
                                     type="checkbox"
                                     checked={taskForm.completed}
@@ -484,14 +484,14 @@ export default function Tasks() {
 
                             {state.tasks.filter(t => t.id !== taskModal.editTask?.id).length > 0 && (
                                 <div>
-                                    <label className="text-xs text-gray-500 mb-1 block">Depends on (tasks):</label>
-                                    <div className="max-h-32 overflow-y-auto border rounded p-2 space-y-1">
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Depends on (tasks):</label>
+                                    <div className="max-h-32 overflow-y-auto border dark:border-gray-600 rounded p-2 space-y-1 bg-white dark:bg-gray-700">
                                         {state.tasks
                                             .filter(t => t.id !== taskModal.editTask?.id)
                                             .map(t => (
                                                 <label
                                                     key={t.id}
-                                                    className="flex items-center gap-2 text-sm cursor-pointer"
+                                                    className="flex items-center gap-2 text-sm cursor-pointer dark:text-gray-300"
                                                 >
                                                     <input
                                                         type="checkbox"
@@ -505,7 +505,7 @@ export default function Tasks() {
                                                             }));
                                                         }}
                                                     />
-                                                    <span className={cn(t.completed && 'line-through text-gray-400')}>{t.title}</span>
+                                                    <span className={cn(t.completed && 'line-through text-gray-400 dark:text-gray-500')}>{t.title}</span>
                                                 </label>
                                             ))}
                                     </div>
@@ -518,7 +518,7 @@ export default function Tasks() {
                                 onClick={() => {
                                     setTaskModal({ open: false });
                                 }}
-                                className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                                className="px-4 py-2 text-sm bg-gray-200 dark:bg-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
                             >Cancel
                             </button>
                             <button
@@ -535,8 +535,8 @@ export default function Tasks() {
             {/* Subtask Modal */}
             {subtaskModal.open && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl max-h-screen overflow-y-auto">
-                        <h2 className="text-lg font-bold mb-4">{subtaskModal.editSubtask ? 'Edit Subtask' : 'New Subtask'}</h2>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 shadow-xl max-h-screen overflow-y-auto">
+                        <h2 className="text-lg font-bold mb-4 dark:text-gray-100">{subtaskModal.editSubtask ? 'Edit Subtask' : 'New Subtask'}</h2>
                         <div className="space-y-3">
                             <input
                                 placeholder="Title *"
@@ -544,7 +544,7 @@ export default function Tasks() {
                                 onChange={e => {
                                     setSubtaskForm(f => ({ ...f, title: e.target.value }));
                                 }}
-                                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                             <textarea
                                 placeholder="Notes"
@@ -552,11 +552,11 @@ export default function Tasks() {
                                 onChange={e => {
                                     setSubtaskForm(f => ({ ...f, notes: e.target.value }));
                                 }}
-                                className="w-full border rounded px-3 py-2 text-sm h-16 focus:outline-none focus:border-blue-400"
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm h-16 focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                             <div className="flex gap-2">
                                 <div className="flex-1">
-                                    <label className="text-xs text-gray-500 mb-1 block">Start date</label>
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Start date</label>
                                     <input
                                         type="date"
                                         value={subtaskForm.startDate}
@@ -564,11 +564,11 @@ export default function Tasks() {
                                             const startDate = e.target.value;
                                             setSubtaskForm(f => ({ ...f, startDate, endDate: f.endDate || startDate }));
                                         }}
-                                        className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <label className="text-xs text-gray-500 mb-1 block">End date</label>
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">End date</label>
                                     <input
                                         type="date"
                                         value={subtaskForm.endDate}
@@ -576,7 +576,7 @@ export default function Tasks() {
                                         onChange={e => {
                                             setSubtaskForm(f => ({ ...f, endDate: e.target.value }));
                                         }}
-                                        className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                                     />
                                 </div>
                             </div>
@@ -586,9 +586,9 @@ export default function Tasks() {
                                 onChange={e => {
                                     setSubtaskForm(f => ({ ...f, assignee: e.target.value }));
                                 }}
-                                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
-                            <label className="flex items-center gap-2 text-sm">
+                            <label className="flex items-center gap-2 text-sm dark:text-gray-300">
                                 <input
                                     type="checkbox"
                                     checked={subtaskForm.completed}
@@ -602,14 +602,14 @@ export default function Tasks() {
 
                             {allSubtasks.filter(s => s.id !== subtaskModal.editSubtask?.id).length > 0 && (
                                 <div>
-                                    <label className="text-xs text-gray-500 mb-1 block">Depends on (subtasks):</label>
-                                    <div className="max-h-32 overflow-y-auto border rounded p-2 space-y-1">
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Depends on (subtasks):</label>
+                                    <div className="max-h-32 overflow-y-auto border dark:border-gray-600 rounded p-2 space-y-1 bg-white dark:bg-gray-700">
                                         {allSubtasks
                                             .filter(s => s.id !== subtaskModal.editSubtask?.id)
                                             .map(s => (
                                                 <label
                                                     key={s.id}
-                                                    className="flex items-center gap-2 text-sm cursor-pointer"
+                                                    className="flex items-center gap-2 text-sm cursor-pointer dark:text-gray-300"
                                                 >
                                                     <input
                                                         type="checkbox"
@@ -623,8 +623,8 @@ export default function Tasks() {
                                                             }));
                                                         }}
                                                     />
-                                                    <span className={cn(s.completed && 'line-through text-gray-400')}>
-                                                        <span className="text-gray-400 text-xs">{s.parentTitle} › </span>
+                                                    <span className={cn(s.completed && 'line-through text-gray-400 dark:text-gray-500')}>
+                                                        <span className="text-gray-400 dark:text-gray-500 text-xs">{s.parentTitle} › </span>
                                                         {s.title}
                                                     </span>
                                                 </label>
@@ -639,7 +639,7 @@ export default function Tasks() {
                                 onClick={() => {
                                     setSubtaskModal({ open: false, taskId: '' });
                                 }}
-                                className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                                className="px-4 py-2 text-sm bg-gray-200 dark:bg-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
                             >Cancel
                             </button>
                             <button
@@ -712,7 +712,7 @@ function GanttChart({ tasks }: { tasks: Task[] }) {
 
     if (rows.length === 0) {
         return (
-            <div className="text-center text-gray-400 py-16">
+            <div className="text-center text-gray-400 dark:text-gray-500 py-16">
                 No tasks or subtasks with start and end dates to display in Gantt chart.
             </div>
         );
@@ -750,7 +750,7 @@ function GanttChart({ tasks }: { tasks: Task[] }) {
     const rowIndexMap = new Map(rows.map((r, i) => [r.id, i]));
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border overflow-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 overflow-auto">
             <svg
                 width={chartWidth}
                 height={chartHeight}
