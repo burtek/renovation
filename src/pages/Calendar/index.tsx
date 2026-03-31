@@ -7,9 +7,7 @@ import type { EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAnd
 import withDragAndDropCjs from 'react-big-calendar/lib/addons/dragAndDrop';
 
 import { useApp } from '../../contexts/AppContext';
-import type { CalendarEvent } from '../../types';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
+import type { CalendarEvent, CalendarEventType } from '../../types';
 
 import type { EventFormData } from './EventModal';
 import EventModal from './EventModal';
@@ -26,7 +24,7 @@ const withDragAndDrop: WithDragAndDropFn = typeof withDragAndDropMod === 'functi
     ? withDragAndDropMod
     : withDragAndDropMod.default;
 
-const EVENT_TYPE_COLOR: Record<string, string> = {
+const EVENT_TYPE_COLOR: Record<CalendarEventType, string> = {
     event: '#3B82F6',
     'own work': '#10B981',
     'visit/measurements': '#F59E0B',
