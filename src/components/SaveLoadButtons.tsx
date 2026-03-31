@@ -43,7 +43,7 @@ export default function SaveLoadButtons() {
                     onChange={handleFileChange}
                 />
             </div>
-            {(commitSha ?? deploymentId) && (
+            {(!!commitSha || !!deploymentId) && (
                 <div className="text-xs text-gray-500 leading-tight">
                     {commitSha && (
                         <span title={commitSha}>
