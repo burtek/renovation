@@ -30,7 +30,6 @@ type UIAction
         | { type: 'SET_CONTENT'; content: string }
         | { type: 'SHOW_LIST' };
 
-// eslint-disable-next-line consistent-return, @typescript-eslint/consistent-return
 function uiReducer(state: UIState, action: UIAction): UIState {
     switch (action.type) {
         case 'NOTE_NAVIGATED':
@@ -51,6 +50,9 @@ function uiReducer(state: UIState, action: UIAction): UIState {
             return { ...state, editContent: action.content };
         case 'SHOW_LIST':
             return { ...state, showList: true };
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+        default:
+            return state;
     }
 }
 

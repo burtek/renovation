@@ -94,6 +94,43 @@ describe('Notes page', () => {
         expect(screen.getByText(/select a note or create a new one/i)).toBeInTheDocument();
     });
 
+    // ── Deep-linking via URL ──────────────────────────────────────────────
+
+    it('deep-link to /notes/:id selects the note immediately on initial render', async () => {
+        preloadNotes([makeNote({ id: 'n1', title: 'Deep Note' })]);
+        const DeepWrapper = makeWrapper('/notes/n1');
+
+        render(<Notes />, { wrapper: DeepWrapper });
+
+        await waitFor(() => {
+            expect(screen.getByRole('heading', { name: 'Deep Note' })).toBeInTheDocument();
+        });
+    });
+
+    it('deep-link to /notes/:id hides the list panel initially', async () => {
+        preloadNotes([makeNote({ id: 'n1', title: 'Deep Note' })]);
+        const DeepWrapper = makeWrapper('/notes/n1');
+
+        render(<Notes />, { wrapper: DeepWrapper });
+
+        await waitFor(() => {
+            expect(screen.getByRole('heading', { name: 'Deep Note' })).toBeInTheDocument();
+        });
+        // Placeholder text should NOT be shown since a note is selected
+        expect(screen.queryByText(/select a note or create a new one/i)).not.toBeInTheDocument();
+    });
+
+    it('deep-link to /notes/:id with an unknown id shows the list and placeholder', () => {
+        preloadNotes([makeNote({ id: 'n1', title: 'Real Note' })]);
+        const DeepWrapper = makeWrapper('/notes/does-not-exist');
+
+        render(<Notes />, { wrapper: DeepWrapper });
+
+        expect(screen.getByText(/select a note or create a new one/i)).toBeInTheDocument();
+        // The note list should be visible (no note selected)
+        expect(screen.getByText('Real Note')).toBeInTheDocument();
+    });
+
     // ── Creating notes ────────────────────────────────────────────────────
 
     it('creates a note titled "New Note" when "+ New" is clicked', async () => {
