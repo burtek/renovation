@@ -3,11 +3,9 @@ import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
 
 import { useColorScheme } from '../../hooks/useColorScheme';
-import type { Note } from '../../types';
 
 
 interface Props {
-    note: Note;
     editTitle: string;
     editContent: string;
     onTitleChange: (title: string) => void;
@@ -17,7 +15,7 @@ interface Props {
     onShowList: () => void;
 }
 
-export default function NoteEditor({ note: _, editTitle, editContent, onTitleChange, onContentChange, onSave, onCancel, onShowList }: Props) {
+export default function NoteEditor({ editTitle, editContent, onTitleChange, onContentChange, onSave, onCancel, onShowList }: Props) {
     const colorScheme = useColorScheme();
 
     return (

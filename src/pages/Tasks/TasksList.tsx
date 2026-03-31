@@ -72,6 +72,8 @@ export default function TasksList({
                             }}
                             className={cn('w-5 h-5 rounded border-2 flex-shrink-0', task.completed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-gray-500')}
                             title="Toggle complete"
+                            aria-label={task.completed ? 'Mark task as incomplete' : 'Mark task as complete'}
+                            aria-pressed={task.completed}
                         >
                             {task.completed && <CheckIcon />}
                         </button>
@@ -116,6 +118,8 @@ export default function TasksList({
                                         toggleExpand(task.id);
                                     }}
                                     className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 ml-1"
+                                    aria-label={expandedTasks.has(task.id) ? `Collapse subtasks for ${task.title}` : `Expand subtasks for ${task.title}`}
+                                    aria-expanded={expandedTasks.has(task.id)}
                                 >
                                     {expandedTasks.has(task.id) ? '▲' : '▼'}
                                 </button>
@@ -136,6 +140,8 @@ export default function TasksList({
                                         }}
                                         className={cn('w-4 h-4 rounded border-2 flex-shrink-0', sub.completed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-gray-500')}
                                         title="Toggle complete"
+                                        aria-label={sub.completed ? 'Mark subtask as incomplete' : 'Mark subtask as complete'}
+                                        aria-pressed={sub.completed}
                                     >
                                         {sub.completed && <CheckIcon />}
                                     </button>
