@@ -917,4 +917,129 @@ describe('Tasks page', () => {
         // No polyline should be drawn because 'a' has no Gantt row
         expect(document.querySelector('polyline')).not.toBeInTheDocument();
     });
+
+    // ── Subtask modal shows parent task name ──────────────────────────────
+
+    it('subtask modal shows the parent task name', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        // The modal subtitle should contain the parent task name
+        expect(screen.getByRole('heading', { name: /new subtask/i }).nextElementSibling?.textContent).toBe('Parent Task');
+    });
+
+    // ── New subtask inherits parent task assignee ─────────────────────────
+
+    it('new subtask modal pre-fills assignee from the parent task', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent Task', assignee: 'Alice' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        expect(screen.getByDisplayValue('Alice')).toBeInTheDocument();
+    });
+
+    it('new subtask modal has empty assignee when parent task has none', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        const assigneeInput = screen.getByPlaceholderText(/assignee/i);
+        expect((assigneeInput as HTMLInputElement).value).toBe('');
+    });
+
+    // ── [Enter] in title field submits ────────────────────────────────────
+
+    it('pressing Enter in task title input submits the form', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        await user.type(titleInput, 'Enter Task');
+        fireEvent.keyDown(titleInput, { key: 'Enter' });
+
+        await waitFor(() => {
+            expect(screen.getByText('Enter Task')).toBeInTheDocument();
+        });
+    });
+
+    it('pressing Enter in subtask title input submits the form', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        await user.type(titleInput, 'Enter Subtask');
+        fireEvent.keyDown(titleInput, { key: 'Enter' });
+
+        const expandBtn = await screen.findByText('▼');
+        await user.click(expandBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText('Enter Subtask')).toBeInTheDocument();
+        });
+    });
+
+    // ── [Shift]+[Enter] submits and reopens new modal ─────────────────────
+
+    it('pressing Shift+Enter in task title saves and reopens a new task modal', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        await user.type(titleInput, 'First Task');
+        fireEvent.keyDown(titleInput, { key: 'Enter', shiftKey: true });
+
+        // Modal should still be open (new task form)
+        await waitFor(() => {
+            expect(screen.getByRole('heading', { name: /new task/i })).toBeInTheDocument();
+        });
+
+        // The first task should have been saved
+        const newTitleInput = screen.getByPlaceholderText(/title \*/i);
+        expect((newTitleInput as HTMLInputElement).value).toBe('');
+
+        // Close and verify the task was saved
+        await user.click(screen.getByRole('button', { name: /cancel/i }));
+        expect(screen.getByText('First Task')).toBeInTheDocument();
+    });
+
+    it('pressing Shift+Enter in subtask title saves and reopens new subtask modal for same parent', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        await user.type(titleInput, 'First Subtask');
+        fireEvent.keyDown(titleInput, { key: 'Enter', shiftKey: true });
+
+        // Modal should still be open (new subtask form for same parent)
+        await waitFor(() => {
+            expect(screen.getByRole('heading', { name: /new subtask/i })).toBeInTheDocument();
+        });
+
+        // Parent task name is still shown in the modal subtitle
+        expect(screen.getByRole('heading', { name: /new subtask/i }).nextElementSibling?.textContent).toBe('Parent Task');
+
+        // The title field should be empty for the next subtask
+        const newTitleInput = screen.getByPlaceholderText(/title \*/i);
+        expect((newTitleInput as HTMLInputElement).value).toBe('');
+
+        // Close and verify the subtask was saved
+        await user.click(screen.getByRole('button', { name: /cancel/i }));
+
+        const expandBtn = screen.getByText('▼');
+        await user.click(expandBtn);
+        expect(screen.getByText('First Subtask')).toBeInTheDocument();
+    });
 });
