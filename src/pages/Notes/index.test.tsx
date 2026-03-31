@@ -166,7 +166,7 @@ describe('Notes page', () => {
         await user.click(screen.getByText('My Note'));
         await user.click(screen.getByRole('button', { name: /edit/i }));
 
-        expect(screen.getByTestId('md-editor')).toBeInTheDocument();
+        expect(await screen.findByTestId('md-editor')).toBeInTheDocument();
     });
 
     it('Save button in edit mode updates the note title', async () => {

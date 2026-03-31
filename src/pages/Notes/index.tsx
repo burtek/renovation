@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from 'react';
+import { lazy, Suspense, useEffect, useReducer, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -6,8 +6,10 @@ import { useApp } from '../../contexts/AppContext';
 import type { Note } from '../../types';
 import { cn } from '../../utils/classnames';
 
-import NoteEditor from './NoteEditor';
 import NoteViewer from './NoteViewer';
+
+
+const NoteEditor = lazy(() => import('./NoteEditor'));
 
 
 interface UIState {
@@ -133,24 +135,30 @@ export default function Notes() {
         }
         if (editing) {
             return (
-                <NoteEditor
-                    note={selectedNote}
-                    editTitle={editTitle}
-                    editContent={editContent}
-                    onTitleChange={title => {
-                        uiDispatch({ type: 'SET_TITLE', title });
-                    }}
-                    onContentChange={content => {
-                        uiDispatch({ type: 'SET_CONTENT', content });
-                    }}
-                    onSave={handleSave}
-                    onCancel={() => {
-                        uiDispatch({ type: 'CANCEL_EDIT' });
-                    }}
-                    onShowList={() => {
-                        uiDispatch({ type: 'SHOW_LIST' });
-                    }}
-                />
+                <Suspense fallback={(
+                    <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                        Loading editor…
+                    </div>
+                )}
+                >
+                    <NoteEditor
+                        editTitle={editTitle}
+                        editContent={editContent}
+                        onTitleChange={title => {
+                            uiDispatch({ type: 'SET_TITLE', title });
+                        }}
+                        onContentChange={content => {
+                            uiDispatch({ type: 'SET_CONTENT', content });
+                        }}
+                        onSave={handleSave}
+                        onCancel={() => {
+                            uiDispatch({ type: 'CANCEL_EDIT' });
+                        }}
+                        onShowList={() => {
+                            uiDispatch({ type: 'SHOW_LIST' });
+                        }}
+                    />
+                </Suspense>
             );
         }
         return (
