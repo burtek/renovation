@@ -155,4 +155,47 @@ describe('SaveLoadButtons', () => {
             expect(window.alert).toHaveBeenCalled();
         });
     });
+
+    // ── Deployment info ───────────────────────────────────────────────────
+
+    describe('deployment info', () => {
+        afterEach(() => {
+            vi.unstubAllEnvs();
+        });
+
+        it('is not rendered when both env vars are absent', () => {
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+            expect(screen.queryByText(/·/)).not.toBeInTheDocument();
+        });
+
+        it('shows truncated SHA with full SHA as title when only VITE_VERCEL_GIT_COMMIT_SHA is set', () => {
+            const sha = 'abc1234567890abcdef';
+            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            const shaSpan = screen.getByTitle(sha);
+            expect(shaSpan).toBeInTheDocument();
+            expect(shaSpan).toHaveTextContent('abc1234');
+            expect(screen.queryByText(/·/)).not.toBeInTheDocument();
+        });
+
+        it('shows deployment ID without separator when only VITE_VERCEL_DEPLOYMENT_ID is set', () => {
+            vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_test123');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.getByText('dpl_test123')).toBeInTheDocument();
+            expect(screen.queryByText(/·/)).not.toBeInTheDocument();
+        });
+
+        it('shows both SHA and deployment ID with separator when both env vars are set', () => {
+            const sha = 'abc1234567890abcdef';
+            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
+            vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_test123');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.getByTitle(sha)).toHaveTextContent('abc1234');
+            expect(screen.getByText('dpl_test123')).toBeInTheDocument();
+            expect(screen.getByText(/·/)).toBeInTheDocument();
+        });
+    });
 });
