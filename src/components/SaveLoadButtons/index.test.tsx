@@ -183,7 +183,20 @@ describe('SaveLoadButtons', () => {
             vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_test123');
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
-            expect(screen.getByText('dpl_test123')).toBeInTheDocument();
+            const deploymentSpan = screen.getByTitle('dpl_test123');
+            expect(deploymentSpan).toBeInTheDocument();
+            expect(deploymentSpan).toHaveTextContent('dpl_test12\u2026');
+            expect(screen.queryByText(/·/)).not.toBeInTheDocument();
+        });
+
+        it('shows short deployment ID in full without ellipsis when it is 10 chars or fewer', () => {
+            vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_short');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            const deploymentSpan = screen.getByTitle('dpl_short');
+            expect(deploymentSpan).toBeInTheDocument();
+            expect(deploymentSpan).toHaveTextContent('dpl_short');
+            expect(deploymentSpan).not.toHaveTextContent('\u2026');
             expect(screen.queryByText(/·/)).not.toBeInTheDocument();
         });
 
@@ -194,7 +207,8 @@ describe('SaveLoadButtons', () => {
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
             expect(screen.getByTitle(sha)).toHaveTextContent('abc1234');
-            expect(screen.getByText('dpl_test123')).toBeInTheDocument();
+            const deploymentSpan = screen.getByTitle('dpl_test123');
+            expect(deploymentSpan).toHaveTextContent('dpl_test12\u2026');
             expect(screen.getByText(/·/)).toBeInTheDocument();
         });
 
