@@ -11,10 +11,11 @@ import CalendarPage from './Calendar';
 
 
 vi.mock('react-big-calendar', () => ({
-    Calendar: ({ onSelectSlot, onSelectEvent, events }: {
+    Calendar: ({ onSelectSlot, onSelectEvent, events, components }: {
         onSelectSlot?: (slot: { start: Date; end: Date; slots: Date[]; action: string }) => void;
         onSelectEvent?: (event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }) => void;
         events?: Array<{ title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }>;
+        components?: { event?: ComponentType<{ event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent } }> };
     }) => (
         <div data-testid="rbc-calendar">
             <button
@@ -29,15 +30,18 @@ vi.mock('react-big-calendar', () => ({
             >
                 Select slot
             </button>
-            {events?.map(e => (
-                <button
-                    type="button"
-                    key={e.resource.id}
-                    onClick={() => onSelectEvent?.(e)}
-                >
-                    {e.title}
-                </button>
-            ))}
+            {events?.map(e => {
+                const EventComp = components?.event;
+                return (
+                    <button
+                        type="button"
+                        key={e.resource.id}
+                        onClick={() => onSelectEvent?.(e)}
+                    >
+                        {EventComp ? <EventComp event={e} /> : e.title}
+                    </button>
+                );
+            })}
         </div>
     ),
     dateFnsLocalizer: () => ({})
@@ -299,7 +303,7 @@ describe('Calendar page', () => {
 
         await user.click(screen.getByTestId('select-slot'));
 
-        expect(screen.getByRole('combobox')).toHaveValue('event');
+        expect(screen.getByRole('combobox', { name: /event type/i })).toHaveValue('event');
     });
 
     it('selecting a different event type updates the dropdown', async () => {
@@ -308,9 +312,9 @@ describe('Calendar page', () => {
 
         await user.click(screen.getByTestId('select-slot'));
 
-        await user.selectOptions(screen.getByRole('combobox'), 'contractor work');
+        await user.selectOptions(screen.getByRole('combobox', { name: /event type/i }), 'contractor work');
 
-        expect(screen.getByRole('combobox')).toHaveValue('contractor work');
+        expect(screen.getByRole('combobox', { name: /event type/i })).toHaveValue('contractor work');
     });
 
     it('opens Edit Event modal with pre-filled event type when clicking an existing event', async () => {
@@ -320,7 +324,7 @@ describe('Calendar page', () => {
 
         await user.click(screen.getByRole('button', { name: 'Test Event' }));
 
-        expect(screen.getByRole('combobox')).toHaveValue('own work');
+        expect(screen.getByRole('combobox', { name: /event type/i })).toHaveValue('own work');
     });
 
     // ── Drag and drop ─────────────────────────────────────────────────────
@@ -380,5 +384,59 @@ describe('Calendar page', () => {
             expect(updated?.contractor).toBe('Bob');
             expect(updated?.title).toBe('Colored Event');
         });
+    });
+
+    // ── Contractor display in calendar ────────────────────────────────────
+
+    it('shows contractor name in calendar event when contractor is set', async () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Plumbing', contractor: 'Bob' })] });
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        expect(screen.getByText('Bob')).toBeInTheDocument();
+    });
+
+    it('does not show contractor text when contractor is not set', async () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'My Event' })] });
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        // Only the title should be visible, no extra contractor element
+        expect(screen.queryAllByText('My Event')).toHaveLength(1);
+    });
+
+    // ── Contractor suggestions datalist ───────────────────────────────────
+
+    it('shows contractor suggestions from existing events in the datalist', async () => {
+        preloadState({
+            calendarEvents: [
+                makeCalendarEvent({ id: 'ev1', contractor: 'Alice' }),
+                makeCalendarEvent({ id: 'ev2', contractor: 'Bob' }),
+                makeCalendarEvent({ id: 'ev3' }) // no contractor
+            ]
+        });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTestId('select-slot'));
+
+        const datalist = document.getElementById('contractor-suggestions');
+        expect(datalist).toBeInTheDocument();
+        expect(datalist?.querySelector('option[value="Alice"]')).toBeInTheDocument();
+        expect(datalist?.querySelector('option[value="Bob"]')).toBeInTheDocument();
+    });
+
+    it('deduplicates contractor suggestions in the datalist', async () => {
+        preloadState({
+            calendarEvents: [
+                makeCalendarEvent({ id: 'ev1', contractor: 'Alice' }),
+                makeCalendarEvent({ id: 'ev2', contractor: 'Alice' })
+            ]
+        });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTestId('select-slot'));
+
+        const datalist = document.getElementById('contractor-suggestions');
+        expect(datalist?.querySelectorAll('option[value="Alice"]')).toHaveLength(1);
     });
 });
