@@ -61,6 +61,11 @@ function dayDiff(laterDate: string, earlierDate: string): number {
     return Math.round((later.getTime() - earlier.getTime()) / MS_PER_DAY);
 }
 
+function getToday(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export default function Tasks() {
     const { state, dispatch } = useApp();
     const [tab, setTab] = useState<Tab>('list');
@@ -87,7 +92,7 @@ export default function Tasks() {
     };
 
     const openNewTask = () => {
-        setTaskForm(emptyTaskForm);
+        setTaskForm({ ...emptyTaskForm, startDate: getToday() });
         setTaskModal({ open: true });
     };
 
@@ -156,7 +161,7 @@ export default function Tasks() {
     };
 
     const openNewSubtask = (taskId: string) => {
-        setSubtaskForm(emptySubtaskForm);
+        setSubtaskForm({ ...emptySubtaskForm, startDate: getToday() });
         setSubtaskModal({ open: true, taskId });
     };
 
