@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useApp } from '../../contexts/AppContext';
 import type { Subtask, Task } from '../../types';
@@ -22,12 +23,18 @@ type Tab = 'list' | 'gantt';
 
 export default function Tasks() {
     const { state, dispatch } = useApp();
-    const [tab, setTab] = useState<Tab>('list');
+    const navigate = useNavigate();
+    const location = useLocation();
+    const tab: Tab = location.pathname.endsWith('/gantt') ? 'gantt' : 'list';
+
+    const setTab = (newTab: Tab) => {
+        navigate(`/tasks/${newTab}`, { replace: true });
+    };
+    const [taskModal, setTaskModal] = useState<{ open: boolean; editTask?: Task }>({ open: false });
 
     useEffect(() => {
         document.title = 'Tasks | Renovation';
     }, []);
-    const [taskModal, setTaskModal] = useState<{ open: boolean; editTask?: Task }>({ open: false });
     const [subtaskModal, setSubtaskModal] = useState<{ open: boolean; taskId: string; editSubtask?: Subtask }>({ open: false, taskId: '' });
     const [taskForm, setTaskForm] = useState<TaskFormData>(emptyTaskForm);
     const [subtaskForm, setSubtaskForm] = useState<SubtaskFormData>(emptySubtaskForm);
