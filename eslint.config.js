@@ -7,7 +7,7 @@ const config = [
         files: ['**/*.{ts,tsx}'],
         languageOptions: {
             parserOptions: {
-                project: true,
+                project: ['./tsconfig.json', './tsconfig.node.json'],
                 tsconfigRootDir: import.meta.dirname
             }
         }

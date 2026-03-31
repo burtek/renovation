@@ -156,16 +156,27 @@ describe('SaveLoadButtons', () => {
         });
     });
 
-    // ── Deployment info ───────────────────────────────────────────────────
+    // ── Deployment info ────────────────────────────────────────────────────────────────────────────
 
     describe('deployment info', () => {
         afterEach(() => {
             vi.unstubAllEnvs();
         });
 
-        it('is not rendered when both env vars are absent', () => {
+        it('is not rendered when no env vars are set', () => {
             render(<SaveLoadButtons />, { wrapper: Wrapper });
-            expect(screen.queryByText(/·/)).not.toBeInTheDocument();
+            expect(screen.queryByText('Commit:')).not.toBeInTheDocument();
+            expect(screen.queryByText('Deployment:')).not.toBeInTheDocument();
+            expect(screen.queryByText('Env:')).not.toBeInTheDocument();
+            expect(screen.queryByText('Build date:')).not.toBeInTheDocument();
+        });
+
+        it('shows Env: row when VITE_VERCEL_ENV is set', () => {
+            vi.stubEnv('VITE_VERCEL_ENV', 'production');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.getByText('Env:')).toBeInTheDocument();
+            expect(screen.getByText('production')).toBeInTheDocument();
         });
 
         it('shows truncated SHA with full SHA as title when only VITE_VERCEL_GIT_COMMIT_SHA is set', () => {
@@ -173,43 +184,29 @@ describe('SaveLoadButtons', () => {
             vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
+            expect(screen.getByText('Commit:')).toBeInTheDocument();
             const shaSpan = screen.getByTitle(sha);
             expect(shaSpan).toBeInTheDocument();
             expect(shaSpan).toHaveTextContent('abc1234');
-            expect(screen.queryByText(/·/)).not.toBeInTheDocument();
         });
 
-        it('shows deployment ID without separator when only VITE_VERCEL_DEPLOYMENT_ID is set', () => {
+        it('shows deployment ID with Deployment: label when only VITE_VERCEL_DEPLOYMENT_ID is set', () => {
             vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_test123');
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
-            const deploymentSpan = screen.getByTitle('dpl_test123');
-            expect(deploymentSpan).toBeInTheDocument();
-            expect(deploymentSpan).toHaveTextContent('dpl_test12\u2026');
-            expect(screen.queryByText(/·/)).not.toBeInTheDocument();
+            expect(screen.getByText('Deployment:')).toBeInTheDocument();
+            const deploymentEl = screen.getByTitle('dpl_test123');
+            expect(deploymentEl).toBeInTheDocument();
+            expect(deploymentEl).toHaveTextContent('dpl_test123');
         });
 
-        it('shows short deployment ID in full without ellipsis when it is 10 chars or fewer', () => {
-            vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_short');
+        it('shows full deployment ID without truncation', () => {
+            vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_verylongdeploymentid');
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
-            const deploymentSpan = screen.getByTitle('dpl_short');
-            expect(deploymentSpan).toBeInTheDocument();
-            expect(deploymentSpan).toHaveTextContent('dpl_short');
-            expect(deploymentSpan).not.toHaveTextContent('\u2026');
-            expect(screen.queryByText(/·/)).not.toBeInTheDocument();
-        });
-
-        it('shows both SHA and deployment ID with separator when both env vars are set', () => {
-            const sha = 'abc1234567890abcdef';
-            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
-            vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_test123');
-            render(<SaveLoadButtons />, { wrapper: Wrapper });
-
-            expect(screen.getByTitle(sha)).toHaveTextContent('abc1234');
-            const deploymentSpan = screen.getByTitle('dpl_test123');
-            expect(deploymentSpan).toHaveTextContent('dpl_test12\u2026');
-            expect(screen.getByText(/·/)).toBeInTheDocument();
+            const deploymentEl = screen.getByTitle('dpl_verylongdeploymentid');
+            expect(deploymentEl).toHaveTextContent('dpl_verylongdeploymentid');
+            expect(deploymentEl).not.toHaveTextContent('\u2026');
         });
 
         it('shows SHA as a link to the commit when git provider env vars are set', () => {
@@ -242,9 +239,36 @@ describe('SaveLoadButtons', () => {
             vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
-            // No link for sha
             expect(screen.queryByRole('link')).not.toBeInTheDocument();
             expect(screen.getByTitle(sha)).toHaveTextContent('abc1234');
+        });
+
+        it('shows deployment as a link to Vercel dashboard when deploymentId starts with dpl_', () => {
+            vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_abc123xyz');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            const link = screen.getByRole('link', { name: /dpl_abc123xyz/i });
+            expect(link).toHaveAttribute('href', 'https://vercel.com/bartosz-ds-projects/renovation/abc123xyz');
+            expect(link).toHaveAttribute('target', '_blank');
+            expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+        });
+
+        it('shows deployment as a plain span (not a link) when deploymentId does not start with dpl_', () => {
+            vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'custom_deploy_id');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.queryByRole('link')).not.toBeInTheDocument();
+            expect(screen.getByTitle('custom_deploy_id')).toHaveTextContent('custom_deploy_id');
+        });
+
+        it('shows Build date: row when VITE_BUILD_DATE is set', () => {
+            vi.stubEnv('VITE_BUILD_DATE', '2024-01-15T12:00:00.000Z');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.getByText('Build date:')).toBeInTheDocument();
+            const buildDateSpan = screen.getByTitle('2024-01-15T12:00:00.000Z');
+            expect(buildDateSpan).toBeInTheDocument();
+            expect(buildDateSpan).toHaveTextContent(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
         });
 
         it('shows changelog link pointing to GitHub releases when provider is github', () => {
@@ -276,18 +300,6 @@ describe('SaveLoadButtons', () => {
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
             expect(screen.queryByRole('link', { name: /changelog/i })).not.toBeInTheDocument();
-        });
-
-        it('shows changelog link with separator after deployment info when sha is also set', () => {
-            const sha = 'abc1234567890abcdef';
-            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
-            vi.stubEnv('VITE_VERCEL_GIT_PROVIDER', 'github');
-            vi.stubEnv('VITE_VERCEL_GIT_REPO_OWNER', 'owner');
-            vi.stubEnv('VITE_VERCEL_GIT_REPO_SLUG', 'repo');
-            render(<SaveLoadButtons />, { wrapper: Wrapper });
-
-            expect(screen.getByText(/·/)).toBeInTheDocument();
-            expect(screen.getByRole('link', { name: /changelog/i })).toBeInTheDocument();
         });
 
         it('does not show changelog link when git provider env vars are absent', () => {
