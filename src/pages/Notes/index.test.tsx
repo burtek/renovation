@@ -4,10 +4,10 @@ import type { ReactNode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AppProvider } from '../contexts/AppContext';
-import type { Note } from '../types';
+import { AppProvider } from '../../contexts/AppContext';
+import type { Note } from '../../types';
 
-import Notes from './Notes';
+import Notes from '.';
 
 
 vi.mock('@uiw/react-md-editor', () => ({

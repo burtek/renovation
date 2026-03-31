@@ -1,16 +1,13 @@
-import MDEditor from '@uiw/react-md-editor';
-import '@uiw/react-md-editor/markdown-editor.css';
-import '@uiw/react-markdown-preview/markdown.css';
 import { useEffect, useReducer, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
 import { useNavigate, useParams } from 'react-router-dom';
-import remarkGfm from 'remark-gfm';
 import { v4 as uuidv4 } from 'uuid';
 
-import { useApp } from '../contexts/AppContext';
-import { useColorScheme } from '../hooks/useColorScheme';
-import type { Note } from '../types';
-import { cn } from '../utils/classnames';
+import { useApp } from '../../contexts/AppContext';
+import type { Note } from '../../types';
+import { cn } from '../../utils/classnames';
+
+import NoteEditor from './NoteEditor';
+import NoteViewer from './NoteViewer';
 
 
 interface UIState {
@@ -58,7 +55,6 @@ function uiReducer(state: UIState, action: UIAction): UIState {
 
 export default function Notes() {
     const { state, dispatch } = useApp();
-    const colorScheme = useColorScheme();
     const navigate = useNavigate();
     const { id: noteId } = useParams<{ id?: string }>();
 
@@ -127,15 +123,6 @@ export default function Notes() {
         uiDispatch({ type: 'START_EDIT', title: selectedNote.title, content: selectedNote.content });
     };
 
-    const navigateToNote = (title: string) => {
-        const note = state.notes.find(n => n.title.toLowerCase() === title.toLowerCase());
-        if (note) {
-            navigate(`/notes/${note.id}`);
-        }
-    };
-
-    const processedContent = selectedNote?.content.replace(/\[\[(.*?)\]\]/g, (_, title) => `[${title}](#note-link-${encodeURIComponent(title)})`) ?? '';
-
     const renderNotePanel = () => {
         if (!selectedNote) {
             return (
@@ -146,117 +133,36 @@ export default function Notes() {
         }
         if (editing) {
             return (
-                <div className="flex flex-col h-full">
-                    <div className="p-4 border-b flex items-center gap-2 bg-white dark:bg-gray-800 dark:border-gray-700">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                uiDispatch({ type: 'SHOW_LIST' });
-                            }}
-                            className="md:hidden text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 mr-1"
-                        >←
-                        </button>
-                        <input
-                            value={editTitle}
-                            onChange={e => {
-                                uiDispatch({ type: 'SET_TITLE', title: e.target.value });
-                            }}
-                            className="flex-1 text-xl font-bold border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-400 pb-1 bg-transparent dark:text-gray-100"
-                        />
-                        <button
-                            type="button"
-                            onClick={handleSave}
-                            className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                        >Save
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                uiDispatch({ type: 'CANCEL_EDIT' });
-                            }}
-                            className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300"
-                        >Cancel
-                        </button>
-                    </div>
-                    <div
-                        className="flex-1 overflow-hidden"
-                        data-color-mode={colorScheme}
-                    >
-                        <MDEditor
-                            value={editContent}
-                            onChange={v => {
-                                uiDispatch({ type: 'SET_CONTENT', content: v ?? '' });
-                            }}
-                            height="100%"
-                            preview="edit"
-                        />
-                    </div>
-                </div>
+                <NoteEditor
+                    note={selectedNote}
+                    editTitle={editTitle}
+                    editContent={editContent}
+                    onTitleChange={title => {
+                        uiDispatch({ type: 'SET_TITLE', title });
+                    }}
+                    onContentChange={content => {
+                        uiDispatch({ type: 'SET_CONTENT', content });
+                    }}
+                    onSave={handleSave}
+                    onCancel={() => {
+                        uiDispatch({ type: 'CANCEL_EDIT' });
+                    }}
+                    onShowList={() => {
+                        uiDispatch({ type: 'SHOW_LIST' });
+                    }}
+                />
             );
         }
         return (
-            <div className="flex flex-col h-full">
-                <div className="p-4 border-b flex items-center gap-2 bg-white dark:bg-gray-800 dark:border-gray-700">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            uiDispatch({ type: 'SHOW_LIST' });
-                        }}
-                        className="md:hidden text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 mr-1"
-                    >←
-                    </button>
-                    <h1 className="flex-1 text-xl font-bold text-gray-800 dark:text-gray-100">{selectedNote.title}</h1>
-                    <button
-                        type="button"
-                        onClick={handleEdit}
-                        className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-                    >Edit
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleDelete}
-                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
-                    >Delete
-                    </button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-6 prose dark:prose-invert max-w-none">
-                    <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                            a: ({ href, children }) => {
-                                if (href?.startsWith('#note-link-')) {
-                                    const title = decodeURIComponent(href.replace('#note-link-', ''));
-                                    return (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                navigateToNote(title);
-                                            }}
-                                            className="text-blue-600 underline hover:text-blue-800"
-                                        >
-                                            {children}
-                                        </button>
-                                    );
-                                }
-                                const isSafe = href && /^https?:|^mailto:/i.test(href);
-                                if (!isSafe) {
-                                    return <span>{children}</span>;
-                                }
-                                return (
-                                    <a
-                                        href={href}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >{children}
-                                    </a>
-                                );
-                            }
-                        }}
-                    >
-                        {processedContent}
-                    </ReactMarkdown>
-                </div>
-            </div>
+            <NoteViewer
+                note={selectedNote}
+                notes={state.notes}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onShowList={() => {
+                    uiDispatch({ type: 'SHOW_LIST' });
+                }}
+            />
         );
     };
 
