@@ -29,6 +29,9 @@ export default function TaskModal({ editTask, form, allTasks, onFormChange, onSa
                             onFormChange({ title: e.target.value });
                         }}
                         onKeyDown={e => {
+                            if (e.repeat || e.nativeEvent.isComposing) {
+                                return;
+                            }
                             if (e.key === 'Enter' && e.shiftKey) {
                                 e.preventDefault();
                                 onSaveAndNew();

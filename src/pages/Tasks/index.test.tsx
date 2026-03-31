@@ -927,8 +927,7 @@ describe('Tasks page', () => {
 
         await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
 
-        // The modal subtitle should contain the parent task name
-        expect(screen.getByRole('heading', { name: /new subtask/i }).nextElementSibling?.textContent).toBe('Parent Task');
+        expect(screen.getByTestId('subtask-modal-parent-title')).toHaveTextContent('Parent Task');
     });
 
     // ── New subtask inherits parent task assignee ─────────────────────────
@@ -1029,7 +1028,7 @@ describe('Tasks page', () => {
         });
 
         // Parent task name is still shown in the modal subtitle
-        expect(screen.getByRole('heading', { name: /new subtask/i }).nextElementSibling?.textContent).toBe('Parent Task');
+        expect(screen.getByTestId('subtask-modal-parent-title')).toHaveTextContent('Parent Task');
 
         // The title field should be empty for the next subtask
         const newTitleInput = screen.getByPlaceholderText(/title \*/i);
@@ -1041,5 +1040,47 @@ describe('Tasks page', () => {
         const expandBtn = screen.getByText('▼');
         await user.click(expandBtn);
         expect(screen.getByText('First Subtask')).toBeInTheDocument();
+    });
+
+    // ── IME/repeat guards on Enter shortcut ───────────────────────────────
+
+    it('Enter with repeat=true in task title does not submit', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        await user.type(titleInput, 'Repeat Guard Task');
+        fireEvent.keyDown(titleInput, { key: 'Enter', repeat: true });
+
+        // Modal should still be open (not submitted)
+        expect(screen.getByPlaceholderText(/title \*/i)).toBeInTheDocument();
+    });
+
+    it('Enter while isComposing in task title does not submit', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        await user.type(titleInput, 'IME Guard Task');
+        fireEvent.keyDown(titleInput, new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, isComposing: true }));
+
+        // Modal should still be open (not submitted)
+        expect(screen.getByPlaceholderText(/title \*/i)).toBeInTheDocument();
+    });
+
+    it('Enter with repeat=true in subtask title does not submit', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        await user.type(titleInput, 'Repeat Guard Sub');
+        fireEvent.keyDown(titleInput, { key: 'Enter', repeat: true });
+
+        // Modal should still be open (not submitted)
+        expect(screen.getByPlaceholderText(/title \*/i)).toBeInTheDocument();
     });
 });
