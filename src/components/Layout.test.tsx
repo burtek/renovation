@@ -189,7 +189,35 @@ describe('Layout', () => {
         });
     });
 
-    // ── SaveLoadButtons ───────────────────────────────────────────────────
+    // ── About dialog ──────────────────────────────────────────────────────
+
+    it('renders the About button in the sidebar', () => {
+        renderLayout();
+        expect(screen.getByRole('button', { name: /about/i })).toBeInTheDocument();
+    });
+
+    it('opens the About dialog when the About button is clicked', async () => {
+        const user = userEvent.setup();
+        renderLayout();
+
+        await user.click(screen.getByRole('button', { name: /about/i }));
+
+        expect(screen.getByRole('heading', { name: /about renovation/i })).toBeInTheDocument();
+    });
+
+    it('closes the About dialog when its close button is clicked', async () => {
+        const user = userEvent.setup();
+        renderLayout();
+
+        await user.click(screen.getByRole('button', { name: /about/i }));
+        expect(screen.getByRole('heading', { name: /about renovation/i })).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: /^close$/i }));
+
+        await waitFor(() => {
+            expect(screen.queryByRole('heading', { name: /about renovation/i })).not.toBeInTheDocument();
+        });
+    });
 
     it('renders SaveLoadButtons (💾 Save and 📂 Load) within Layout', () => {
         renderLayout();
