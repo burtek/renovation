@@ -197,5 +197,53 @@ describe('SaveLoadButtons', () => {
             expect(screen.getByText('dpl_test123')).toBeInTheDocument();
             expect(screen.getByText(/·/)).toBeInTheDocument();
         });
+
+        it('shows SHA as a link to the commit when VITE_GITHUB_REPO_URL is set', () => {
+            const sha = 'abc1234567890abcdef';
+            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
+            vi.stubEnv('VITE_GITHUB_REPO_URL', 'https://github.com/owner/repo');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            const link = screen.getByRole('link', { name: /abc1234/i });
+            expect(link).toHaveAttribute('href', `https://github.com/owner/repo/commit/${sha}`);
+            expect(link).toHaveAttribute('title', sha);
+        });
+
+        it('shows SHA as a plain span (not a link) when VITE_GITHUB_REPO_URL is absent', () => {
+            const sha = 'abc1234567890abcdef';
+            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            // No link for sha
+            expect(screen.queryByRole('link')).not.toBeInTheDocument();
+            expect(screen.getByTitle(sha)).toHaveTextContent('abc1234');
+        });
+
+        it('shows changelog link when VITE_GITHUB_REPO_URL is set', () => {
+            vi.stubEnv('VITE_GITHUB_REPO_URL', 'https://github.com/owner/repo');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            const link = screen.getByRole('link', { name: /changelog/i });
+            expect(link).toHaveAttribute('href', 'https://github.com/owner/repo/releases');
+            expect(link).toHaveAttribute('target', '_blank');
+            expect(link).toHaveAttribute('rel', 'noreferrer');
+        });
+
+        it('shows changelog link with separator after deployment info when sha is also set', () => {
+            const sha = 'abc1234567890abcdef';
+            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', sha);
+            vi.stubEnv('VITE_GITHUB_REPO_URL', 'https://github.com/owner/repo');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.getByText(/·/)).toBeInTheDocument();
+            expect(screen.getByRole('link', { name: /changelog/i })).toBeInTheDocument();
+        });
+
+        it('does not show changelog link when VITE_GITHUB_REPO_URL is absent', () => {
+            vi.stubEnv('VITE_VERCEL_GIT_COMMIT_SHA', 'abc1234567890abcdef');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.queryByRole('link', { name: /changelog/i })).not.toBeInTheDocument();
+        });
     });
 });

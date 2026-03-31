@@ -9,6 +9,8 @@ export default function SaveLoadButtons() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const commitSha = import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA;
     const deploymentId = import.meta.env.VITE_VERCEL_DEPLOYMENT_ID;
+    const repoUrl = import.meta.env.VITE_GITHUB_REPO_URL;
+    const hasDeploymentInfo = !!commitSha || !!deploymentId;
 
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -43,15 +45,40 @@ export default function SaveLoadButtons() {
                     onChange={handleFileChange}
                 />
             </div>
-            {(!!commitSha || !!deploymentId) && (
+            {(hasDeploymentInfo || !!repoUrl) && (
                 <div className="text-xs text-gray-500 leading-tight">
                     {commitSha && (
-                        <span title={commitSha}>
-                            {commitSha.slice(0, 7)}
-                        </span>
+                        repoUrl
+                            ? (
+                                <a
+                                    href={`${repoUrl}/commit/${commitSha}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    title={commitSha}
+                                    className="underline hover:text-gray-700 transition"
+                                >
+                                    {commitSha.slice(0, 7)}
+                                </a>
+                            )
+                            : (
+                                <span title={commitSha}>
+                                    {commitSha.slice(0, 7)}
+                                </span>
+                            )
                     )}
                     {commitSha && deploymentId && <span> · </span>}
                     {deploymentId && <span>{deploymentId}</span>}
+                    {hasDeploymentInfo && !!repoUrl && <span> · </span>}
+                    {repoUrl && (
+                        <a
+                            href={`${repoUrl}/releases`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline hover:text-gray-700 transition"
+                        >
+                            changelog
+                        </a>
+                    )}
                 </div>
             )}
         </div>
