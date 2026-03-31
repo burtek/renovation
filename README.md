@@ -1,5 +1,7 @@
 # Renovation
 
+> **Note:** This project was fully created by AI.
+
 A web-based project management application for planning and tracking home renovation projects. It provides integrated tools for organizing tasks, managing finances, scheduling events, and maintaining notes — all in one place.
 
 ## Features
