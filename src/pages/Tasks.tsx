@@ -92,7 +92,8 @@ export default function Tasks() {
     };
 
     const openNewTask = () => {
-        setTaskForm({ ...emptyTaskForm, startDate: getToday() });
+        const today = getToday();
+        setTaskForm({ ...emptyTaskForm, startDate: today, endDate: today });
         setTaskModal({ open: true });
     };
 
@@ -162,11 +163,10 @@ export default function Tasks() {
 
     const openNewSubtask = (taskId: string) => {
         const parentTask = state.tasks.find(t => t.id === taskId);
-        setSubtaskForm({
-            ...emptySubtaskForm,
-            startDate: parentTask?.startDate ?? getToday(),
-            endDate: parentTask?.endDate ?? ''
-        });
+        const startDate = parentTask?.startDate ?? getToday();
+        const parentEndDate = parentTask?.endDate ?? '';
+        const endDate = parentEndDate || startDate;
+        setSubtaskForm({ ...emptySubtaskForm, startDate, endDate });
         setSubtaskModal({ open: true, taskId });
     };
 
