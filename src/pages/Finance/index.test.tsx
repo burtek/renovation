@@ -4,10 +4,10 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AppProvider } from '../contexts/AppContext';
-import type { AppData, Expense } from '../types';
+import { AppProvider } from '../../contexts/AppContext';
+import type { AppData, Expense } from '../../types';
 
-import Finance from './Finance';
+import Finance from '.';
 
 
 // Mock recharts to avoid SVG / ResizeObserver issues in jsdom
