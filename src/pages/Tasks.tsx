@@ -161,7 +161,12 @@ export default function Tasks() {
     };
 
     const openNewSubtask = (taskId: string) => {
-        setSubtaskForm({ ...emptySubtaskForm, startDate: getToday() });
+        const parentTask = state.tasks.find(t => t.id === taskId);
+        setSubtaskForm({
+            ...emptySubtaskForm,
+            startDate: parentTask?.startDate ?? getToday(),
+            endDate: parentTask?.endDate ?? ''
+        });
         setSubtaskModal({ open: true, taskId });
     };
 
@@ -239,6 +244,19 @@ export default function Tasks() {
         if (confirm('Delete subtask?')) {
             dispatch({ type: 'DELETE_SUBTASK', payload: { taskId, subtaskId } });
         }
+    };
+
+    const duplicateSubtask = (taskId: string, subtask: Subtask) => {
+        setSubtaskForm({
+            title: subtask.title,
+            notes: subtask.notes,
+            startDate: subtask.startDate ?? '',
+            endDate: subtask.endDate ?? '',
+            assignee: subtask.assignee ?? '',
+            completed: false,
+            dependsOn: subtask.dependsOn ?? []
+        });
+        setSubtaskModal({ open: true, taskId });
     };
 
     const toggleTaskComplete = (task: Task) => {
@@ -403,6 +421,14 @@ export default function Tasks() {
                                                         }}
                                                         className="text-xs bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-400 px-2 py-1 rounded"
                                                     >Edit
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            duplicateSubtask(task.id, sub);
+                                                        }}
+                                                        className="text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 dark:text-gray-300 px-2 py-1 rounded"
+                                                    >Dup
                                                     </button>
                                                     <button
                                                         type="button"
