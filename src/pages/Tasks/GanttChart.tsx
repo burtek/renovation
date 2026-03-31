@@ -22,7 +22,6 @@ const ROW_HEIGHT = 36;
 const LABEL_WIDTH = 220;
 const HEADER_HEIGHT = 20;
 const MIN_DAY_WIDTH = 20;
-const MAX_DAY_WIDTH = 40;
 const MARGIN_DAYS = 3;
 
 export default function GanttChart({ tasks }: { tasks: Task[] }) {
@@ -101,10 +100,7 @@ export default function GanttChart({ tasks }: { tasks: Task[] }) {
     const availableForDays = containerWidth > LABEL_WIDTH ? containerWidth - LABEL_WIDTH : 0;
     const dayWidth = Math.max(
         MIN_DAY_WIDTH,
-        Math.min(
-            MAX_DAY_WIDTH,
-            availableForDays > 0 ? availableForDays / totalDays : MIN_DAY_WIDTH
-        )
+        availableForDays > 0 ? availableForDays / totalDays : MIN_DAY_WIDTH
     );
     const chartWidth = LABEL_WIDTH + (totalDays * dayWidth);
     const chartHeight = ((rows.length + 0.5) * ROW_HEIGHT) + HEADER_HEIGHT;
@@ -129,160 +125,162 @@ export default function GanttChart({ tasks }: { tasks: Task[] }) {
     return (
         <div
             ref={containerRef}
-            className="w-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 overflow-auto"
+            className="w-full"
         >
-            <svg
-                width={chartWidth}
-                height={chartHeight}
-                className="font-sans text-xs"
-            >
-                <defs>
-                    <marker
-                        id="dep-arrow"
-                        markerWidth="6"
-                        markerHeight="5"
-                        refX="6"
-                        refY="2.5"
-                        orient="auto"
-                    >
-                        <polygon
-                            points="0 0, 6 2.5, 0 5"
-                            fill="#6B7280"
-                        />
-                    </marker>
-                </defs>
-
-                {months.map((m, i) => (
-                    <g key={m.label}>
-                        <rect
-                            x={m.x}
-                            y={0}
-                            width={m.width}
-                            height={HEADER_HEIGHT}
-                            fill={i % 2 === 0 ? '#F3F4F6' : '#E5E7EB'}
-                        />
-                        <text
-                            x={m.x + (m.width / 2)}
-                            y={14}
-                            textAnchor="middle"
-                            fontSize={10}
-                            fill="#374151"
-                        >{m.label}
-                        </text>
-                    </g>
-                ))}
-
-                {Array.from({ length: totalDays }).map((_, i) => {
-                    const lineMs = minDate.getTime() + (i * MS_PER_DAY);
-                    return (
-                        <line
-                            key={lineMs}
-                            x1={LABEL_WIDTH + (i * dayWidth)}
-                            y1={HEADER_HEIGHT}
-                            x2={LABEL_WIDTH + (i * dayWidth)}
-                            y2={chartHeight}
-                            stroke="#E5E7EB"
-                            strokeWidth={0.5}
-                        />
-                    );
-                })}
-                {rows.map((row, i) => {
-                    const y = HEADER_HEIGHT + (i * ROW_HEIGHT);
-                    const { start, end } = parsedDates[i];
-                    const startDay = Math.ceil((start.getTime() - minDate.getTime()) / MS_PER_DAY);
-                    const duration = Math.ceil((end.getTime() - start.getTime()) / MS_PER_DAY) + 1;
-                    const barX = LABEL_WIDTH + (startDay * dayWidth);
-                    const barW = Math.max(duration * dayWidth, 4);
-                    const barColor = ganttBarColors[i % ganttBarColors.length];
-                    const bgColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
-                    const halfRow = ROW_HEIGHT / 2;
-                    const textY = y + halfRow + 4;
-                    const maxChars = row.isSubtask ? 20 : 22;
-                    const labelText = row.label.length > maxChars ? `${row.label.slice(0, maxChars)}\u2026` : row.label;
-
-                    return (
-                        <g key={row.id}>
-                            <rect
-                                x={0}
-                                y={y}
-                                width={LABEL_WIDTH}
-                                height={ROW_HEIGHT}
-                                fill={bgColor}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 overflow-auto">
+                <svg
+                    width={chartWidth}
+                    height={chartHeight}
+                    className="font-sans text-xs"
+                >
+                    <defs>
+                        <marker
+                            id="dep-arrow"
+                            markerWidth="6"
+                            markerHeight="5"
+                            refX="6"
+                            refY="2.5"
+                            orient="auto"
+                        >
+                            <polygon
+                                points="0 0, 6 2.5, 0 5"
+                                fill="#6B7280"
                             />
-                            {row.isSubtask && (
-                                <rect
-                                    x={4}
-                                    y={y}
-                                    width={3}
-                                    height={ROW_HEIGHT}
-                                    fill="#D1D5DB"
-                                />
-                            )}
+                        </marker>
+                    </defs>
+
+                    {months.map((m, i) => (
+                        <g key={m.label}>
+                            <rect
+                                x={m.x}
+                                y={0}
+                                width={m.width}
+                                height={HEADER_HEIGHT}
+                                fill={i % 2 === 0 ? '#F3F4F6' : '#E5E7EB'}
+                            />
                             <text
-                                x={row.isSubtask ? 14 : 8}
-                                y={textY}
-                                fontSize={row.isSubtask ? 10 : 11}
-                                fill={row.completed ? '#9CA3AF' : '#1F2937'}
-                            >
-                                {row.isSubtask ? `\u21B3 ${labelText}` : labelText}
+                                x={m.x + (m.width / 2)}
+                                y={14}
+                                textAnchor="middle"
+                                fontSize={10}
+                                fill="#374151"
+                            >{m.label}
                             </text>
-                            <rect
-                                x={LABEL_WIDTH}
-                                y={y}
-                                width={chartWidth - LABEL_WIDTH}
-                                height={ROW_HEIGHT}
-                                fill={bgColor}
-                            />
-                            <rect
-                                x={barX}
-                                y={y + 6}
-                                width={barW}
-                                height={ROW_HEIGHT - 12}
-                                rx={3}
-                                fill={barColor}
-                                opacity={row.completed ? 0.4 : 0.85}
-                            />
-                            {barW > 40 && row.assignee
-                                && (
-                                    <text
-                                        x={barX + 4}
-                                        y={textY}
-                                        fontSize={9}
-                                        fill="white"
-                                    >{row.assignee}
-                                    </text>
-                                )}
                         </g>
-                    );
-                })}
+                    ))}
 
-                {rows.map((row, toIdx) =>
-                    row.dependsOn.map(depId => {
-                        const fromIdx = rowIndexMap.get(depId);
-                        if (fromIdx === undefined) {
-                            return null;
-                        }
-                        const { end: fromEnd } = parsedDates[fromIdx];
-                        const { start: toStart } = parsedDates[toIdx];
-                        const fromEndDay = Math.ceil((fromEnd.getTime() - minDate.getTime()) / MS_PER_DAY) + 1;
-                        const toStartDay = Math.ceil((toStart.getTime() - minDate.getTime()) / MS_PER_DAY);
-                        const x1 = LABEL_WIDTH + (fromEndDay * dayWidth);
-                        const x2 = LABEL_WIDTH + (toStartDay * dayWidth);
-                        const y1 = HEADER_HEIGHT + (fromIdx * ROW_HEIGHT) + (ROW_HEIGHT / 2);
-                        const y2 = HEADER_HEIGHT + (toIdx * ROW_HEIGHT) + (ROW_HEIGHT / 2);
-                        const midX = x1 + Math.max(8, (x2 - x1) / 2);
+                    {Array.from({ length: totalDays }).map((_, i) => {
+                        const lineMs = minDate.getTime() + (i * MS_PER_DAY);
                         return (
-                            <polyline
-                                key={`dep-${depId}-${row.id}`}
-                                points={`${x1},${y1} ${midX},${y1} ${midX},${y2} ${x2},${y2}`}
-                                fill="none"
-                                stroke="#6B7280"
-                                strokeWidth={1.5}
-                                markerEnd="url(#dep-arrow)"
+                            <line
+                                key={lineMs}
+                                x1={LABEL_WIDTH + (i * dayWidth)}
+                                y1={HEADER_HEIGHT}
+                                x2={LABEL_WIDTH + (i * dayWidth)}
+                                y2={chartHeight}
+                                stroke="#E5E7EB"
+                                strokeWidth={0.5}
                             />
                         );
-                    }))}
-            </svg>
+                    })}
+                    {rows.map((row, i) => {
+                        const y = HEADER_HEIGHT + (i * ROW_HEIGHT);
+                        const { start, end } = parsedDates[i];
+                        const startDay = Math.ceil((start.getTime() - minDate.getTime()) / MS_PER_DAY);
+                        const duration = Math.ceil((end.getTime() - start.getTime()) / MS_PER_DAY) + 1;
+                        const barX = LABEL_WIDTH + (startDay * dayWidth);
+                        const barW = Math.max(duration * dayWidth, 4);
+                        const barColor = ganttBarColors[i % ganttBarColors.length];
+                        const bgColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF';
+                        const halfRow = ROW_HEIGHT / 2;
+                        const textY = y + halfRow + 4;
+                        const maxChars = row.isSubtask ? 20 : 22;
+                        const labelText = row.label.length > maxChars ? `${row.label.slice(0, maxChars)}\u2026` : row.label;
+
+                        return (
+                            <g key={row.id}>
+                                <rect
+                                    x={0}
+                                    y={y}
+                                    width={LABEL_WIDTH}
+                                    height={ROW_HEIGHT}
+                                    fill={bgColor}
+                                />
+                                {row.isSubtask && (
+                                    <rect
+                                        x={4}
+                                        y={y}
+                                        width={3}
+                                        height={ROW_HEIGHT}
+                                        fill="#D1D5DB"
+                                    />
+                                )}
+                                <text
+                                    x={row.isSubtask ? 14 : 8}
+                                    y={textY}
+                                    fontSize={row.isSubtask ? 10 : 11}
+                                    fill={row.completed ? '#9CA3AF' : '#1F2937'}
+                                >
+                                    {row.isSubtask ? `\u21B3 ${labelText}` : labelText}
+                                </text>
+                                <rect
+                                    x={LABEL_WIDTH}
+                                    y={y}
+                                    width={chartWidth - LABEL_WIDTH}
+                                    height={ROW_HEIGHT}
+                                    fill={bgColor}
+                                />
+                                <rect
+                                    x={barX}
+                                    y={y + 6}
+                                    width={barW}
+                                    height={ROW_HEIGHT - 12}
+                                    rx={3}
+                                    fill={barColor}
+                                    opacity={row.completed ? 0.4 : 0.85}
+                                />
+                                {barW > 40 && row.assignee
+                                    && (
+                                        <text
+                                            x={barX + 4}
+                                            y={textY}
+                                            fontSize={9}
+                                            fill="white"
+                                        >{row.assignee}
+                                        </text>
+                                    )}
+                            </g>
+                        );
+                    })}
+
+                    {rows.map((row, toIdx) =>
+                        row.dependsOn.map(depId => {
+                            const fromIdx = rowIndexMap.get(depId);
+                            if (fromIdx === undefined) {
+                                return null;
+                            }
+                            const { end: fromEnd } = parsedDates[fromIdx];
+                            const { start: toStart } = parsedDates[toIdx];
+                            const fromEndDay = Math.ceil((fromEnd.getTime() - minDate.getTime()) / MS_PER_DAY) + 1;
+                            const toStartDay = Math.ceil((toStart.getTime() - minDate.getTime()) / MS_PER_DAY);
+                            const x1 = LABEL_WIDTH + (fromEndDay * dayWidth);
+                            const x2 = LABEL_WIDTH + (toStartDay * dayWidth);
+                            const y1 = HEADER_HEIGHT + (fromIdx * ROW_HEIGHT) + (ROW_HEIGHT / 2);
+                            const y2 = HEADER_HEIGHT + (toIdx * ROW_HEIGHT) + (ROW_HEIGHT / 2);
+                            const midX = x1 + Math.max(8, (x2 - x1) / 2);
+                            return (
+                                <polyline
+                                    key={`dep-${depId}-${row.id}`}
+                                    points={`${x1},${y1} ${midX},${y1} ${midX},${y2} ${x2},${y2}`}
+                                    fill="none"
+                                    stroke="#6B7280"
+                                    strokeWidth={1.5}
+                                    markerEnd="url(#dep-arrow)"
+                                />
+                            );
+                        }))}
+                </svg>
+            </div>
         </div>
     );
 }
