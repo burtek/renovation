@@ -163,6 +163,23 @@ describe('Tasks page', () => {
         expect(screen.queryByText('Cancelled Task')).not.toBeInTheDocument();
     });
 
+    it('task form: changing startDate defaults endDate to startDate when endDate is blank', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+
+        const [startInput, endInput] = Array.from(
+            document.querySelectorAll<HTMLInputElement>('input[type="date"]')
+        );
+
+        // Clear endDate first so the || fallback fires when startDate changes
+        fireEvent.change(endInput, { target: { value: '' } });
+        fireEvent.change(startInput, { target: { value: '2024-05-01' } });
+
+        expect(endInput.value).toBe('2024-05-01');
+    });
+
     it('shows "Depends on (tasks)" when adding a task and other tasks exist', async () => {
         preloadTasks([makeTask({ id: 't1', title: 'Existing Task' })]);
         const user = userEvent.setup();
@@ -771,6 +788,50 @@ describe('Tasks page', () => {
         expect(screen.queryByPlaceholderText(/title \*/i)).not.toBeInTheDocument();
         // Subtask should NOT have been saved
         expect(screen.queryByText('Cancelled Sub')).not.toBeInTheDocument();
+    });
+
+    it('subtask form: changing startDate defaults endDate to startDate when endDate is blank', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        const [startInput, endInput] = Array.from(
+            document.querySelectorAll<HTMLInputElement>('input[type="date"]')
+        );
+
+        // Clear endDate first so the || fallback fires when startDate changes
+        fireEvent.change(endInput, { target: { value: '' } });
+        fireEvent.change(startInput, { target: { value: '2024-07-01' } });
+
+        expect(endInput.value).toBe('2024-07-01');
+    });
+
+    it('Dup on a subtask with no optional fields opens modal with empty dates and assignee', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [
+                    // makeSubtask without startDate/endDate/assignee → they're undefined
+                    makeSubtask({ id: 's1', parentId: 't1', title: 'Bare Sub' })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByText('▼'));
+        await user.click(screen.getByRole('button', { name: /^dup$/i }));
+
+        expect(screen.getByRole('heading', { name: /new subtask/i })).toBeInTheDocument();
+        expect(screen.getByDisplayValue('Bare Sub')).toBeInTheDocument();
+
+        // With no dates set, both date inputs should be empty
+        const dateInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="date"]'));
+        expect(dateInputs[0].value).toBe('');
+        expect(dateInputs[1].value).toBe('');
     });
 
     // ── Default dates on new task modal ──────────────────────────────────
