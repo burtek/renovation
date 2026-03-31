@@ -24,7 +24,7 @@ export default function Notes() {
     const [editing, setEditing] = useState(false);
     const [editTitle, setEditTitle] = useState(selectedNote?.title ?? '');
     const [editContent, setEditContent] = useState(selectedNote?.content ?? '');
-    const [showList, setShowList] = useState(!noteId);
+    const [showList, setShowList] = useState(!selectedNote);
 
     // Reset edit state when navigating to a different note via URL
     const [prevNoteId, setPrevNoteId] = useState(noteId);
@@ -48,6 +48,10 @@ export default function Notes() {
     }, [selectedNote]);
 
     const handleSelect = (note: Note) => {
+        // Always hide the list and reset editing when a note is selected,
+        // even if it's the currently-selected note (noteId doesn't change).
+        setShowList(false);
+        setEditing(false);
         navigate(`/notes/${note.id}`);
     };
 
