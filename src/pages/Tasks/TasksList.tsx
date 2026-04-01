@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { Subtask, Task } from '../../types';
 import { cn } from '../../utils/classnames';
@@ -43,6 +43,22 @@ export default function TasksList({
 }: Props) {
     const [expandedTasks, setExpandedTasks] = useState<Set<string>>(() => new Set());
 
+    const { taskDependentCount, subtaskDependentCount } = useMemo(() => {
+        const taskDeps = new Map<string, number>();
+        const subtaskDeps = new Map<string, number>();
+        for (const task of tasks) {
+            for (const depId of task.dependsOn ?? []) {
+                taskDeps.set(depId, (taskDeps.get(depId) ?? 0) + 1);
+            }
+            for (const sub of task.subtasks) {
+                for (const depId of sub.dependsOn ?? []) {
+                    subtaskDeps.set(depId, (subtaskDeps.get(depId) ?? 0) + 1);
+                }
+            }
+        }
+        return { taskDependentCount: taskDeps, subtaskDependentCount: subtaskDeps };
+    }, [tasks]);
+
     const toggleExpand = (id: string) => {
         setExpandedTasks(prev => {
             const next = new Set(prev);
@@ -83,6 +99,20 @@ export default function TasksList({
                             {task.startDate && (
                                 <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                                     📅 {task.startDate}{task.endDate ? ` → ${task.endDate}` : ''}
+                                </span>
+                            )}
+                            {(task.dependsOn ?? []).length > 0 && (
+                                <span
+                                    className="ml-2 text-xs text-gray-500 dark:text-gray-400"
+                                    title={`Depends on ${(task.dependsOn ?? []).length} task(s)`}
+                                >⬆ {(task.dependsOn ?? []).length}
+                                </span>
+                            )}
+                            {(taskDependentCount.get(task.id) ?? 0) > 0 && (
+                                <span
+                                    className="ml-2 text-xs text-gray-500 dark:text-gray-400"
+                                    title={`${taskDependentCount.get(task.id)} task(s) depend on this`}
+                                >⬇ {taskDependentCount.get(task.id)}
                                 </span>
                             )}
                         </div>
@@ -148,6 +178,20 @@ export default function TasksList({
                                     <span className={cn('flex-1 text-sm', sub.completed ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300')}>{sub.title}</span>
                                     {sub.assignee && <span className="text-xs text-gray-500 dark:text-gray-400">👤 {sub.assignee}</span>}
                                     {sub.startDate && <span className="text-xs text-gray-500 dark:text-gray-400">📅 {sub.startDate}{sub.endDate ? ` → ${sub.endDate}` : ''}</span>}
+                                    {(sub.dependsOn ?? []).length > 0 && (
+                                        <span
+                                            className="text-xs text-gray-500 dark:text-gray-400"
+                                            title={`Depends on ${(sub.dependsOn ?? []).length} subtask(s)`}
+                                        >⬆ {(sub.dependsOn ?? []).length}
+                                        </span>
+                                    )}
+                                    {(subtaskDependentCount.get(sub.id) ?? 0) > 0 && (
+                                        <span
+                                            className="text-xs text-gray-500 dark:text-gray-400"
+                                            title={`${subtaskDependentCount.get(sub.id)} subtask(s) depend on this`}
+                                        >⬇ {subtaskDependentCount.get(sub.id)}
+                                        </span>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={() => {
