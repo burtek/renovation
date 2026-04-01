@@ -81,6 +81,12 @@ describe('detectIssues', () => {
         expect(detectIssues(tasks)).toEqual([]);
     });
 
+    it('handles task with undefined dependsOn (no crash, no issues)', () => {
+        // dependsOn is optional — when absent the ?? [] fallback is used
+        const task = makeTask({ id: 't1', startDate: '2024-01-01', endDate: '2024-01-10', dependsOn: undefined });
+        expect(detectIssues([task])).toEqual([]);
+    });
+
     // ── Issue 1b: subtask-level dependency order ──────────────────────────
 
     it('detects dependency-order issue when subtask starts before its dependency ends', () => {
