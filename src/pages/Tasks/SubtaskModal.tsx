@@ -23,7 +23,7 @@ interface Props {
 
 export default function SubtaskModal({ editSubtask, parentTaskTitle, form, allSubtasks, onFormChange, onSave, onSaveAndNew, onClose }: Props) {
     const otherSubtasks = allSubtasks.filter(s => s.id !== editSubtask?.id);
-    const [depSearch, setDepSearch] = useState('');
+    const [depSearch, setDepSearch] = useState(parentTaskTitle);
     const lowerSearch = depSearch.trim().toLowerCase();
     const filteredSubtasks = lowerSearch
         ? otherSubtasks.filter(s => s.title.toLowerCase().includes(lowerSearch) || s.parentTitle.toLowerCase().includes(lowerSearch))
