@@ -101,10 +101,43 @@ function SubtaskFitFix({
     onFixed: () => void;
 }) {
     const { state: { tasks }, dispatch } = useApp();
-    const [menuOpen, setMenuOpen] = useState(false);
+    const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+    const fixBtnRef = useRef<HTMLButtonElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            if (!menuPos) {
+                return;
+            }
+            const { target } = e;
+            if (
+                target instanceof Node
+                && !fixBtnRef.current?.contains(target)
+                && !menuRef.current?.contains(target)
+            ) {
+                setMenuPos(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => {
+            document.removeEventListener('mousedown', handleClick);
+        };
+    }, [menuPos]);
 
     const startViolation = issue.parentStartDate && issue.subtaskStartDate && issue.subtaskStartDate < issue.parentStartDate;
     const endViolation = issue.parentEndDate && issue.subtaskEndDate && issue.subtaskEndDate > issue.parentEndDate;
+
+    const toggleMenu = () => {
+        if (menuPos) {
+            setMenuPos(null);
+            return;
+        }
+        const rect = fixBtnRef.current?.getBoundingClientRect();
+        if (rect) {
+            setMenuPos({ top: rect.bottom + 4, left: rect.left });
+        }
+    };
 
     const shortenSubtask = () => {
         const parentTask = tasks.find(t => t.id === issue.parentId);
@@ -123,7 +156,7 @@ function SubtaskFitFix({
                 }
             }
         });
-        setMenuOpen(false);
+        setMenuPos(null);
         onFixed();
     };
 
@@ -140,7 +173,7 @@ function SubtaskFitFix({
                 endDate: endViolation ? issue.subtaskEndDate : parentTask.endDate
             }
         });
-        setMenuOpen(false);
+        setMenuPos(null);
         onFixed();
     };
 
@@ -169,18 +202,21 @@ function SubtaskFitFix({
                 {issue.parentEndDate ?? '?'}
                 ).
             </p>
-            <div className="relative self-start">
+            <div className="self-start">
                 <button
+                    ref={fixBtnRef}
                     type="button"
-                    onClick={() => {
-                        setMenuOpen(v => !v);
-                    }}
+                    onClick={toggleMenu}
                     className="text-xs bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 px-2 py-1 rounded"
                 >
                     Fix ▾
                 </button>
-                {menuOpen && (
-                    <div className="absolute left-0 top-full mt-1 z-10 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded shadow-lg min-w-max">
+                {menuPos && (
+                    <div
+                        ref={menuRef}
+                        style={{ position: 'fixed' as const, top: menuPos.top, left: menuPos.left }}
+                        className="z-[60] bg-white dark:bg-gray-700 border dark:border-gray-600 rounded shadow-lg min-w-max"
+                    >
                         <button
                             type="button"
                             onClick={shortenSubtask}
