@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useApp } from '../../contexts/AppContext';
@@ -7,12 +7,12 @@ import { cn } from '../../utils/classnames';
 
 import GanttChart from './GanttChart';
 import SubtaskModal from './SubtaskModal';
+import TaskIssuesPopup from './TaskIssuesPopup';
 import TaskModal from './TaskModal';
 import TasksList from './TasksList';
+import { detectIssues } from './taskIssues';
 import type { SubtaskFormData, TaskFormData } from './types';
 import {
-    addDays,
-    dayDiff,
     emptySubtaskForm,
     emptyTaskForm,
     getToday
@@ -31,6 +31,8 @@ export default function Tasks() {
         navigate(`/tasks/${newTab}`, { replace: true });
     };
     const [taskModal, setTaskModal] = useState<{ open: boolean; editTask?: Task }>({ open: false });
+    const [issuesOpen, setIssuesOpen] = useState(false);
+    const warningRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         document.title = 'Tasks | Renovation';
@@ -58,44 +60,15 @@ export default function Tasks() {
         setTaskModal({ open: true, editTask: task });
     };
 
+    const issues = useMemo(() => detectIssues(state.tasks), [state.tasks]);
+
     const performSaveTask = (): boolean => {
         if (!taskForm.title.trim()) {
             return false;
         }
 
         if (taskModal.editTask) {
-            const oldTask = taskModal.editTask;
-            const oldEnd = oldTask.endDate;
-            const newEnd = taskForm.endDate;
-
-            if (oldEnd && newEnd && newEnd > oldEnd) {
-                const shift = dayDiff(newEnd, oldEnd);
-                const dependents = state.tasks.filter(
-                    t => t.id !== oldTask.id && (t.dependsOn ?? []).includes(oldTask.id) && t.startDate
-                );
-                if (dependents.length > 0) {
-                    const names = dependents.map(t => `"${t.title}"`).join(', ');
-                    // eslint-disable-next-line no-alert
-                    const proceed = confirm(
-                        `Postponing "${oldTask.title}" by ${shift} day(s) will also shift:\n${names}\nby ${shift} day(s). Proceed?`
-                    );
-                    if (!proceed) {
-                        return false;
-                    }
-                    dependents.forEach(t => {
-                        dispatch({
-                            type: 'UPDATE_TASK',
-                            payload: {
-                                ...t,
-                                startDate: t.startDate ? addDays(t.startDate, shift) : t.startDate,
-                                endDate: t.endDate ? addDays(t.endDate, shift) : t.endDate
-                            }
-                        });
-                    });
-                }
-            }
-
-            dispatch({ type: 'UPDATE_TASK', payload: { ...oldTask, ...taskForm } });
+            dispatch({ type: 'UPDATE_TASK', payload: { ...taskModal.editTask, ...taskForm } });
         } else {
             dispatch({ type: 'ADD_TASK', payload: { ...taskForm, subtasks: [] } });
         }
@@ -150,45 +123,6 @@ export default function Tasks() {
             return false;
         }
         if (subtaskModal.editSubtask) {
-            const oldSub = subtaskModal.editSubtask;
-            const oldEnd = oldSub.endDate;
-            const newEnd = subtaskForm.endDate;
-
-            if (oldEnd && newEnd && newEnd > oldEnd) {
-                const shift = dayDiff(newEnd, oldEnd);
-                const allSubs = state.tasks.flatMap(t => t.subtasks);
-                const dependents = allSubs.filter(
-                    s => s.id !== oldSub.id && (s.dependsOn ?? []).includes(oldSub.id) && s.startDate
-                );
-                if (dependents.length > 0) {
-                    const names = dependents.map(s => `"${s.title}"`).join(', ');
-                    // eslint-disable-next-line no-alert
-                    const proceed = confirm(
-                        `Postponing "${oldSub.title}" by ${shift} day(s) will also shift:\n${names}\nby ${shift} day(s). Proceed?`
-                    );
-                    if (!proceed) {
-                        return false;
-                    }
-                    dependents.forEach(s => {
-                        const parentTask = state.tasks.find(t => t.subtasks.some(st => st.id === s.id));
-                        if (!parentTask) {
-                            return;
-                        }
-                        dispatch({
-                            type: 'UPDATE_SUBTASK',
-                            payload: {
-                                taskId: parentTask.id,
-                                subtask: {
-                                    ...s,
-                                    startDate: s.startDate ? addDays(s.startDate, shift) : s.startDate,
-                                    endDate: s.endDate ? addDays(s.endDate, shift) : s.endDate
-                                }
-                            }
-                        });
-                    });
-                }
-            }
-
             dispatch({
                 type: 'UPDATE_SUBTASK',
                 payload: { taskId: subtaskModal.taskId, subtask: { ...subtaskModal.editSubtask, ...subtaskForm } }
@@ -273,12 +207,39 @@ export default function Tasks() {
                     >Gantt
                     </button>
                 </div>
-                <button
-                    type="button"
-                    onClick={openNewTask}
-                    className="ml-auto bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-                >+ Add Task
-                </button>
+                <div className="ml-auto flex items-center gap-2">
+                    {issues.length > 0 && (
+                        <div
+                            ref={warningRef}
+                            className="relative"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIssuesOpen(v => !v);
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 rounded text-sm bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300"
+                                title="View task issues"
+                                aria-expanded={issuesOpen}
+                            >
+                                ⚠️ {issues.length}
+                            </button>
+                            <TaskIssuesPopup
+                                issues={issues}
+                                isOpen={issuesOpen}
+                                onClose={() => {
+                                    setIssuesOpen(false);
+                                }}
+                            />
+                        </div>
+                    )}
+                    <button
+                        type="button"
+                        onClick={openNewTask}
+                        className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                    >+ Add Task
+                    </button>
+                </div>
             </div>
 
             <div className="flex-1 overflow-auto p-4">

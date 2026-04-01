@@ -356,9 +356,7 @@ describe('Tasks page', () => {
         expect(screen.getByPlaceholderText(/title \*/i)).toBeInTheDocument();
     });
 
-    it('shifts dependent subtask dates when subtask endDate is extended (confirm=true)', async () => {
-        vi.stubGlobal('confirm', vi.fn(() => true));
-
+    it('does NOT shift dependent subtask dates when subtask endDate is extended (no longer auto-shifts)', async () => {
         const subA = makeSubtask({ id: 'sA', parentId: 't1', title: 'Sub A', startDate: '2024-01-01', endDate: '2024-01-10', dependsOn: [] });
         const subB = makeSubtask({ id: 'sB', parentId: 't1', title: 'Sub B', startDate: '2024-01-11', endDate: '2024-01-20', dependsOn: ['sA'] });
         preloadTasks([makeTask({ id: 't1', title: 'Parent', subtasks: [subA, subB] })]);
@@ -379,16 +377,17 @@ describe('Tasks page', () => {
 
         await user.click(screen.getByRole('button', { name: /save/i }));
 
-        // Sub B should shift by 5 days: start=2024-01-16, end=2024-01-25
+        // Sub B should NOT shift — dates remain unchanged
         await waitFor(() => {
-            expect(screen.getByText(/2024-01-16/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-25/)).toBeInTheDocument();
+            expect(screen.getByText(/2024-01-11/)).toBeInTheDocument();
+            expect(screen.getByText(/2024-01-20/)).toBeInTheDocument();
         });
+
+        // A warning badge should now be visible because Sub B starts before Sub A ends
+        expect(screen.getByTitle('View task issues')).toBeInTheDocument();
     });
 
-    it('does NOT shift dependent subtask dates when subtask date shift is declined (confirm=false)', async () => {
-        vi.stubGlobal('confirm', vi.fn(() => false));
-
+    it('saves subtask successfully without confirm dialog and shows dependency issue', async () => {
         const subA = makeSubtask({ id: 'sA', parentId: 't1', title: 'Sub A', startDate: '2024-01-01', endDate: '2024-01-10', dependsOn: [] });
         const subB = makeSubtask({ id: 'sB', parentId: 't1', title: 'Sub B', startDate: '2024-01-11', endDate: '2024-01-20', dependsOn: ['sA'] });
         preloadTasks([makeTask({ id: 't1', title: 'Parent', subtasks: [subA, subB] })]);
@@ -404,20 +403,19 @@ describe('Tasks page', () => {
         const endDateInput = screen.getByDisplayValue('2024-01-10');
         fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
 
+        // Save should succeed (no confirm dialog blocking it)
         await user.click(screen.getByRole('button', { name: /save/i }));
 
-        // Sub B dates should remain unchanged (confirm=false returns early)
+        // Sub A endDate is now 2024-01-15, Sub B unchanged
         await waitFor(() => {
+            expect(screen.getByText(/2024-01-15/)).toBeInTheDocument();
             expect(screen.getByText(/2024-01-11/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-20/)).toBeInTheDocument();
         });
     });
 
     // ── addDays / dayDiff via date shift ──────────────────────────────────
 
-    it('shifts dependent task dates when endDate is extended (confirm=true)', async () => {
-        vi.stubGlobal('confirm', vi.fn(() => true));
-
+    it('does NOT shift dependent task dates when endDate is extended (no longer auto-shifts)', async () => {
         const taskA: Task = makeTask({
             id: 'a',
             title: 'Task A',
@@ -447,16 +445,17 @@ describe('Tasks page', () => {
 
         await user.click(screen.getByRole('button', { name: /save/i }));
 
-        // Task B should shift by 5 days: start=2024-01-16, end=2024-01-25
+        // Task B should NOT shift — dates remain unchanged
         await waitFor(() => {
-            expect(screen.getByText(/2024-01-16/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-25/)).toBeInTheDocument();
+            expect(screen.getByText(/2024-01-11/)).toBeInTheDocument();
+            expect(screen.getByText(/2024-01-20/)).toBeInTheDocument();
         });
+
+        // A warning badge should now be visible because Task B starts before Task A ends
+        expect(screen.getByTitle('View task issues')).toBeInTheDocument();
     });
 
-    it('does NOT shift dependent task dates when endDate shift is declined (confirm=false)', async () => {
-        vi.stubGlobal('confirm', vi.fn(() => false));
-
+    it('saves task successfully without confirm dialog and shows dependency issue', async () => {
         const taskA: Task = makeTask({
             id: 'a',
             title: 'Task A',
@@ -482,14 +481,13 @@ describe('Tasks page', () => {
         const endDateInput = screen.getByDisplayValue('2024-01-10');
         fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
 
+        // Save should succeed (no confirm dialog blocking it)
         await user.click(screen.getByRole('button', { name: /save/i }));
 
-        // Task B dates should remain unchanged (modal closed because confirm=false returns early)
-        // Actually looking at saveTask: if proceed=false, it returns early without saving task A either.
-        // So modal stays open. Task B is unchanged.
+        // Task A endDate is now 2024-01-15, Task B unchanged
         await waitFor(() => {
+            expect(screen.getByText(/2024-01-15/)).toBeInTheDocument();
             expect(screen.getByText(/2024-01-11/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-20/)).toBeInTheDocument();
         });
     });
 
