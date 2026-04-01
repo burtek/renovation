@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import type { Task } from '../../types';
 import { cn } from '../../utils/classnames';
 
@@ -16,6 +18,10 @@ interface Props {
 
 export default function TaskModal({ editTask, form, allTasks, onFormChange, onSave, onSaveAndNew, onClose }: Props) {
     const otherTasks = allTasks.filter(t => t.id !== editTask?.id);
+    const [depSearch, setDepSearch] = useState('');
+    const filteredTasks = depSearch.trim()
+        ? otherTasks.filter(t => t.title.toLowerCase().includes(depSearch.toLowerCase()))
+        : otherTasks;
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -23,6 +29,7 @@ export default function TaskModal({ editTask, form, allTasks, onFormChange, onSa
                 <h2 className="text-lg font-bold mb-4 dark:text-gray-100">{editTask ? 'Edit Task' : 'New Task'}</h2>
                 <div className="space-y-3">
                     <input
+                        autoFocus
                         placeholder="Title *"
                         value={form.title}
                         onChange={e => {
@@ -99,8 +106,16 @@ export default function TaskModal({ editTask, form, allTasks, onFormChange, onSa
                     {otherTasks.length > 0 && (
                         <div>
                             <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Depends on (tasks):</label>
+                            <input
+                                placeholder="Search tasks…"
+                                value={depSearch}
+                                onChange={e => {
+                                    setDepSearch(e.target.value);
+                                }}
+                                className="w-full border dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100 mb-1"
+                            />
                             <div className="max-h-32 overflow-y-auto border dark:border-gray-600 rounded p-2 space-y-1 bg-white dark:bg-gray-700">
-                                {otherTasks.map(t => (
+                                {filteredTasks.map(t => (
                                     <label
                                         key={t.id}
                                         className="flex items-center gap-2 text-sm cursor-pointer dark:text-gray-300"
@@ -119,6 +134,8 @@ export default function TaskModal({ editTask, form, allTasks, onFormChange, onSa
                                         <span className={cn(t.completed && 'line-through text-gray-400 dark:text-gray-500')}>{t.title}</span>
                                     </label>
                                 ))}
+                                {filteredTasks.length === 0 && depSearch.trim()
+                                    && <p className="text-xs text-gray-400 dark:text-gray-500 py-1">No tasks match your search.</p>}
                             </div>
                         </div>
                     )}

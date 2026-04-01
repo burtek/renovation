@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import type { Subtask } from '../../types';
 import { cn } from '../../utils/classnames';
 
@@ -21,6 +23,11 @@ interface Props {
 
 export default function SubtaskModal({ editSubtask, parentTaskTitle, form, allSubtasks, onFormChange, onSave, onSaveAndNew, onClose }: Props) {
     const otherSubtasks = allSubtasks.filter(s => s.id !== editSubtask?.id);
+    const [depSearch, setDepSearch] = useState('');
+    const lowerSearch = depSearch.trim().toLowerCase();
+    const filteredSubtasks = lowerSearch
+        ? otherSubtasks.filter(s => s.title.toLowerCase().includes(lowerSearch) || s.parentTitle.toLowerCase().includes(lowerSearch))
+        : otherSubtasks;
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -34,6 +41,7 @@ export default function SubtaskModal({ editSubtask, parentTaskTitle, form, allSu
                 </p>
                 <div className="space-y-3">
                     <input
+                        autoFocus
                         placeholder="Title *"
                         value={form.title}
                         onChange={e => {
@@ -110,8 +118,16 @@ export default function SubtaskModal({ editSubtask, parentTaskTitle, form, allSu
                     {otherSubtasks.length > 0 && (
                         <div>
                             <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Depends on (subtasks):</label>
+                            <input
+                                placeholder="Search subtasks…"
+                                value={depSearch}
+                                onChange={e => {
+                                    setDepSearch(e.target.value);
+                                }}
+                                className="w-full border dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100 mb-1"
+                            />
                             <div className="max-h-32 overflow-y-auto border dark:border-gray-600 rounded p-2 space-y-1 bg-white dark:bg-gray-700">
-                                {otherSubtasks.map(s => (
+                                {filteredSubtasks.map(s => (
                                     <label
                                         key={s.id}
                                         className="flex items-center gap-2 text-sm cursor-pointer dark:text-gray-300"
@@ -133,6 +149,8 @@ export default function SubtaskModal({ editSubtask, parentTaskTitle, form, allSu
                                         </span>
                                     </label>
                                 ))}
+                                {filteredSubtasks.length === 0 && depSearch.trim()
+                                    && <p className="text-xs text-gray-400 dark:text-gray-500 py-1">No subtasks match your search.</p>}
                             </div>
                         </div>
                     )}
