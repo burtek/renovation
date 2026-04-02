@@ -13,6 +13,11 @@ const config = [
         }
     },
     {
+        // Ban direct imports from vitest — globals are provided via tsconfig types (vitest/globals)
+        files: ['**/*.test.{ts,tsx}', 'src/test-setup.ts'],
+        rules: { 'no-restricted-imports': ['error', { name: 'vitest', message: "Import vitest globals via tsconfig 'types' instead." }] }
+    },
+    {
         // Relax rules that are too strict or inapplicable in test files
         files: ['**/*.test.{ts,tsx}', 'src/test-setup.ts'],
         rules: {
