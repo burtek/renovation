@@ -1,6 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AppData, CalendarEvent, Expense, Note, Subtask, Task } from '../types';
 import { isCompressionSupported } from '../utils/compression';
