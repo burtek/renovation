@@ -1,5 +1,3 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
 import { compressToGzip, decompressFromGzip, isCompressionSupported } from './compression';
 
 
