@@ -1064,6 +1064,64 @@ describe('Tasks page', () => {
         expect(screen.getByText('First Subtask')).toBeInTheDocument();
     });
 
+    it('task dep search resets after save-and-new (Shift+Enter)', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Existing Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+
+        // Type a search term into the dep search field
+        const depSearchInput = screen.getByPlaceholderText('Search tasks…');
+        await user.type(depSearchInput, 'xyz');
+        expect((depSearchInput as HTMLInputElement).value).toBe('xyz');
+
+        // Save-and-new
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        await user.type(titleInput, 'Task One');
+        fireEvent.keyDown(titleInput, { key: 'Enter', shiftKey: true });
+
+        // After save-and-new, dep search should be reset to empty
+        await waitFor(() => {
+            const newDepSearch = screen.getByPlaceholderText('Search tasks…');
+            expect((newDepSearch as HTMLInputElement).value).toBe('');
+        });
+    });
+
+    it('subtask dep search resets to parent title after save-and-new (Shift+Enter)', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent Task',
+                subtasks: [makeSubtask({ id: 's1', parentId: 't1', title: 'Existing Sub' })]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        // Dep search should default to parent task title
+        const depSearchInput = screen.getByPlaceholderText('Search subtasks…');
+        expect((depSearchInput as HTMLInputElement).value).toBe('Parent Task');
+
+        // Clear dep search and type something else
+        await user.clear(depSearchInput);
+        await user.type(depSearchInput, 'xyz');
+        expect((depSearchInput as HTMLInputElement).value).toBe('xyz');
+
+        // Save-and-new
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        await user.type(titleInput, 'Sub One');
+        fireEvent.keyDown(titleInput, { key: 'Enter', shiftKey: true });
+
+        // After save-and-new, dep search should reset to parent title
+        await waitFor(() => {
+            const newDepSearch = screen.getByPlaceholderText('Search subtasks…');
+            expect((newDepSearch as HTMLInputElement).value).toBe('Parent Task');
+        });
+    });
+
     // ── IME/repeat guards on Enter shortcut ───────────────────────────────
 
     it('Enter with repeat=true in task title does not submit', async () => {
