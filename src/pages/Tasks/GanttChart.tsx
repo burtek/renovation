@@ -100,7 +100,7 @@ export default function GanttChart({ tasks }: { tasks: Task[] }) {
     const maxDate = new Date(Math.max(...parsedDates.map(d => d.end.getTime())));
     minDate.setUTCDate(minDate.getUTCDate() - MARGIN_DAYS);
     maxDate.setUTCDate(maxDate.getUTCDate() + MARGIN_DAYS);
-    const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / MS_PER_DAY);
+    const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / MS_PER_DAY) + 1;
     const availableForDays = containerWidth > LABEL_WIDTH ? containerWidth - LABEL_WIDTH : 0;
     const dayWidth = Math.max(
         MIN_DAY_WIDTH,
