@@ -107,6 +107,8 @@ export default function TasksList({
                                 {taskDepOn > 0 && (
                                     <span
                                         className="ml-2 text-xs text-gray-500 dark:text-gray-400"
+                                        role="img"
+                                        aria-label={`Depends on ${taskDepOn} task(s)`}
                                         title={`Depends on ${taskDepOn} task(s)`}
                                     >⬆ {taskDepOn}
                                     </span>
@@ -114,6 +116,8 @@ export default function TasksList({
                                 {taskDepCount > 0 && (
                                     <span
                                         className="ml-2 text-xs text-gray-500 dark:text-gray-400"
+                                        role="img"
+                                        aria-label={`${taskDepCount} task(s) depend on this`}
                                         title={`${taskDepCount} task(s) depend on this`}
                                     >⬇ {taskDepCount}
                                     </span>
@@ -187,6 +191,8 @@ export default function TasksList({
                                             {subDepOn > 0 && (
                                                 <span
                                                     className="text-xs text-gray-500 dark:text-gray-400"
+                                                    role="img"
+                                                    aria-label={`Depends on ${subDepOn} subtask(s)`}
                                                     title={`Depends on ${subDepOn} subtask(s)`}
                                                 >⬆ {subDepOn}
                                                 </span>
@@ -194,6 +200,8 @@ export default function TasksList({
                                             {subDepCount > 0 && (
                                                 <span
                                                     className="text-xs text-gray-500 dark:text-gray-400"
+                                                    role="img"
+                                                    aria-label={`${subDepCount} subtask(s) depend on this`}
                                                     title={`${subDepCount} subtask(s) depend on this`}
                                                 >⬇ {subDepCount}
                                                 </span>

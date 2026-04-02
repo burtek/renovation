@@ -206,6 +206,19 @@ describe('Tasks page', () => {
         expect(depCheckbox).not.toBeChecked();
     });
 
+    it('completed task shown with line-through in task dep list', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Completed Task', completed: true })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+
+        // The completed task should appear in dep list with line-through
+        const completedLabel = screen.getByRole('checkbox', { name: /Completed Task/i })
+            .closest('label');
+        expect(completedLabel?.querySelector('span')?.className).toContain('line-through');
+    });
+
     // ── Edit task ─────────────────────────────────────────────────────────
 
     it('edits a task: changes title and saves', async () => {
@@ -1279,5 +1292,116 @@ describe('Tasks page', () => {
         expect(screen.getByText('Bare Task')).toBeInTheDocument();
         expect(screen.queryByTitle(/depends on/i)).not.toBeInTheDocument();
         expect(screen.queryByTitle(/depend on this/i)).not.toBeInTheDocument();
+    });
+
+    // ── Empty-title feedback ──────────────────────────────────────────────
+
+    it('clicking Save with empty title shows "Title is required." error', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        // Do NOT type a title
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    it('typing in title after error clears the error message', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        // Error shown
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+
+        // Start typing — error should disappear
+        await user.type(screen.getByPlaceholderText(/title \*/i), 'A');
+        expect(screen.queryByText('Title is required.')).not.toBeInTheDocument();
+    });
+
+    it('pressing Enter with empty task title shows "Title is required." error', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        fireEvent.keyDown(titleInput, { key: 'Enter' });
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    it('pressing Shift+Enter with empty task title shows "Title is required." error', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        fireEvent.keyDown(titleInput, { key: 'Enter', shiftKey: true });
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    it('clicking Save with empty subtask title shows "Title is required." error', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    it('pressing Enter with empty subtask title shows "Title is required." error', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        fireEvent.keyDown(titleInput, { key: 'Enter' });
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    // ── SubtaskModal dep-search edit mode ─────────────────────────────────
+
+    it('pressing Shift+Enter with empty subtask title shows "Title is required." error', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        fireEvent.keyDown(titleInput, { key: 'Enter', shiftKey: true });
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    it('editing a subtask starts with empty dep search (not parent task name)', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [
+                    makeSubtask({ id: 's1', parentId: 't1', title: 'Existing Sub' }),
+                    makeSubtask({ id: 's2', parentId: 't1', title: 'Another Sub' })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByText('▼'));
+        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
+        // edit the first subtask (has another sub as potential dependency)
+        await user.click(editButtons[editButtons.length - 2]);
+
+        // When editing, dep search should be empty (not pre-filled with parent title)
+        const depSearch = screen.getByPlaceholderText('Search subtasks…');
+        expect((depSearch as HTMLInputElement).value).toBe('');
     });
 });

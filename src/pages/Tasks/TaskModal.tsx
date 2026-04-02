@@ -19,9 +19,27 @@ interface Props {
 export default function TaskModal({ editTask, form, allTasks, onFormChange, onSave, onSaveAndNew, onClose }: Props) {
     const otherTasks = allTasks.filter(t => t.id !== editTask?.id);
     const [depSearch, setDepSearch] = useState('');
-    const filteredTasks = depSearch.trim()
-        ? otherTasks.filter(t => t.title.toLowerCase().includes(depSearch.toLowerCase()))
+    const [titleError, setTitleError] = useState(false);
+    const depQuery = depSearch.trim().toLowerCase();
+    const filteredTasks = depQuery
+        ? otherTasks.filter(t => t.title.toLowerCase().includes(depQuery))
         : otherTasks;
+
+    const handleSave = () => {
+        if (!form.title.trim()) {
+            setTitleError(true);
+            return;
+        }
+        onSave();
+    };
+
+    const handleSaveAndNew = () => {
+        if (!form.title.trim()) {
+            setTitleError(true);
+            return;
+        }
+        onSaveAndNew();
+    };
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -33,6 +51,7 @@ export default function TaskModal({ editTask, form, allTasks, onFormChange, onSa
                         placeholder="Title *"
                         value={form.title}
                         onChange={e => {
+                            setTitleError(false);
                             onFormChange({ title: e.target.value });
                         }}
                         onKeyDown={e => {
@@ -41,14 +60,21 @@ export default function TaskModal({ editTask, form, allTasks, onFormChange, onSa
                             }
                             if (e.key === 'Enter' && e.shiftKey) {
                                 e.preventDefault();
-                                onSaveAndNew();
+                                handleSaveAndNew();
                             } else if (e.key === 'Enter') {
                                 e.preventDefault();
-                                onSave();
+                                handleSave();
                             }
                         }}
-                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+                        className={cn(
+                            'w-full border rounded px-3 py-2 text-sm focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100',
+                            titleError && !form.title.trim()
+                                ? 'border-red-400 focus:border-red-400 dark:border-red-500'
+                                : 'border-gray-300 dark:border-gray-600 focus:border-blue-400'
+                        )}
                     />
+                    {titleError && !form.title.trim()
+                        && <p className="text-xs text-red-500 -mt-2">Title is required.</p>}
                     <textarea
                         placeholder="Notes"
                         value={form.notes}
@@ -105,8 +131,13 @@ export default function TaskModal({ editTask, form, allTasks, onFormChange, onSa
 
                     {otherTasks.length > 0 && (
                         <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Depends on (tasks):</label>
+                            <label
+                                htmlFor="task-dep-search"
+                                className="text-xs text-gray-500 dark:text-gray-400 mb-1 block"
+                            >Depends on (tasks):
+                            </label>
                             <input
+                                id="task-dep-search"
                                 placeholder="Search tasks…"
                                 value={depSearch}
                                 onChange={e => {
@@ -134,7 +165,7 @@ export default function TaskModal({ editTask, form, allTasks, onFormChange, onSa
                                         <span className={cn(t.completed && 'line-through text-gray-400 dark:text-gray-500')}>{t.title}</span>
                                     </label>
                                 ))}
-                                {filteredTasks.length === 0 && depSearch.trim()
+                                {filteredTasks.length === 0 && depQuery
                                     && <p className="text-xs text-gray-400 dark:text-gray-500 py-1">No tasks match your search.</p>}
                             </div>
                         </div>
@@ -149,7 +180,7 @@ export default function TaskModal({ editTask, form, allTasks, onFormChange, onSa
                     </button>
                     <button
                         type="button"
-                        onClick={onSave}
+                        onClick={handleSave}
                         className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
                     >Save
                     </button>
