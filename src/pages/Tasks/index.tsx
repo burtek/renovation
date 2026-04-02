@@ -104,7 +104,7 @@ export default function Tasks() {
 
     const saveTask = () => {
         if (performSaveTask()) {
-            setTaskModal({ open: false });
+            setTaskModal(prev => ({ ...prev, open: false, editTask: undefined }));
         }
     };
 
@@ -204,7 +204,7 @@ export default function Tasks() {
 
     const saveSubtask = () => {
         if (performSaveSubtask()) {
-            setSubtaskModal({ open: false, taskId: '' });
+            setSubtaskModal(prev => ({ ...prev, open: false, taskId: '', editSubtask: undefined }));
         }
     };
 
@@ -311,7 +311,7 @@ export default function Tasks() {
                     onSave={saveTask}
                     onSaveAndNew={saveTaskAndNew}
                     onClose={() => {
-                        setTaskModal({ open: false });
+                        setTaskModal(prev => ({ ...prev, open: false, editTask: undefined }));
                     }}
                 />
             )}
@@ -329,7 +329,7 @@ export default function Tasks() {
                     onSave={saveSubtask}
                     onSaveAndNew={saveSubtaskAndNew}
                     onClose={() => {
-                        setSubtaskModal({ open: false, taskId: '' });
+                        setSubtaskModal(prev => ({ ...prev, open: false, taskId: '', editSubtask: undefined }));
                     }}
                 />
             )}
