@@ -80,8 +80,8 @@ describe('TaskIssuesPopup', () => {
         expect(screen.queryByText(/task issues/i)).not.toBeInTheDocument();
     });
 
-    it('keydown while popup is closed does not call onClose (Escape short-circuits)', async () => {
-        // When isOpen=false the keydown handler short-circuits on `isOpen && key`
+    it('keydown while popup is closed does not call onClose (listener not registered)', async () => {
+        // When isOpen=false the keydown listener is not registered at all
         const onClose = vi.fn();
         const user = userEvent.setup();
         render(
@@ -93,6 +93,21 @@ describe('TaskIssuesPopup', () => {
             { wrapper: Wrapper }
         );
         await user.keyboard('{Escape}');
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('keydown with non-Escape key while popup is open does not call onClose', async () => {
+        const onClose = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <TaskIssuesPopup
+                issues={[depIssueTopLevel]}
+                isOpen
+                onClose={onClose}
+            />,
+            { wrapper: Wrapper }
+        );
+        await user.keyboard('{Enter}');
         expect(onClose).not.toHaveBeenCalled();
     });
 

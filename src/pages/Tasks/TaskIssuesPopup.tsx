@@ -106,10 +106,10 @@ function SubtaskFitFix({
     const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        if (!menuPos) {
+            return undefined;
+        }
         const handleClick = (e: MouseEvent) => {
-            if (!menuPos) {
-                return;
-            }
             const { target } = e;
             if (
                 target instanceof Node
@@ -242,24 +242,27 @@ export default function TaskIssuesPopup({ issues, isOpen, onClose }: Props) {
     const popupRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        if (!isOpen) {
+            return undefined;
+        }
         const handleClick = (e: MouseEvent) => {
-            if (!isOpen) {
-                return;
-            }
             const { target } = e;
             if (popupRef.current && target instanceof Node && !popupRef.current.contains(target)) {
                 onClose();
             }
         };
-        document.addEventListener('mousedown', handleClick);
+        document.addEventListener('click', handleClick);
         return () => {
-            document.removeEventListener('mousedown', handleClick);
+            document.removeEventListener('click', handleClick);
         };
     }, [isOpen, onClose]);
 
     useEffect(() => {
+        if (!isOpen) {
+            return undefined;
+        }
         const handleKey = (e: KeyboardEvent) => {
-            if (isOpen && e.key === 'Escape') {
+            if (e.key === 'Escape') {
                 onClose();
             }
         };
