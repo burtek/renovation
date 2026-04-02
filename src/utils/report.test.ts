@@ -1,5 +1,3 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { AppData, CalendarEvent, CalendarEventType, Expense, Task } from '../types';
 
 import { generateReport } from './report';

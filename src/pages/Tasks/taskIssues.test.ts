@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import type { Subtask, Task } from '../../types';
 
 import { detectIssues } from './taskIssues';

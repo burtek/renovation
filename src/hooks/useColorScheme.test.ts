@@ -1,5 +1,4 @@
 import { renderHook, act } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useColorScheme } from './useColorScheme';
 
