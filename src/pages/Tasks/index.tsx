@@ -255,8 +255,9 @@ export default function Tasks() {
                             <TaskIssuesPopup
                                 issues={issues}
                                 isOpen={effectiveIsOpen}
+                                pos={popupPos}
+                                anchorRef={badgeRef}
                                 onClose={closeIssues}
-                                popupPos={popupPos}
                             />
                         </>
                     )}

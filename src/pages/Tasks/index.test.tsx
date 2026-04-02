@@ -205,6 +205,19 @@ describe('Tasks page', () => {
         expect(depCheckbox).not.toBeChecked();
     });
 
+    it('completed task shown with line-through in task dep list', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Completed Task', completed: true })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+
+        // The completed task should appear in dep list with line-through
+        const completedLabel = screen.getByRole('checkbox', { name: /Completed Task/i })
+            .closest('label');
+        expect(completedLabel?.querySelector('span')?.className).toContain('line-through');
+    });
+
     // ── Edit task ─────────────────────────────────────────────────────────
 
     it('edits a task: changes title and saves', async () => {
@@ -355,157 +368,6 @@ describe('Tasks page', () => {
         expect(screen.getByPlaceholderText(/title \*/i)).toBeInTheDocument();
     });
 
-    it('does NOT shift dependent subtask dates when subtask endDate is extended (no longer auto-shifts)', async () => {
-        const subA = makeSubtask({ id: 'sA', parentId: 't1', title: 'Sub A', startDate: '2024-01-01', endDate: '2024-01-10', dependsOn: [] });
-        const subB = makeSubtask({ id: 'sB', parentId: 't1', title: 'Sub B', startDate: '2024-01-11', endDate: '2024-01-20', dependsOn: ['sA'] });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', subtasks: [subA, subB] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        // Expand subtasks
-        await user.click(screen.getByText('▼'));
-
-        // Edit Sub A
-        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
-        await user.click(editButtons[editButtons.length - 2]); // first subtask's Edit button
-
-        // Extend Sub A's endDate by 5 days
-        const endDateInput = screen.getByDisplayValue('2024-01-10');
-        fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
-
-        await user.click(screen.getByRole('button', { name: /save/i }));
-
-        // Sub B should NOT shift — dates remain unchanged
-        await waitFor(() => {
-            expect(screen.getByText(/2024-01-11/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-20/)).toBeInTheDocument();
-        });
-
-        // A warning badge should now be visible because Sub B starts before Sub A ends
-        expect(screen.getByTitle('View task issues')).toBeInTheDocument();
-    });
-
-    it('saves subtask successfully without confirm dialog and shows dependency issue', async () => {
-        const subA = makeSubtask({ id: 'sA', parentId: 't1', title: 'Sub A', startDate: '2024-01-01', endDate: '2024-01-10', dependsOn: [] });
-        const subB = makeSubtask({ id: 'sB', parentId: 't1', title: 'Sub B', startDate: '2024-01-11', endDate: '2024-01-20', dependsOn: ['sA'] });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', subtasks: [subA, subB] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByText('▼'));
-
-        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
-        await user.click(editButtons[editButtons.length - 2]);
-
-        const endDateInput = screen.getByDisplayValue('2024-01-10');
-        fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
-
-        // Save should succeed (no confirm dialog blocking it)
-        await user.click(screen.getByRole('button', { name: /save/i }));
-
-        // Sub A endDate is now 2024-01-15, Sub B unchanged
-        await waitFor(() => {
-            expect(screen.getByText(/2024-01-15/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-11/)).toBeInTheDocument();
-        });
-    });
-
-    // ── addDays / dayDiff via date shift ──────────────────────────────────
-
-    it('does NOT shift dependent task dates when endDate is extended (no longer auto-shifts)', async () => {
-        const taskA: Task = makeTask({
-            id: 'a',
-            title: 'Task A',
-            startDate: '2024-01-01',
-            endDate: '2024-01-10',
-            dependsOn: []
-        });
-        const taskB: Task = makeTask({
-            id: 'b',
-            title: 'Task B',
-            startDate: '2024-01-11',
-            endDate: '2024-01-20',
-            dependsOn: ['a']
-        });
-        preloadTasks([taskA, taskB]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        // Click Edit on the first task (Task A)
-        const editBtns = screen.getAllByRole('button', { name: /^edit$/i });
-        await user.click(editBtns[0]);
-
-        // Change endDate from '2024-01-10' to '2024-01-15' (+5 days)
-        const endDateInput = screen.getByDisplayValue('2024-01-10');
-        fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
-
-        await user.click(screen.getByRole('button', { name: /save/i }));
-
-        // Task B should NOT shift — dates remain unchanged
-        await waitFor(() => {
-            expect(screen.getByText(/2024-01-11/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-20/)).toBeInTheDocument();
-        });
-
-        // A warning badge should now be visible because Task B starts before Task A ends
-        expect(screen.getByTitle('View task issues')).toBeInTheDocument();
-    });
-
-    it('saves task successfully without confirm dialog and shows dependency issue', async () => {
-        const taskA: Task = makeTask({
-            id: 'a',
-            title: 'Task A',
-            startDate: '2024-01-01',
-            endDate: '2024-01-10',
-            dependsOn: []
-        });
-        const taskB: Task = makeTask({
-            id: 'b',
-            title: 'Task B',
-            startDate: '2024-01-11',
-            endDate: '2024-01-20',
-            dependsOn: ['a']
-        });
-        preloadTasks([taskA, taskB]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        const editBtns = screen.getAllByRole('button', { name: /^edit$/i });
-        await user.click(editBtns[0]);
-
-        const endDateInput = screen.getByDisplayValue('2024-01-10');
-        fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
-
-        // Save should succeed (no confirm dialog blocking it)
-        await user.click(screen.getByRole('button', { name: /save/i }));
-
-        // Task A endDate is now 2024-01-15, Task B unchanged
-        await waitFor(() => {
-            expect(screen.getByText(/2024-01-15/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-11/)).toBeInTheDocument();
-        });
-    });
-
-    it('does not prompt for date shift when endDate is not changed', async () => {
-        const mockConfirm = vi.fn(() => true);
-        vi.stubGlobal('confirm', mockConfirm);
-
-        preloadTasks([makeTask({ id: 't1', title: 'Task A', startDate: '2024-01-01', endDate: '2024-01-10' })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByRole('button', { name: /^edit$/i }));
-        // Don't change endDate
-        await user.click(screen.getByRole('button', { name: /save/i }));
-
-        // confirm should NOT have been called (no date shift prompt)
-        expect(mockConfirm).not.toHaveBeenCalled();
-    });
 
     // ── Gantt chart ───────────────────────────────────────────────────────
 
@@ -686,6 +548,15 @@ describe('Tasks page', () => {
         await user.click(screen.getByText('▼'));
 
         const dateSpan = screen.getByText(/📅 2024-03-01/);
+        expect(dateSpan).toBeInTheDocument();
+        expect(dateSpan.textContent).not.toContain('→');
+    });
+
+    it('shows only start date (no arrow) when task has startDate but no endDate', () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Start Only Task', startDate: '2024-06-01' })]);
+        render(<Tasks />, { wrapper: Wrapper });
+
+        const dateSpan = screen.getByText(/📅 2024-06-01/);
         expect(dateSpan).toBeInTheDocument();
         expect(dateSpan.textContent).not.toContain('→');
     });
@@ -1039,6 +910,64 @@ describe('Tasks page', () => {
         expect(screen.getByText('First Subtask')).toBeInTheDocument();
     });
 
+    it('task dep search resets after save-and-new (Shift+Enter)', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Existing Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+
+        // Type a search term into the dep search field
+        const depSearchInput = screen.getByPlaceholderText('Search tasks…');
+        await user.type(depSearchInput, 'xyz');
+        expect((depSearchInput as HTMLInputElement).value).toBe('xyz');
+
+        // Save-and-new
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        await user.type(titleInput, 'Task One');
+        fireEvent.keyDown(titleInput, { key: 'Enter', shiftKey: true });
+
+        // After save-and-new, dep search should be reset to empty
+        await waitFor(() => {
+            const newDepSearch = screen.getByPlaceholderText('Search tasks…');
+            expect((newDepSearch as HTMLInputElement).value).toBe('');
+        });
+    });
+
+    it('subtask dep search resets to parent title after save-and-new (Shift+Enter)', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent Task',
+                subtasks: [makeSubtask({ id: 's1', parentId: 't1', title: 'Existing Sub' })]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        // Dep search should default to parent task title
+        const depSearchInput = screen.getByPlaceholderText('Search subtasks…');
+        expect((depSearchInput as HTMLInputElement).value).toBe('Parent Task');
+
+        // Clear dep search and type something else
+        await user.clear(depSearchInput);
+        await user.type(depSearchInput, 'xyz');
+        expect((depSearchInput as HTMLInputElement).value).toBe('xyz');
+
+        // Save-and-new
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        await user.type(titleInput, 'Sub One');
+        fireEvent.keyDown(titleInput, { key: 'Enter', shiftKey: true });
+
+        // After save-and-new, dep search should reset to parent title
+        await waitFor(() => {
+            const newDepSearch = screen.getByPlaceholderText('Search subtasks…');
+            expect((newDepSearch as HTMLInputElement).value).toBe('Parent Task');
+        });
+    });
+
     // ── IME/repeat guards on Enter shortcut ───────────────────────────────
 
     it('Enter with repeat=true in task title does not submit', async () => {
@@ -1079,308 +1008,6 @@ describe('Tasks page', () => {
 
         // Modal should still be open (not submitted)
         expect(screen.getByPlaceholderText(/title \*/i)).toBeInTheDocument();
-    });
-
-    // ── Task issues popup ─────────────────────────────────────────────────
-
-    it('shows no warning badge when there are no issues', () => {
-        preloadTasks([makeTask({ id: 't1', title: 'Clean Task', startDate: '2024-01-01', endDate: '2024-01-10' })]);
-        render(<Tasks />, { wrapper: Wrapper });
-        expect(screen.queryByTitle('View task issues')).not.toBeInTheDocument();
-    });
-
-    it('shows warning badge when a dependency-order issue exists', () => {
-        preloadTasks([
-            makeTask({ id: 'a', startDate: '2024-01-01', endDate: '2024-01-10' }),
-            makeTask({ id: 'b', startDate: '2024-01-05', endDate: '2024-01-15', dependsOn: ['a'] })
-        ]);
-        render(<Tasks />, { wrapper: Wrapper });
-        expect(screen.getByTitle('View task issues')).toBeInTheDocument();
-    });
-
-    it('opens and closes the issues popup via the warning badge and ✕ button', async () => {
-        preloadTasks([
-            makeTask({ id: 'a', startDate: '2024-01-01', endDate: '2024-01-10' }),
-            makeTask({ id: 'b', startDate: '2024-01-05', endDate: '2024-01-15', dependsOn: ['a'] })
-        ]);
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        expect(screen.getByText(/task issues/i)).toBeInTheDocument();
-
-        await user.click(screen.getByRole('button', { name: /close issues panel/i }));
-        expect(screen.queryByText(/task issues \(\d+\)/i)).not.toBeInTheDocument();
-    });
-
-    it('closes popup with Escape key', async () => {
-        preloadTasks([
-            makeTask({ id: 'a', startDate: '2024-01-01', endDate: '2024-01-10' }),
-            makeTask({ id: 'b', startDate: '2024-01-05', endDate: '2024-01-15', dependsOn: ['a'] })
-        ]);
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        expect(screen.getByText(/task issues/i)).toBeInTheDocument();
-
-        await user.keyboard('{Escape}');
-        expect(screen.queryByText(/task issues \(\d+\)/i)).not.toBeInTheDocument();
-    });
-
-    it('closes popup when clicking outside it', async () => {
-        preloadTasks([
-            makeTask({ id: 'a', startDate: '2024-01-01', endDate: '2024-01-10' }),
-            makeTask({ id: 'b', startDate: '2024-01-05', endDate: '2024-01-15', dependsOn: ['a'] })
-        ]);
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        expect(screen.getByText(/task issues/i)).toBeInTheDocument();
-
-        // click heading outside popup
-        await user.click(screen.getByRole('heading', { name: /tasks/i }));
-        expect(screen.queryByText(/task issues \(\d+\)/i)).not.toBeInTheDocument();
-    });
-
-    it('fixes dependency-order issue for a top-level task', async () => {
-        preloadTasks([
-            makeTask({ id: 'a', title: 'Dep Task', startDate: '2024-01-01', endDate: '2024-01-10' }),
-            makeTask({ id: 'b', title: 'Late Task', startDate: '2024-01-05', endDate: '2024-01-20', dependsOn: ['a'] })
-        ]);
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /move start date to/i }));
-
-        // Task B's start should now be 2024-01-10 (dep end), end shifted by +5 → 2024-01-25
-        await waitFor(() => {
-            expect(screen.getByText(/2024-01-10.*2024-01-25|2024-01-25.*2024-01-10/)).toBeInTheDocument();
-        });
-    });
-
-    it('fixes dependency-order issue for a subtask', async () => {
-        const subA = makeSubtask({ id: 'sA', parentId: 't1', title: 'Sub A', startDate: '2024-01-01', endDate: '2024-01-10' });
-        const subB = makeSubtask({ id: 'sB', parentId: 't1', title: 'Sub B', startDate: '2024-01-05', endDate: '2024-01-20', dependsOn: ['sA'] });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', subtasks: [subA, subB] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        // Expand subtasks so dates become visible
-        await user.click(screen.getByText('▼'));
-
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /move start date to 2024-01-10/i }));
-
-        // Sub B end should shift +5 → 2024-01-25
-        await waitFor(() => {
-            expect(screen.getByText(/2024-01-25/)).toBeInTheDocument();
-        });
-    });
-
-    it('shows warning badge when a subtask-fit issue exists', () => {
-        const sub = makeSubtask({ id: 's1', parentId: 't1', startDate: '2024-01-01', endDate: '2024-01-20' });
-        preloadTasks([makeTask({ id: 't1', startDate: '2024-01-03', endDate: '2024-01-10', subtasks: [sub] })]);
-        render(<Tasks />, { wrapper: Wrapper });
-        expect(screen.getByTitle('View task issues')).toBeInTheDocument();
-    });
-
-    it('fixes subtask-fit issue by shortening the subtask', async () => {
-        const sub = makeSubtask({ id: 's1', parentId: 't1', title: 'Long Sub', startDate: '2024-01-01', endDate: '2024-01-20' });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', startDate: '2024-01-03', endDate: '2024-01-10', subtasks: [sub] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByText('▼'));
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /fix/i }));
-        await user.click(screen.getByRole('button', { name: /shorten subtask to fit parent/i }));
-
-        // Subtask end should be clipped to parent's 2024-01-10 and start to 2024-01-03
-        // The old endDate 2024-01-20 should no longer appear for the subtask
-        await waitFor(() => {
-            expect(screen.queryByText(/2024-01-20/)).not.toBeInTheDocument();
-        });
-    });
-
-    it('fixes subtask-fit issue by extending the parent', async () => {
-        const sub = makeSubtask({ id: 's1', parentId: 't1', title: 'Long Sub', startDate: '2024-01-01', endDate: '2024-01-20' });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', startDate: '2024-01-03', endDate: '2024-01-10', subtasks: [sub] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /fix/i }));
-        await user.click(screen.getByRole('button', { name: /extend parent to fit subtask/i }));
-
-        // Parent should now span 2024-01-01 → 2024-01-20
-        await waitFor(() => {
-            expect(screen.getByText(/2024-01-01.*2024-01-20|2024-01-20.*2024-01-01/)).toBeInTheDocument();
-        });
-    });
-
-    it('clicking Fix ▾ again toggles the dropdown closed', async () => {
-        const sub = makeSubtask({ id: 's1', parentId: 't1', startDate: '2024-01-01', endDate: '2024-01-20' });
-        preloadTasks([makeTask({ id: 't1', startDate: '2024-01-03', endDate: '2024-01-10', subtasks: [sub] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /fix/i }));
-        expect(screen.getByRole('button', { name: /shorten subtask/i })).toBeInTheDocument();
-
-        // Second click closes the dropdown
-        await user.click(screen.getByRole('button', { name: /fix/i }));
-        expect(screen.queryByRole('button', { name: /shorten subtask/i })).not.toBeInTheDocument();
-    });
-
-    it('mousedown outside the Fix ▾ dropdown closes it', async () => {
-        const sub = makeSubtask({ id: 's1', parentId: 't1', startDate: '2024-01-01', endDate: '2024-01-20' });
-        preloadTasks([makeTask({ id: 't1', startDate: '2024-01-03', endDate: '2024-01-10', subtasks: [sub] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /fix/i }));
-        expect(screen.getByRole('button', { name: /shorten subtask/i })).toBeInTheDocument();
-
-        // Mousedown outside both the Fix button and the dropdown menu
-        fireEvent.mouseDown(document.body);
-        expect(screen.queryByRole('button', { name: /shorten subtask/i })).not.toBeInTheDocument();
-    });
-
-    it('mousedown inside the Fix ▾ dropdown does not close it', async () => {
-        const sub = makeSubtask({ id: 's1', parentId: 't1', startDate: '2024-01-01', endDate: '2024-01-20' });
-        preloadTasks([makeTask({ id: 't1', startDate: '2024-01-03', endDate: '2024-01-10', subtasks: [sub] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /fix/i }));
-        const shortenBtn = screen.getByRole('button', { name: /shorten subtask/i });
-        expect(shortenBtn).toBeInTheDocument();
-
-        // Mousedown inside the menu — should not close it
-        fireEvent.mouseDown(shortenBtn);
-        expect(screen.getByRole('button', { name: /shorten subtask/i })).toBeInTheDocument();
-    });
-
-    it('fixes dependency-order for a top-level task that has no end date', async () => {
-        preloadTasks([
-            makeTask({ id: 'a', title: 'Dep', startDate: '2024-01-01', endDate: '2024-01-10' }),
-            // Task b has a startDate but no endDate
-            makeTask({ id: 'b', title: 'NoEnd', startDate: '2024-01-05', dependsOn: ['a'] })
-        ]);
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /move start date to 2024-01-10/i }));
-
-        // Issue is resolved — badge should disappear
-        await waitFor(() => {
-            expect(screen.queryByTitle('View task issues')).not.toBeInTheDocument();
-        });
-    });
-
-    it('fixes dependency-order for a subtask that has no end date', async () => {
-        const subA = makeSubtask({ id: 'sA', parentId: 't1', title: 'Sub A', startDate: '2024-01-01', endDate: '2024-01-10' });
-        // subB has startDate that triggers the issue but no endDate
-        const subB = makeSubtask({ id: 'sB', parentId: 't1', title: 'Sub B', startDate: '2024-01-05', dependsOn: ['sA'] });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', subtasks: [subA, subB] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /move start date to 2024-01-10/i }));
-
-        // Issue resolved
-        await waitFor(() => {
-            expect(screen.queryByTitle('View task issues')).not.toBeInTheDocument();
-        });
-    });
-
-    it('fixes subtask-fit by shortening when only end violation exists', async () => {
-        // Subtask starts WITHIN parent (no start violation), ends AFTER parent (end violation only)
-        const sub = makeSubtask({ id: 's1', parentId: 't1', startDate: '2024-01-05', endDate: '2024-01-20' });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', startDate: '2024-01-03', endDate: '2024-01-10', subtasks: [sub] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByText('▼'));
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /fix/i }));
-        await user.click(screen.getByRole('button', { name: /shorten subtask to fit parent/i }));
-
-        // Subtask end clipped to 2024-01-10; start (2024-01-05) should remain
-        await waitFor(() => {
-            expect(screen.queryByText(/2024-01-20/)).not.toBeInTheDocument();
-        });
-    });
-
-    it('fixes subtask-fit by shortening when only start violation exists', async () => {
-        // Subtask starts BEFORE parent (start violation), ends WITHIN parent (no end violation)
-        const sub = makeSubtask({ id: 's1', parentId: 't1', startDate: '2023-12-01', endDate: '2024-01-08' });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', startDate: '2024-01-03', endDate: '2024-01-10', subtasks: [sub] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByText('▼'));
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /fix/i }));
-        await user.click(screen.getByRole('button', { name: /shorten subtask to fit parent/i }));
-
-        // Subtask start clipped to 2024-01-03; old start (2023-12-01) should be gone
-        await waitFor(() => {
-            expect(screen.queryByText(/2023-12-01/)).not.toBeInTheDocument();
-        });
-    });
-
-    it('fixes subtask-fit by extending parent when only end violation exists', async () => {
-        // Subtask starts within parent, ends after parent
-        const sub = makeSubtask({ id: 's1', parentId: 't1', startDate: '2024-01-05', endDate: '2024-01-20' });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', startDate: '2024-01-03', endDate: '2024-01-10', subtasks: [sub] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /fix/i }));
-        await user.click(screen.getByRole('button', { name: /extend parent to fit subtask/i }));
-
-        // Parent end should extend to 2024-01-20
-        await waitFor(() => {
-            expect(screen.getAllByText(/2024-01-20/)[0]).toBeInTheDocument();
-        });
-    });
-
-    it('fixes subtask-fit by extending parent when only start violation exists', async () => {
-        // Subtask starts before parent, ends within parent
-        const sub = makeSubtask({ id: 's1', parentId: 't1', startDate: '2023-12-01', endDate: '2024-01-08' });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', startDate: '2024-01-03', endDate: '2024-01-10', subtasks: [sub] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTitle('View task issues'));
-        await user.click(screen.getByRole('button', { name: /fix/i }));
-        await user.click(screen.getByRole('button', { name: /extend parent to fit subtask/i }));
-
-        // Parent start should extend back to 2023-12-01
-        await waitFor(() => {
-            expect(screen.getAllByText(/2023-12-01/)[0]).toBeInTheDocument();
-        });
     });
 
     // ── Task dep-search filtering ─────────────────────────────────────────

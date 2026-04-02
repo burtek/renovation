@@ -1,262 +1,39 @@
-import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useApp } from '../../contexts/AppContext';
 import { cn } from '../../utils/classnames';
 
-import type { DependencyOrderIssue, SubtaskFitIssue, TaskIssue } from './taskIssues';
-import { addDays, dayDiff } from './types';
+import type { TaskIssue } from './taskIssues';
+import { issuePlugins } from './taskIssues';
 
 
 interface Props {
     issues: TaskIssue[];
     isOpen: boolean;
+    /** Viewport-relative position computed by the parent from the anchor button. */
+    pos: { top: number; right: number } | null;
+    /** The badge button element — excluded from the outside-click check. */
+    anchorRef: RefObject<HTMLButtonElement | null>;
     onClose: () => void;
-    popupPos: { top: number; right: number } | null;
 }
 
-function DependencyOrderFix({
-    issue,
-    onFixed
-}: {
-    issue: DependencyOrderIssue;
-    onFixed: () => void;
-}) {
-    const { state: { tasks }, dispatch } = useApp();
-    const handleFix = () => {
-        const shift = dayDiff(issue.dependencyEndDate, issue.dependentStartDate);
-
-        if (issue.dependentParentId === null) {
-            // top-level task
-            const task = tasks.find(t => t.id === issue.dependentId);
-            if (!task) {
-                return;
-            }
-            dispatch({
-                type: 'UPDATE_TASK',
-                payload: {
-                    ...task,
-                    startDate: issue.dependencyEndDate,
-                    endDate: task.endDate ? addDays(task.endDate, shift) : task.endDate
-                }
-            });
-        } else {
-            // subtask
-            const parentTask = tasks.find(t => t.id === issue.dependentParentId);
-            const sub = parentTask?.subtasks.find(s => s.id === issue.dependentId);
-            if (!parentTask || !sub) {
-                return;
-            }
-            dispatch({
-                type: 'UPDATE_SUBTASK',
-                payload: {
-                    taskId: parentTask.id,
-                    subtask: {
-                        ...sub,
-                        startDate: issue.dependencyEndDate,
-                        endDate: sub.endDate ? addDays(sub.endDate, shift) : sub.endDate
-                    }
-                }
-            });
-        }
-        onFixed();
-    };
-
-    return (
-        <div className="flex flex-col gap-1">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-                <span className="font-medium">
-                    {issue.dependentParentId ? 'Subtask' : 'Task'}
-                    {' '}
-                    &ldquo;{issue.dependentTitle}&rdquo;
-                </span>
-                {' '}
-                starts on
-                {' '}
-                {issue.dependentStartDate}
-                {' '}
-                but dependency
-                {' '}
-                <span className="font-medium">&ldquo;{issue.dependencyTitle}&rdquo;</span>
-                {' '}
-                ends on
-                {' '}
-                {issue.dependencyEndDate}
-                .
-            </p>
-            <button
-                type="button"
-                onClick={handleFix}
-                className="self-start text-xs bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 px-2 py-1 rounded"
-            >
-                Move start date to {issue.dependencyEndDate}
-            </button>
-        </div>
-    );
-}
-
-function SubtaskFitFix({
-    issue,
-    onFixed
-}: {
-    issue: SubtaskFitIssue;
-    onFixed: () => void;
-}) {
-    const { state: { tasks }, dispatch } = useApp();
-    const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
-    const fixBtnRef = useRef<HTMLButtonElement>(null);
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (!menuPos) {
-            return undefined;
-        }
-        const closeMenu = () => {
-            setMenuPos(null);
-        };
-        const handleClick = (e: MouseEvent) => {
-            const { target } = e;
-            if (
-                target instanceof Node
-                && !fixBtnRef.current?.contains(target)
-                && !menuRef.current?.contains(target)
-            ) {
-                setMenuPos(null);
-            }
-        };
-        document.addEventListener('mousedown', handleClick);
-        window.addEventListener('scroll', closeMenu, true);
-        window.addEventListener('resize', closeMenu);
-        return () => {
-            document.removeEventListener('mousedown', handleClick);
-            window.removeEventListener('scroll', closeMenu, true);
-            window.removeEventListener('resize', closeMenu);
-        };
-    }, [menuPos]);
-
-    const startViolation = issue.parentStartDate && issue.subtaskStartDate && issue.subtaskStartDate < issue.parentStartDate;
-    const endViolation = issue.parentEndDate && issue.subtaskEndDate && issue.subtaskEndDate > issue.parentEndDate;
-
-    const toggleMenu = () => {
-        if (menuPos) {
-            setMenuPos(null);
-            return;
-        }
-        const rect = fixBtnRef.current?.getBoundingClientRect();
-        if (rect) {
-            setMenuPos({ top: rect.bottom + 4, left: rect.left });
-        }
-    };
-
-    const shortenSubtask = () => {
-        const parentTask = tasks.find(t => t.id === issue.parentId);
-        const sub = parentTask?.subtasks.find(s => s.id === issue.subtaskId);
-        if (!parentTask || !sub) {
-            return;
-        }
-        dispatch({
-            type: 'UPDATE_SUBTASK',
-            payload: {
-                taskId: parentTask.id,
-                subtask: {
-                    ...sub,
-                    startDate: startViolation ? issue.parentStartDate : sub.startDate,
-                    endDate: endViolation ? issue.parentEndDate : sub.endDate
-                }
-            }
-        });
-        setMenuPos(null);
-        onFixed();
-    };
-
-    const extendParent = () => {
-        const parentTask = tasks.find(t => t.id === issue.parentId);
-        if (!parentTask) {
-            return;
-        }
-        dispatch({
-            type: 'UPDATE_TASK',
-            payload: {
-                ...parentTask,
-                startDate: startViolation ? issue.subtaskStartDate : parentTask.startDate,
-                endDate: endViolation ? issue.subtaskEndDate : parentTask.endDate
-            }
-        });
-        setMenuPos(null);
-        onFixed();
-    };
-
-    return (
-        <div className="flex flex-col gap-1">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-                <span className="font-medium">Subtask &ldquo;{issue.subtaskTitle}&rdquo;</span>
-                {' '}
-                (
-                {issue.subtaskStartDate ?? '?'}
-                {' '}
-                –
-                {' '}
-                {issue.subtaskEndDate ?? '?'}
-                )
-                {' '}
-                doesn&apos;t fit in parent task
-                {' '}
-                <span className="font-medium">&ldquo;{issue.parentTitle}&rdquo;</span>
-                {' '}
-                (
-                {issue.parentStartDate ?? '?'}
-                {' '}
-                –
-                {' '}
-                {issue.parentEndDate ?? '?'}
-                ).
-            </p>
-            <div className="self-start">
-                <button
-                    ref={fixBtnRef}
-                    type="button"
-                    onClick={toggleMenu}
-                    className="text-xs bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 px-2 py-1 rounded"
-                >
-                    Fix ▾
-                </button>
-                {menuPos && (
-                    <div
-                        ref={menuRef}
-                        style={{ position: 'fixed' as const, top: menuPos.top, left: menuPos.left }}
-                        className="z-[60] bg-white dark:bg-gray-700 border dark:border-gray-600 rounded shadow-lg min-w-max"
-                    >
-                        <button
-                            type="button"
-                            onClick={shortenSubtask}
-                            className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
-                        >
-                            Shorten subtask to fit parent
-                        </button>
-                        <button
-                            type="button"
-                            onClick={extendParent}
-                            className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
-                        >
-                            Extend parent to fit subtask
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
-
-export default function TaskIssuesPopup({ issues, isOpen, onClose, popupPos }: Props) {
+export default function TaskIssuesPopup({ issues, isOpen, pos, anchorRef, onClose }: Props) {
     const popupRef = useRef<HTMLDivElement>(null);
 
+    // Close when clicking outside — the anchor button is explicitly excluded so
+    // the badge's own onClick toggle handles open/close without fighting this handler.
     useEffect(() => {
         if (!isOpen) {
             return undefined;
         }
         const handleClick = (e: MouseEvent) => {
             const { target } = e;
-            if (popupRef.current && target instanceof Node && !popupRef.current.contains(target)) {
+            if (
+                target instanceof Node
+                && !popupRef.current?.contains(target)
+                && !anchorRef.current?.contains(target)
+            ) {
                 onClose();
             }
         };
@@ -264,8 +41,9 @@ export default function TaskIssuesPopup({ issues, isOpen, onClose, popupPos }: P
         return () => {
             document.removeEventListener('click', handleClick);
         };
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, anchorRef]);
 
+    // Close on Escape.
     useEffect(() => {
         if (!isOpen) {
             return undefined;
@@ -288,8 +66,8 @@ export default function TaskIssuesPopup({ issues, isOpen, onClose, popupPos }: P
     return createPortal(
         <div
             ref={popupRef}
-            style={popupPos
-                ? { position: 'fixed', top: popupPos.top, right: popupPos.right }
+            style={pos
+                ? { position: 'fixed', top: pos.top, right: pos.right }
                 : { position: 'fixed', visibility: 'hidden' }}
             className={cn(
                 'z-50',
@@ -312,28 +90,20 @@ export default function TaskIssuesPopup({ issues, isOpen, onClose, popupPos }: P
                 </button>
             </div>
             <ul className="divide-y dark:divide-gray-700">
-                {issues.map(issue => (
-                    <li
-                        key={issue.type === 'dependency-order'
-                            ? `dep-${issue.dependentId}-${issue.dependencyId}`
-                            : `fit-${issue.subtaskId}`}
-                        className="px-4 py-3"
-                    >
-                        {issue.type === 'dependency-order'
-                            ? (
-                                <DependencyOrderFix
-                                    issue={issue}
-                                    onFixed={onClose}
-                                />
-                            )
-                            : (
-                                <SubtaskFitFix
-                                    issue={issue}
-                                    onFixed={onClose}
-                                />
-                            )}
-                    </li>
-                ))}
+                {issues.map(issue => {
+                    const plugin = issuePlugins.find(p => p.handles(issue));
+                    if (!plugin) {
+                        return null;
+                    }
+                    return (
+                        <li
+                            key={plugin.key(issue)}
+                            className="px-4 py-3"
+                        >
+                            {plugin.renderFix(issue, onClose)}
+                        </li>
+                    );
+                })}
             </ul>
         </div>,
         document.body
