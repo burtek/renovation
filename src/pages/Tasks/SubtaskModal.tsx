@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import type { Subtask } from '../../types';
 import { cn } from '../../utils/classnames';
 
@@ -21,6 +23,28 @@ interface Props {
 
 export default function SubtaskModal({ editSubtask, parentTaskTitle, form, allSubtasks, onFormChange, onSave, onSaveAndNew, onClose }: Props) {
     const otherSubtasks = allSubtasks.filter(s => s.id !== editSubtask?.id);
+    const [depSearch, setDepSearch] = useState(editSubtask ? '' : parentTaskTitle);
+    const [titleError, setTitleError] = useState(false);
+    const lowerSearch = depSearch.trim().toLowerCase();
+    const filteredSubtasks = lowerSearch
+        ? otherSubtasks.filter(s => s.title.toLowerCase().includes(lowerSearch) || s.parentTitle.toLowerCase().includes(lowerSearch))
+        : otherSubtasks;
+
+    const handleSave = () => {
+        if (!form.title.trim()) {
+            setTitleError(true);
+            return;
+        }
+        onSave();
+    };
+
+    const handleSaveAndNew = () => {
+        if (!form.title.trim()) {
+            setTitleError(true);
+            return;
+        }
+        onSaveAndNew();
+    };
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -34,9 +58,11 @@ export default function SubtaskModal({ editSubtask, parentTaskTitle, form, allSu
                 </p>
                 <div className="space-y-3">
                     <input
+                        autoFocus
                         placeholder="Title *"
                         value={form.title}
                         onChange={e => {
+                            setTitleError(false);
                             onFormChange({ title: e.target.value });
                         }}
                         onKeyDown={e => {
@@ -45,14 +71,21 @@ export default function SubtaskModal({ editSubtask, parentTaskTitle, form, allSu
                             }
                             if (e.key === 'Enter' && e.shiftKey) {
                                 e.preventDefault();
-                                onSaveAndNew();
+                                handleSaveAndNew();
                             } else if (e.key === 'Enter') {
                                 e.preventDefault();
-                                onSave();
+                                handleSave();
                             }
                         }}
-                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+                        className={cn(
+                            'w-full border rounded px-3 py-2 text-sm focus:outline-none bg-white dark:bg-gray-700 dark:text-gray-100',
+                            titleError && !form.title.trim()
+                                ? 'border-red-400 focus:border-red-400 dark:border-red-500'
+                                : 'border-gray-300 dark:border-gray-600 focus:border-blue-400'
+                        )}
                     />
+                    {titleError && !form.title.trim()
+                        && <p className="text-xs text-red-500 -mt-2">Title is required.</p>}
                     <textarea
                         placeholder="Notes"
                         value={form.notes}
@@ -109,9 +142,22 @@ export default function SubtaskModal({ editSubtask, parentTaskTitle, form, allSu
 
                     {otherSubtasks.length > 0 && (
                         <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Depends on (subtasks):</label>
+                            <label
+                                htmlFor="subtask-dep-search"
+                                className="text-xs text-gray-500 dark:text-gray-400 mb-1 block"
+                            >Depends on (subtasks):
+                            </label>
+                            <input
+                                id="subtask-dep-search"
+                                placeholder="Search subtasks…"
+                                value={depSearch}
+                                onChange={e => {
+                                    setDepSearch(e.target.value);
+                                }}
+                                className="w-full border dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100 mb-1"
+                            />
                             <div className="max-h-32 overflow-y-auto border dark:border-gray-600 rounded p-2 space-y-1 bg-white dark:bg-gray-700">
-                                {otherSubtasks.map(s => (
+                                {filteredSubtasks.map(s => (
                                     <label
                                         key={s.id}
                                         className="flex items-center gap-2 text-sm cursor-pointer dark:text-gray-300"
@@ -133,6 +179,8 @@ export default function SubtaskModal({ editSubtask, parentTaskTitle, form, allSu
                                         </span>
                                     </label>
                                 ))}
+                                {filteredSubtasks.length === 0 && depSearch.trim()
+                                    && <p className="text-xs text-gray-400 dark:text-gray-500 py-1">No subtasks match your search.</p>}
                             </div>
                         </div>
                     )}
@@ -146,7 +194,7 @@ export default function SubtaskModal({ editSubtask, parentTaskTitle, form, allSu
                     </button>
                     <button
                         type="button"
-                        onClick={onSave}
+                        onClick={handleSave}
                         className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
                     >Save
                     </button>

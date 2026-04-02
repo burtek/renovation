@@ -30,20 +30,20 @@ export default function Tasks() {
     const setTab = (newTab: Tab) => {
         navigate(`/tasks/${newTab}`, { replace: true });
     };
-    const [taskModal, setTaskModal] = useState<{ open: boolean; editTask?: Task }>({ open: false });
+    const [taskModal, setTaskModal] = useState<{ open: boolean; editTask?: Task; instanceId: number }>({ open: false, instanceId: 0 });
     const [issuesOpen, setIssuesOpen] = useState(false);
 
     useEffect(() => {
         document.title = 'Tasks | Renovation';
     }, []);
-    const [subtaskModal, setSubtaskModal] = useState<{ open: boolean; taskId: string; editSubtask?: Subtask }>({ open: false, taskId: '' });
+    const [subtaskModal, setSubtaskModal] = useState<{ open: boolean; taskId: string; editSubtask?: Subtask; instanceId: number }>({ open: false, taskId: '', instanceId: 0 });
     const [taskForm, setTaskForm] = useState<TaskFormData>(emptyTaskForm);
     const [subtaskForm, setSubtaskForm] = useState<SubtaskFormData>(emptySubtaskForm);
 
     const openNewTask = () => {
         const today = getToday();
         setTaskForm({ ...emptyTaskForm, startDate: today, endDate: today });
-        setTaskModal({ open: true });
+        setTaskModal(prev => ({ open: true, instanceId: prev.instanceId + 1 }));
     };
 
     const openEditTask = (task: Task) => {
@@ -56,7 +56,7 @@ export default function Tasks() {
             completed: task.completed,
             dependsOn: task.dependsOn ?? []
         });
-        setTaskModal({ open: true, editTask: task });
+        setTaskModal(prev => ({ open: true, editTask: task, instanceId: prev.instanceId + 1 }));
     };
 
     const issues = useMemo(() => detectIssues(state.tasks), [state.tasks]);
@@ -80,7 +80,7 @@ export default function Tasks() {
 
     const saveTask = () => {
         if (performSaveTask()) {
-            setTaskModal({ open: false });
+            setTaskModal(prev => ({ ...prev, open: false, editTask: undefined }));
         }
     };
 
@@ -88,7 +88,7 @@ export default function Tasks() {
         if (performSaveTask()) {
             const today = getToday();
             setTaskForm({ ...emptyTaskForm, startDate: today, endDate: today });
-            setTaskModal({ open: true });
+            setTaskModal(prev => ({ open: true, instanceId: prev.instanceId + 1 }));
         }
     };
 
@@ -105,7 +105,7 @@ export default function Tasks() {
         const parentEndDate = parentTask?.endDate ?? '';
         const endDate = parentEndDate || startDate;
         setSubtaskForm({ ...emptySubtaskForm, startDate, endDate, assignee: parentTask?.assignee ?? '' });
-        setSubtaskModal({ open: true, taskId });
+        setSubtaskModal(prev => ({ open: true, taskId, instanceId: prev.instanceId + 1 }));
     };
 
     const openEditSubtask = (taskId: string, subtask: Subtask) => {
@@ -118,7 +118,7 @@ export default function Tasks() {
             completed: subtask.completed,
             dependsOn: subtask.dependsOn ?? []
         });
-        setSubtaskModal({ open: true, taskId, editSubtask: subtask });
+        setSubtaskModal(prev => ({ open: true, taskId, editSubtask: subtask, instanceId: prev.instanceId + 1 }));
     };
 
     const performSaveSubtask = (): boolean => {
@@ -141,7 +141,7 @@ export default function Tasks() {
 
     const saveSubtask = () => {
         if (performSaveSubtask()) {
-            setSubtaskModal({ open: false, taskId: '' });
+            setSubtaskModal(prev => ({ ...prev, open: false, taskId: '', editSubtask: undefined }));
         }
     };
 
@@ -153,7 +153,7 @@ export default function Tasks() {
             const parentEndDate = parentTask?.endDate ?? '';
             const endDate = parentEndDate || startDate;
             setSubtaskForm({ ...emptySubtaskForm, startDate, endDate, assignee: parentTask?.assignee ?? '' });
-            setSubtaskModal({ open: true, taskId });
+            setSubtaskModal(prev => ({ open: true, taskId, instanceId: prev.instanceId + 1 }));
         }
     };
 
@@ -174,7 +174,7 @@ export default function Tasks() {
             completed: false,
             dependsOn: subtask.dependsOn ?? []
         });
-        setSubtaskModal({ open: true, taskId });
+        setSubtaskModal(prev => ({ open: true, taskId, instanceId: prev.instanceId + 1 }));
     };
 
     const toggleTaskComplete = (task: Task) => {
@@ -260,6 +260,7 @@ export default function Tasks() {
 
             {taskModal.open && (
                 <TaskModal
+                    key={taskModal.instanceId}
                     editTask={taskModal.editTask}
                     form={taskForm}
                     allTasks={state.tasks}
@@ -269,13 +270,14 @@ export default function Tasks() {
                     onSave={saveTask}
                     onSaveAndNew={saveTaskAndNew}
                     onClose={() => {
-                        setTaskModal({ open: false });
+                        setTaskModal(prev => ({ ...prev, open: false, editTask: undefined }));
                     }}
                 />
             )}
 
             {subtaskModal.open && (
                 <SubtaskModal
+                    key={subtaskModal.instanceId}
                     editSubtask={subtaskModal.editSubtask}
                     parentTaskTitle={state.tasks.find(t => t.id === subtaskModal.taskId)?.title ?? ''}
                     form={subtaskForm}
@@ -286,7 +288,7 @@ export default function Tasks() {
                     onSave={saveSubtask}
                     onSaveAndNew={saveSubtaskAndNew}
                     onClose={() => {
-                        setSubtaskModal({ open: false, taskId: '' });
+                        setSubtaskModal(prev => ({ ...prev, open: false, taskId: '', editSubtask: undefined }));
                     }}
                 />
             )}

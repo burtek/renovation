@@ -1383,4 +1383,303 @@ describe('Tasks page', () => {
             expect(screen.getAllByText(/2023-12-01/)[0]).toBeInTheDocument();
         });
     });
+
+    // ── Task dep-search filtering ─────────────────────────────────────────
+
+    it('filters task dependency list as user types in search box', async () => {
+        preloadTasks([
+            makeTask({ id: 't1', title: 'Alpha Task' }),
+            makeTask({ id: 't2', title: 'Beta Task' })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        // Open add-task modal (the two preloaded tasks appear as dep candidates)
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+
+        const depSearch = screen.getByPlaceholderText('Search tasks…');
+        await user.type(depSearch, 'alpha');
+
+        // Alpha Task dep-checkbox present; Beta Task dep-checkbox filtered out
+        expect(screen.getByRole('checkbox', { name: /Alpha Task/i })).toBeInTheDocument();
+        expect(screen.queryByRole('checkbox', { name: /Beta Task/i })).not.toBeInTheDocument();
+    });
+
+    it('shows "No tasks match your search" when task dep search has no results', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Existing Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+
+        const depSearch = screen.getByPlaceholderText('Search tasks…');
+        await user.type(depSearch, 'zzznomatch');
+
+        expect(screen.getByText(/no tasks match your search/i)).toBeInTheDocument();
+    });
+
+    // ── Subtask dep-search filtering ──────────────────────────────────────
+
+    it('subtask dep search defaults to parent task name and shows only siblings', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'First Group',
+                subtasks: [makeSubtask({ id: 's1', parentId: 't1', title: 'Sibling Sub' })]
+            }),
+            makeTask({
+                id: 't2',
+                title: 'Second Group',
+                subtasks: [makeSubtask({ id: 's2', parentId: 't2', title: 'Other Sub' })]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        const subtaskButtons = screen.getAllByRole('button', { name: /\+ subtask/i });
+        await user.click(subtaskButtons[0]);
+
+        // Dep search pre-filled with parent task title
+        const depSearch = screen.getByPlaceholderText('Search subtasks…');
+        expect((depSearch as HTMLInputElement).value).toBe('First Group');
+
+        // Only the sibling (parentTitle="First Group") is visible; the other-parent sub is not
+        expect(screen.getByRole('checkbox', { name: /Sibling Sub/i })).toBeInTheDocument();
+        expect(screen.queryByRole('checkbox', { name: /Other Sub/i })).not.toBeInTheDocument();
+    });
+
+    it('filters subtask dep list when user clears default and types new query', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [
+                    makeSubtask({ id: 's1', parentId: 't1', title: 'Alpha Sub' }),
+                    makeSubtask({ id: 's2', parentId: 't1', title: 'Beta Sub' })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        const depSearch = screen.getByPlaceholderText('Search subtasks…');
+        await user.clear(depSearch);
+        await user.type(depSearch, 'alpha');
+
+        // Alpha Sub dep-checkbox present; Beta Sub dep-checkbox filtered out
+        expect(screen.getByRole('checkbox', { name: /Alpha Sub/i })).toBeInTheDocument();
+        expect(screen.queryByRole('checkbox', { name: /Beta Sub/i })).not.toBeInTheDocument();
+    });
+
+    it('shows "No subtasks match your search" when subtask dep search has no results', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [makeSubtask({ id: 's1', parentId: 't1', title: 'Existing Sub' })]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        const depSearch = screen.getByPlaceholderText('Search subtasks…');
+        await user.clear(depSearch);
+        await user.type(depSearch, 'zzznomatch');
+
+        expect(screen.getByText(/no subtasks match your search/i)).toBeInTheDocument();
+    });
+
+    // ── Dependency / dependent-count badges ───────────────────────────────
+
+    it('shows ⬆ N badge on a task with dependsOn', () => {
+        preloadTasks([
+            makeTask({ id: 'a', title: 'Task A', dependsOn: [] }),
+            makeTask({ id: 'b', title: 'Task B', dependsOn: ['a'] })
+        ]);
+        render(<Tasks />, { wrapper: Wrapper });
+
+        expect(screen.getByTitle('Depends on 1 task(s)')).toBeInTheDocument();
+    });
+
+    it('shows ⬇ N badge on a task that other tasks depend on', () => {
+        preloadTasks([
+            makeTask({ id: 'a', title: 'Task A', dependsOn: [] }),
+            makeTask({ id: 'b', title: 'Task B', dependsOn: ['a'] })
+        ]);
+        render(<Tasks />, { wrapper: Wrapper });
+
+        expect(screen.getByTitle('1 task(s) depend on this')).toBeInTheDocument();
+    });
+
+    it('shows ⬆ N badge on a subtask with dependsOn', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [
+                    makeSubtask({ id: 's1', parentId: 't1', title: 'Sub A', dependsOn: [] }),
+                    makeSubtask({ id: 's2', parentId: 't1', title: 'Sub B', dependsOn: ['s1'] })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByText('▼'));
+
+        expect(screen.getByTitle('Depends on 1 subtask(s)')).toBeInTheDocument();
+    });
+
+    it('shows ⬇ N badge on a subtask that other subtasks depend on', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [
+                    makeSubtask({ id: 's1', parentId: 't1', title: 'Sub A', dependsOn: [] }),
+                    makeSubtask({ id: 's2', parentId: 't1', title: 'Sub B', dependsOn: ['s1'] })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByText('▼'));
+
+        expect(screen.getByTitle('1 subtask(s) depend on this')).toBeInTheDocument();
+    });
+
+    it('task without dependsOn field shows no dep badge and no dep count badge', () => {
+        // Preload a raw task that omits the dependsOn field entirely so the ?? fallback is exercised
+        localStorage.setItem(
+            'renovation-data',
+            JSON.stringify({
+                notes: [],
+                tasks: [{ id: 't1', title: 'Bare Task', notes: '', completed: false, subtasks: [] }],
+                expenses: [],
+                calendarEvents: [],
+                budget: 0
+            })
+        );
+        render(<Tasks />, { wrapper: Wrapper });
+
+        expect(screen.getByText('Bare Task')).toBeInTheDocument();
+        expect(screen.queryByTitle(/depends on/i)).not.toBeInTheDocument();
+        expect(screen.queryByTitle(/depend on this/i)).not.toBeInTheDocument();
+    });
+
+    // ── Empty-title feedback ──────────────────────────────────────────────
+
+    it('clicking Save with empty title shows "Title is required." error', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        // Do NOT type a title
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    it('typing in title after error clears the error message', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        // Error shown
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+
+        // Start typing — error should disappear
+        await user.type(screen.getByPlaceholderText(/title \*/i), 'A');
+        expect(screen.queryByText('Title is required.')).not.toBeInTheDocument();
+    });
+
+    it('pressing Enter with empty task title shows "Title is required." error', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        fireEvent.keyDown(titleInput, { key: 'Enter' });
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    it('pressing Shift+Enter with empty task title shows "Title is required." error', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        fireEvent.keyDown(titleInput, { key: 'Enter', shiftKey: true });
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    it('clicking Save with empty subtask title shows "Title is required." error', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    it('pressing Enter with empty subtask title shows "Title is required." error', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        fireEvent.keyDown(titleInput, { key: 'Enter' });
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    // ── SubtaskModal dep-search edit mode ─────────────────────────────────
+
+    it('pressing Shift+Enter with empty subtask title shows "Title is required." error', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+        const titleInput = screen.getByPlaceholderText(/title \*/i);
+        fireEvent.keyDown(titleInput, { key: 'Enter', shiftKey: true });
+
+        expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    });
+
+    it('editing a subtask starts with empty dep search (not parent task name)', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                subtasks: [
+                    makeSubtask({ id: 's1', parentId: 't1', title: 'Existing Sub' }),
+                    makeSubtask({ id: 's2', parentId: 't1', title: 'Another Sub' })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByText('▼'));
+        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
+        // edit the first subtask (has another sub as potential dependency)
+        await user.click(editButtons[editButtons.length - 2]);
+
+        // When editing, dep search should be empty (not pre-filled with parent title)
+        const depSearch = screen.getByPlaceholderText('Search subtasks…');
+        expect((depSearch as HTMLInputElement).value).toBe('');
+    });
 });
