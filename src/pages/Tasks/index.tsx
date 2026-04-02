@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useApp } from '../../contexts/AppContext';
@@ -61,6 +61,10 @@ export default function Tasks() {
     };
 
     const issues = useMemo(() => detectIssues(state.tasks), [state.tasks]);
+    const closeIssues = useCallback(() => {
+        setIssuesOpen(false);
+    }, []);
+    const effectiveIsOpen = issuesOpen && issues.length > 0;
 
     const performSaveTask = (): boolean => {
         if (!taskForm.title.trim()) {
@@ -220,16 +224,14 @@ export default function Tasks() {
                                 }}
                                 className="flex items-center gap-1 px-2 py-1 rounded text-sm bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300"
                                 title="View task issues"
-                                aria-expanded={issuesOpen}
+                                aria-expanded={effectiveIsOpen}
                             >
                                 ⚠️ {issues.length}
                             </button>
                             <TaskIssuesPopup
                                 issues={issues}
-                                isOpen={issuesOpen}
-                                onClose={() => {
-                                    setIssuesOpen(false);
-                                }}
+                                isOpen={effectiveIsOpen}
+                                onClose={closeIssues}
                             />
                         </div>
                     )}

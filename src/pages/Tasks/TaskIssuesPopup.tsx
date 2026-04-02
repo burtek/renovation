@@ -109,6 +109,9 @@ function SubtaskFitFix({
         if (!menuPos) {
             return undefined;
         }
+        const closeMenu = () => {
+            setMenuPos(null);
+        };
         const handleClick = (e: MouseEvent) => {
             const { target } = e;
             if (
@@ -120,8 +123,12 @@ function SubtaskFitFix({
             }
         };
         document.addEventListener('mousedown', handleClick);
+        window.addEventListener('scroll', closeMenu, true);
+        window.addEventListener('resize', closeMenu);
         return () => {
             document.removeEventListener('mousedown', handleClick);
+            window.removeEventListener('scroll', closeMenu, true);
+            window.removeEventListener('resize', closeMenu);
         };
     }, [menuPos]);
 
