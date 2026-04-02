@@ -30,23 +30,27 @@ export default function GanttChart({ tasks }: { tasks: Task[] }) {
 
     useLayoutEffect(() => {
         if (containerRef.current) {
-            setContainerWidth(containerRef.current.getBoundingClientRect().width);
+            setContainerWidth(containerRef.current.clientWidth);
         }
     }, []);
 
     useEffect(() => {
         const el = containerRef.current;
-        const observer = new ResizeObserver(entries => {
-            for (const entry of entries) {
-                setContainerWidth(entry.contentRect.width);
-            }
-        });
-        if (el) {
+        if (el && typeof ResizeObserver !== 'undefined') {
+            const observer = new ResizeObserver(entries => {
+                for (const entry of entries) {
+                    setContainerWidth(entry.contentRect.width);
+                }
+            });
             observer.observe(el);
+            return () => {
+                observer.disconnect();
+            };
         }
-        return () => {
-            observer.disconnect();
-        };
+        if (el) {
+            setContainerWidth(el.clientWidth);
+        }
+        return undefined;
     }, []);
 
     const rows: GanttRow[] = [];
@@ -123,11 +127,11 @@ export default function GanttChart({ tasks }: { tasks: Task[] }) {
     const rowIndexMap = new Map(rows.map((r, i) => [r.id, i]));
 
     return (
-        <div
-            ref={containerRef}
-            className="w-full"
-        >
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 overflow-auto">
+        <div className="w-full">
+            <div
+                ref={containerRef}
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 overflow-auto"
+            >
                 <svg
                     width={chartWidth}
                     height={chartHeight}
