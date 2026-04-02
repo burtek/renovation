@@ -11,6 +11,7 @@ interface Props {
     issues: TaskIssue[];
     isOpen: boolean;
     onClose: () => void;
+    popupPos: { top: number; right: number } | null;
 }
 
 function DependencyOrderFix({
@@ -245,7 +246,7 @@ function SubtaskFitFix({
     );
 }
 
-export default function TaskIssuesPopup({ issues, isOpen, onClose }: Props) {
+export default function TaskIssuesPopup({ issues, isOpen, onClose, popupPos }: Props) {
     const popupRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -286,8 +287,11 @@ export default function TaskIssuesPopup({ issues, isOpen, onClose }: Props) {
     return (
         <div
             ref={popupRef}
+            style={popupPos
+                ? { position: 'fixed', top: popupPos.top, right: popupPos.right }
+                : { position: 'fixed', visibility: 'hidden' }}
             className={cn(
-                'absolute right-0 top-full mt-1 z-50',
+                'z-50',
                 'w-[28rem] max-h-[70vh] overflow-y-auto',
                 'bg-white dark:bg-gray-800 border dark:border-gray-700',
                 'rounded-lg shadow-xl'

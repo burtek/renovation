@@ -68,6 +68,8 @@ const fitIssueUndatedDates: SubtaskFitIssue = {
 };
 
 describe('TaskIssuesPopup', () => {
+    const popupPos = { top: 50, right: 10 };
+
     beforeEach(() => {
         localStorage.clear();
     });
@@ -81,6 +83,7 @@ describe('TaskIssuesPopup', () => {
                 issues={[depIssueTopLevel]}
                 isOpen={false}
                 onClose={vi.fn()}
+                popupPos={popupPos}
             />,
             { wrapper: Wrapper }
         );
@@ -96,6 +99,7 @@ describe('TaskIssuesPopup', () => {
                 issues={[depIssueTopLevel]}
                 isOpen={false}
                 onClose={onClose}
+                popupPos={popupPos}
             />,
             { wrapper: Wrapper }
         );
@@ -111,6 +115,7 @@ describe('TaskIssuesPopup', () => {
                 issues={[depIssueTopLevel]}
                 isOpen
                 onClose={onClose}
+                popupPos={popupPos}
             />,
             { wrapper: Wrapper }
         );
@@ -124,6 +129,7 @@ describe('TaskIssuesPopup', () => {
                 issues={[fitIssueUndatedDates]}
                 isOpen
                 onClose={vi.fn()}
+                popupPos={popupPos}
             />,
             { wrapper: Wrapper }
         );
@@ -141,6 +147,7 @@ describe('TaskIssuesPopup', () => {
                 issues={[depIssueTopLevel]}
                 isOpen
                 onClose={onClose}
+                popupPos={popupPos}
             />,
             { wrapper: Wrapper }
         );
@@ -158,6 +165,7 @@ describe('TaskIssuesPopup', () => {
                 issues={[depIssueSubtask]}
                 isOpen
                 onClose={onClose}
+                popupPos={popupPos}
             />,
             { wrapper: Wrapper }
         );
@@ -174,6 +182,7 @@ describe('TaskIssuesPopup', () => {
                 issues={[fitIssue]}
                 isOpen
                 onClose={onClose}
+                popupPos={popupPos}
             />,
             { wrapper: Wrapper }
         );
@@ -191,6 +200,7 @@ describe('TaskIssuesPopup', () => {
                 issues={[fitIssue]}
                 isOpen
                 onClose={onClose}
+                popupPos={popupPos}
             />,
             { wrapper: Wrapper }
         );

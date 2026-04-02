@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useApp } from '../../contexts/AppContext';
@@ -32,6 +32,8 @@ export default function Tasks() {
     };
     const [taskModal, setTaskModal] = useState<{ open: boolean; editTask?: Task; instanceId: number }>({ open: false, instanceId: 0 });
     const [issuesOpen, setIssuesOpen] = useState(false);
+    const [popupPos, setPopupPos] = useState<{ top: number; right: number } | null>(null);
+    const badgeRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         document.title = 'Tasks | Renovation';
@@ -62,8 +64,25 @@ export default function Tasks() {
     const issues = useMemo(() => detectIssues(state.tasks), [state.tasks]);
     const closeIssues = useCallback(() => {
         setIssuesOpen(false);
+        setPopupPos(null);
     }, []);
     const effectiveIsOpen = issuesOpen && issues.length > 0;
+
+    useEffect(() => {
+        if (!effectiveIsOpen) {
+            return undefined;
+        }
+        const handleResize = () => {
+            const rect = badgeRef.current?.getBoundingClientRect();
+            if (rect) {
+                setPopupPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [effectiveIsOpen]);
 
     const performSaveTask = (): boolean => {
         if (!taskForm.title.trim()) {
@@ -212,11 +231,20 @@ export default function Tasks() {
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                     {issues.length > 0 && (
-                        <div className="relative">
+                        <>
                             <button
+                                ref={badgeRef}
                                 type="button"
                                 onClick={() => {
-                                    setIssuesOpen(v => !v);
+                                    if (issuesOpen) {
+                                        closeIssues();
+                                    } else {
+                                        const rect = badgeRef.current?.getBoundingClientRect();
+                                        if (rect) {
+                                            setPopupPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                                        }
+                                        setIssuesOpen(true);
+                                    }
                                 }}
                                 className="flex items-center gap-1 px-2 py-1 rounded text-sm bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300"
                                 title="View task issues"
@@ -228,8 +256,9 @@ export default function Tasks() {
                                 issues={issues}
                                 isOpen={effectiveIsOpen}
                                 onClose={closeIssues}
+                                popupPos={popupPos}
                             />
-                        </div>
+                        </>
                     )}
                     <button
                         type="button"
