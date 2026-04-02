@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppProvider } from '../../contexts/AppContext';
 
@@ -68,6 +68,13 @@ const fitIssueUndatedDates: SubtaskFitIssue = {
 };
 
 describe('TaskIssuesPopup', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+    afterEach(() => {
+        localStorage.clear();
+    });
+
     it('renders nothing when isOpen is false', () => {
         render(
             <TaskIssuesPopup

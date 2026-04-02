@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useApp } from '../../contexts/AppContext';
@@ -32,7 +32,6 @@ export default function Tasks() {
     };
     const [taskModal, setTaskModal] = useState<{ open: boolean; editTask?: Task }>({ open: false });
     const [issuesOpen, setIssuesOpen] = useState(false);
-    const warningRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         document.title = 'Tasks | Renovation';
@@ -213,10 +212,7 @@ export default function Tasks() {
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                     {issues.length > 0 && (
-                        <div
-                            ref={warningRef}
-                            className="relative"
-                        >
+                        <div className="relative">
                             <button
                                 type="button"
                                 onClick={() => {
