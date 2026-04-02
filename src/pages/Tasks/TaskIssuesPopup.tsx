@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { useApp } from '../../contexts/AppContext';
 import { cn } from '../../utils/classnames';
@@ -284,7 +285,7 @@ export default function TaskIssuesPopup({ issues, isOpen, onClose, popupPos }: P
         return null;
     }
 
-    return (
+    return createPortal(
         <div
             ref={popupRef}
             style={popupPos
@@ -334,6 +335,7 @@ export default function TaskIssuesPopup({ issues, isOpen, onClose, popupPos }: P
                     </li>
                 ))}
             </ul>
-        </div>
+        </div>,
+        document.body
     );
 }
