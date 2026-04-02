@@ -41,6 +41,7 @@ describe('GanttChart', () => {
     });
 
     afterEach(() => {
+        vi.restoreAllMocks();
         vi.unstubAllGlobals();
     });
 
