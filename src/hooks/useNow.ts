@@ -16,11 +16,17 @@ export function useNow(): number {
 
     useEffect(() => {
         const interval = setInterval(refresh, REFRESH_INTERVAL_MS);
-        document.addEventListener('visibilitychange', refresh);
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                refresh();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
             clearInterval(interval);
-            document.removeEventListener('visibilitychange', refresh);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, [refresh]);
 
