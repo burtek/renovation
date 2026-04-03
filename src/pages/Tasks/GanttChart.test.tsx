@@ -252,8 +252,9 @@ describe('GanttChart', () => {
     // ── Assignee name inside bar ──────────────────────────────────────────
 
     it('shows assignee name inside the bar when the task duration makes the bar wide enough', () => {
-        // dayWidth = MIN_DAY_WIDTH (20px) in jsdom (containerWidth = 0)
-        // Jan 1–3 span: duration = Math.ceil(2) + 1 = 3 → barW = 3 × 20 = 60 > 40
+        // dayWidth = MIN_DAY_WIDTH (20px) in jsdom (containerWidth = 0).
+        // Duration formula: Math.ceil(dayDiff) + 1 (inclusive of both start and end day).
+        // Jan 1–3: dayDiff = 2, so duration = 2 + 1 = 3 → barW = 3 × 20 = 60 > threshold (40).
         render(
             <GanttChart tasks={[makeTask({ id: 't1', title: 'Task', startDate: '2024-01-01', endDate: '2024-01-03', assignee: 'Alice' })]} />
         );

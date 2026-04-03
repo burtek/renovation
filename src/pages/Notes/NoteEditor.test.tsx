@@ -42,15 +42,11 @@ describe('NoteEditor', () => {
             <NoteEditor
                 editTitle="Test Note"
                 editContent="some existing content"
-                onTitleChange={() => {
-                }}
+                onTitleChange={vi.fn()}
                 onContentChange={onContentChange}
-                onSave={() => {
-                }}
-                onCancel={() => {
-                }}
-                onShowList={() => {
-                }}
+                onSave={vi.fn()}
+                onCancel={vi.fn()}
+                onShowList={vi.fn()}
             />
         );
 
