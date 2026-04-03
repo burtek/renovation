@@ -16,5 +16,6 @@ export interface StorageProvider {
     loadProject: (id: string) => { meta: ProjectMeta; rawData: Partial<AppData> } | null;
     saveProject: (id: string, name: string, data: AppData) => void;
     createProject: (name: string) => string; // returns new project id (stores empty project)
+    renameProject: (id: string, newName: string) => void;
     getProjectSize: (id: string) => number; // bytes used in storage
 }

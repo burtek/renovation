@@ -1,7 +1,8 @@
-import type { ChangeEvent } from 'react';
-import { useRef } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
+import { useRef, useState } from 'react';
 
 import { useApp } from '../../contexts/AppContext';
+import { useNow } from '../../hooks/useNow';
 import { defaultStorageProvider } from '../../storage';
 
 import DeploymentInfo from './DeploymentInfo';
@@ -17,8 +18,8 @@ function formatBytes(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatRelativeTime(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
+function formatRelativeTime(iso: string, now: number): string {
+    const diff = now - new Date(iso).getTime();
     const secs = Math.floor(diff / 1000);
     if (secs < 60) {
         return 'just now';
@@ -34,15 +35,37 @@ function formatRelativeTime(iso: string): string {
     return new Date(iso).toLocaleDateString();
 }
 
+export { formatBytes, formatRelativeTime };
+
 export default function SaveLoadButtons() {
-    const { saveToFile, loadFromFile, projectMeta, openProjectSelector } = useApp();
+    const { saveToFile, loadFromFile, projectMeta, openProjectSelector, renameProject } = useApp();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const now = useNow();
+
+    const [editingName, setEditingName] = useState(false);
+    const [nameValue, setNameValue] = useState('');
 
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             loadFromFile(file);
             e.target.value = '';
+        }
+    };
+
+    const commitRename = () => {
+        const trimmed = nameValue.trim();
+        if (trimmed && projectMeta && trimmed !== projectMeta.name) {
+            renameProject(trimmed);
+        }
+        setEditingName(false);
+    };
+
+    const handleNameKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            commitRename();
+        } else if (e.key === 'Escape') {
+            setEditingName(false);
         }
     };
 
@@ -53,13 +76,43 @@ export default function SaveLoadButtons() {
             {projectMeta && (
                 <div className="mb-2 text-xs text-gray-300 space-y-0.5">
                     <div className="flex items-center justify-between gap-1">
-                        <span
-                            className="font-medium text-white truncate"
-                            title={projectMeta.name}
-                        >
-                            📁
-                            {' '}
-                            {projectMeta.name}
+                        <span className="font-medium text-white truncate flex items-center gap-1 min-w-0">
+                            <span>📁</span>
+                            {editingName
+                                ? (
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        value={nameValue}
+                                        onChange={e => {
+                                            setNameValue(e.target.value);
+                                        }}
+                                        onBlur={commitRename}
+                                        onKeyDown={handleNameKeyDown}
+                                        aria-label="Project name"
+                                        className={[
+                                            'bg-transparent border-b border-gray-400',
+                                            'focus:border-white outline-none',
+                                            'text-white font-medium text-xs w-full min-w-0'
+                                        ].join(' ')}
+                                    />
+                                )
+                                : (
+                                    <button
+                                        type="button"
+                                        title="Click to rename"
+                                        onClick={() => {
+                                            setNameValue(projectMeta.name);
+                                            setEditingName(true);
+                                        }}
+                                        className={[
+                                            'truncate text-left text-white font-medium',
+                                            'hover:text-gray-200 transition bg-transparent border-0 p-0 cursor-text'
+                                        ].join(' ')}
+                                    >
+                                        {projectMeta.name}
+                                    </button>
+                                )}
                         </span>
                         <button
                             type="button"
@@ -74,7 +127,7 @@ export default function SaveLoadButtons() {
                     <div>
                         💾
                         {' '}
-                        {formatRelativeTime(projectMeta.lastModified)}
+                        {formatRelativeTime(projectMeta.lastModified, now)}
                     </div>
                     <div>
                         📊

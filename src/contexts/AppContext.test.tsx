@@ -738,3 +738,174 @@ describe('CalendarEvent migration', () => {
         });
     });
 });
+
+// ---------------------------------------------------------------------------
+// Multi-project: init paths
+// ---------------------------------------------------------------------------
+
+describe('AppContext – multi-project init', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+    });
+
+    it('migrates legacy renovation-data key to a new project on first load', () => {
+        localStorage.setItem(
+            LEGACY_DATA_KEY,
+            JSON.stringify({ ...INITIAL_EMPTY, budget: 42 })
+        );
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        expect(result.current.state.budget).toBe(42);
+        expect(result.current.projectMeta).not.toBeNull();
+        expect(result.current.projectMeta!.name).toBe('My Project');
+        // legacy key should be removed
+        expect(localStorage.getItem(LEGACY_DATA_KEY)).toBeNull();
+    });
+
+    it('does not migrate legacy key when projects already exist', () => {
+        // Pre-create a project
+        localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
+            JSON.stringify({ name: 'Existing', lastModified: '2024-01-01T00:00:00.000Z', ...INITIAL_EMPTY })
+        );
+        localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
+        // Also set a legacy key with different budget — should be ignored
+        localStorage.setItem(LEGACY_DATA_KEY, JSON.stringify({ ...INITIAL_EMPTY, budget: 999 }));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        expect(result.current.state.budget).toBe(0);
+        expect(localStorage.getItem(LEGACY_DATA_KEY)).not.toBeNull(); // not removed
+    });
+
+    it('shows project picker when no active project is set', () => {
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        expect(result.current.needsProjectSelection).toBe(true);
+        expect(result.current.projectMeta).toBeNull();
+    });
+
+    it('clears stale ACTIVE_PROJECT_KEY and shows picker when pointed project does not exist', () => {
+        localStorage.setItem(ACTIVE_PROJECT_KEY, 'nonexistent-id');
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        expect(result.current.needsProjectSelection).toBe(true);
+        expect(localStorage.getItem(ACTIVE_PROJECT_KEY)).toBeNull();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Multi-project: selectProject / createNewProject / renameProject
+// ---------------------------------------------------------------------------
+
+describe('AppContext – project management', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+    });
+
+    it('selectProject loads the project data into state', () => {
+        const id2 = 'project-two';
+        localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}${id2}`,
+            JSON.stringify({ name: 'Second', lastModified: '2024-02-01T00:00:00.000Z', ...INITIAL_EMPTY, budget: 500 })
+        );
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        act(() => {
+            result.current.selectProject(id2);
+        });
+
+        expect(result.current.state.budget).toBe(500);
+        expect(result.current.projectMeta?.name).toBe('Second');
+        expect(result.current.needsProjectSelection).toBe(false);
+        expect(localStorage.getItem(ACTIVE_PROJECT_KEY)).toBe(id2);
+    });
+
+    it('selectProject does nothing for a non-existent project id', () => {
+        // Start with a project selected so we can detect if it changes
+        preloadState({ budget: 100 });
+        const { result } = renderHook(() => useApp(), { wrapper });
+        const budgetBefore = result.current.state.budget;
+
+        act(() => {
+            result.current.selectProject('does-not-exist');
+        });
+
+        expect(result.current.state.budget).toBe(budgetBefore);
+    });
+
+    it('createNewProject switches to a blank project', () => {
+        preloadState({ budget: 777 });
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        act(() => {
+            result.current.createNewProject('Fresh Project');
+        });
+
+        expect(result.current.state.budget).toBe(0);
+        expect(result.current.projectMeta?.name).toBe('Fresh Project');
+        expect(result.current.needsProjectSelection).toBe(false);
+        expect(localStorage.getItem(ACTIVE_PROJECT_KEY)).not.toBeNull();
+    });
+
+    it('renameProject updates projectMeta.name in state', () => {
+        preloadState({});
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        act(() => {
+            result.current.renameProject('Renamed Project');
+        });
+
+        expect(result.current.projectMeta?.name).toBe('Renamed Project');
+    });
+
+    it('renameProject persists the new name to localStorage', async () => {
+        preloadState({});
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        act(() => {
+            result.current.renameProject('Stored Name');
+        });
+
+        await waitFor(() => {
+            const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`);
+            const stored = JSON.parse(raw ?? '{}') as { name: string };
+            expect(stored.name).toBe('Stored Name');
+        });
+    });
+
+    it('renameProject does nothing when projectMeta is null', () => {
+        // No project selected — needsProjectSelection=true, projectMeta=null
+        const { result } = renderHook(() => useApp(), { wrapper });
+        expect(result.current.projectMeta).toBeNull();
+
+        expect(() => {
+            act(() => {
+                result.current.renameProject('Anything');
+            });
+        }).not.toThrow();
+    });
+
+    it('openProjectSelector sets needsProjectSelection to true', () => {
+        preloadState({});
+        const { result } = renderHook(() => useApp(), { wrapper });
+        expect(result.current.needsProjectSelection).toBe(false);
+
+        act(() => {
+            result.current.openProjectSelector();
+        });
+
+        expect(result.current.needsProjectSelection).toBe(true);
+    });
+});

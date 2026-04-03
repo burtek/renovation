@@ -187,6 +187,7 @@ interface AppContextType {
     openProjectSelector: () => void;
     selectProject: (id: string) => void;
     createNewProject: (name: string) => void;
+    renameProject: (newName: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -298,6 +299,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(ACTIVE_PROJECT_KEY, id);
     }, []);
 
+    const renameProject = useCallback((newName: string) => {
+        setProjectMeta(prev => {
+            if (!prev) {
+                return prev;
+            }
+            defaultStorageProvider.renameProject(prev.id, newName);
+            return { ...prev, name: newName };
+        });
+    }, []);
+
     const saveToFile = useCallback(async () => {
         try {
             const [dateStr] = new Date().toISOString().split('T');
@@ -386,9 +397,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
             needsProjectSelection,
             openProjectSelector,
             selectProject,
-            createNewProject
+            createNewProject,
+            renameProject
         }),
-        [state, dispatch, saveToFile, loadFromFile, projectMeta, needsProjectSelection, openProjectSelector, selectProject, createNewProject]
+        [
+            state,
+            dispatch,
+            saveToFile,
+            loadFromFile,
+            projectMeta,
+            needsProjectSelection,
+            openProjectSelector,
+            selectProject,
+            createNewProject,
+            renameProject
+        ]
     );
 
     return (

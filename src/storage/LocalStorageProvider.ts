@@ -78,6 +78,22 @@ export class LocalStorageProvider implements StorageProvider {
         }
     }
 
+    renameProject(id: string, newName: string): void {
+        const key = `${STORAGE_KEY_PREFIX}${id}`;
+        const raw = localStorage.getItem(key);
+        if (!raw) {
+            return;
+        }
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+            const parsed = JSON.parse(raw) as StoredProjectRecord;
+            parsed.name = newName;
+            localStorage.setItem(key, JSON.stringify(parsed));
+        } catch {
+            // skip corrupted entry
+        }
+    }
+
     saveProject(id: string, name: string, data: AppData): void {
         const record: StoredProjectRecord = {
             name,

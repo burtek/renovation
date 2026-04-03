@@ -7,7 +7,7 @@ import { AppProvider } from '../../contexts/AppContext';
 import { ACTIVE_PROJECT_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { AppData } from '../../types';
 
-import SaveLoadButtons from '.';
+import SaveLoadButtons, { formatBytes, formatRelativeTime } from '.';
 
 
 // ---------------------------------------------------------------------------
@@ -320,6 +320,178 @@ describe('SaveLoadButtons', () => {
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
             expect(screen.queryByRole('link', { name: /changelog/i })).not.toBeInTheDocument();
+        });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// formatBytes / formatRelativeTime helpers (imported directly)
+// ---------------------------------------------------------------------------
+
+describe('formatBytes', () => {
+    it('formats bytes below 1024 as "N B"', () => {
+        expect(formatBytes(0)).toBe('0 B');
+        expect(formatBytes(512)).toBe('512 B');
+        expect(formatBytes(1023)).toBe('1023 B');
+    });
+
+    it('formats bytes in the KB range', () => {
+        expect(formatBytes(1024)).toBe('1.0 KB');
+        expect(formatBytes(2048)).toBe('2.0 KB');
+        expect(formatBytes(1024 * 1023)).toBe('1023.0 KB');
+    });
+
+    it('formats bytes in the MB range', () => {
+        expect(formatBytes(1024 * 1024)).toBe('1.0 MB');
+        expect(formatBytes(1024 * 1024 * 2.5)).toBe('2.5 MB');
+    });
+});
+
+describe('formatRelativeTime', () => {
+    const baseNow = new Date('2024-06-01T12:00:00.000Z').getTime();
+
+    it('returns "just now" for less than 60 seconds', () => {
+        const iso = new Date(baseNow - 30_000).toISOString();
+        expect(formatRelativeTime(iso, baseNow)).toBe('just now');
+    });
+
+    it('returns "just now" for 0 seconds', () => {
+        const iso = new Date(baseNow).toISOString();
+        expect(formatRelativeTime(iso, baseNow)).toBe('just now');
+    });
+
+    it('returns "N min ago" for 1-59 minutes', () => {
+        const iso2m = new Date(baseNow - (2 * 60_000)).toISOString();
+        expect(formatRelativeTime(iso2m, baseNow)).toBe('2 min ago');
+
+        const iso59m = new Date(baseNow - (59 * 60_000)).toISOString();
+        expect(formatRelativeTime(iso59m, baseNow)).toBe('59 min ago');
+    });
+
+    it('returns "N h ago" for 1-23 hours', () => {
+        const iso1h = new Date(baseNow - (60 * 60_000)).toISOString();
+        expect(formatRelativeTime(iso1h, baseNow)).toBe('1 h ago');
+
+        const iso23h = new Date(baseNow - (23 * 60 * 60_000)).toISOString();
+        expect(formatRelativeTime(iso23h, baseNow)).toBe('23 h ago');
+    });
+
+    it('returns a locale date string for 24+ hours', () => {
+        const iso = new Date(baseNow - (24 * 60 * 60_000)).toISOString();
+        const result = formatRelativeTime(iso, baseNow);
+        // Should be a non-empty string that is NOT "N min ago" or "N h ago"
+        expect(result).not.toMatch(/ago/);
+        expect(result.length).toBeGreaterThan(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Project info section and rename input
+// ---------------------------------------------------------------------------
+
+describe('SaveLoadButtons – project info', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}test-project-id`,
+            JSON.stringify({ name: 'My Reno', lastModified: new Date().toISOString(), notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+        );
+        localStorage.setItem(ACTIVE_PROJECT_KEY, 'test-project-id');
+        vi.stubGlobal('alert', vi.fn());
+        vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {
+        });
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
+
+    it('shows the project name', () => {
+        render(<SaveLoadButtons />, { wrapper: Wrapper });
+        expect(screen.getByText('My Reno')).toBeInTheDocument();
+    });
+
+    it('shows the 🔄 switch project button', () => {
+        render(<SaveLoadButtons />, { wrapper: Wrapper });
+        expect(screen.getByRole('button', { name: /switch project/i })).toBeInTheDocument();
+    });
+
+    it('shows "just now" for a recently saved project', () => {
+        render(<SaveLoadButtons />, { wrapper: Wrapper });
+        expect(screen.getByText(/just now/i)).toBeInTheDocument();
+    });
+
+    it('clicking project name enters rename mode and shows an input', async () => {
+        const user = userEvent.setup();
+        render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: 'My Reno' }));
+
+        expect(screen.getByRole('textbox', { name: /project name/i })).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: /project name/i })).toHaveValue('My Reno');
+    });
+
+    it('committing a new name on Enter saves it', async () => {
+        const user = userEvent.setup();
+        render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: 'My Reno' }));
+
+        const input = screen.getByRole('textbox', { name: /project name/i });
+        await user.clear(input);
+        await user.type(input, 'Updated Name');
+        await user.keyboard('{Enter}');
+
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: 'Updated Name' })).toBeInTheDocument();
+        });
+    });
+
+    it('pressing Escape exits rename mode without saving', async () => {
+        const user = userEvent.setup();
+        render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: 'My Reno' }));
+        const input = screen.getByRole('textbox', { name: /project name/i });
+        await user.clear(input);
+        await user.type(input, 'Discarded');
+        await user.keyboard('{Escape}');
+
+        await waitFor(() => {
+            expect(screen.queryByRole('textbox', { name: /project name/i })).not.toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'My Reno' })).toBeInTheDocument();
+        });
+    });
+
+    it('blurring the rename input commits the new name', async () => {
+        const user = userEvent.setup();
+        render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: 'My Reno' }));
+        const input = screen.getByRole('textbox', { name: /project name/i });
+        await user.clear(input);
+        await user.type(input, 'Blurred Name');
+        await user.tab(); // blur
+
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: 'Blurred Name' })).toBeInTheDocument();
+        });
+    });
+
+    it('does not rename when the input is cleared to empty and Enter is pressed', async () => {
+        const user = userEvent.setup();
+        render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: 'My Reno' }));
+        const input = screen.getByRole('textbox', { name: /project name/i });
+        await user.clear(input);
+        await user.keyboard('{Enter}');
+
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: 'My Reno' })).toBeInTheDocument();
         });
     });
 });
