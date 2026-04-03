@@ -56,30 +56,18 @@ describe('SaveLoadButtons', () => {
 
     // ── Save button ───────────────────────────────────────────────────────
 
-    it('clicking Save does not throw', async () => {
-        const user = userEvent.setup();
-        render(<SaveLoadButtons />, { wrapper: Wrapper });
-
-        await expect(
-            user.click(screen.getByRole('button', { name: /💾 save/i }))
-        ).resolves.not.toThrow();
-
-        // Drain any pending timers/promises
-        await new Promise(r => setTimeout(r, 50));
-    });
-
-    it('clicking Save either calls URL.createObjectURL (success) or calls alert (failure)', async () => {
+    it('clicking Save completes: either creates a download URL (success) or shows an alert (compression unavailable)', async () => {
         const user = userEvent.setup();
         render(<SaveLoadButtons />, { wrapper: Wrapper });
 
         await user.click(screen.getByRole('button', { name: /💾 save/i }));
 
-        // Wait a moment for async operations to complete
+        // Wait for async save to complete
         await new Promise(r => setTimeout(r, 50));
 
-        const savedSuccessfully = (URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls.length > 0;
+        const saved = (URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls.length > 0;
         const alerted = (window.alert as ReturnType<typeof vi.fn>).mock.calls.length > 0;
-        expect(savedSuccessfully || alerted).toBe(true);
+        expect(saved || alerted).toBe(true);
     });
 
     // ── Load button ───────────────────────────────────────────────────────

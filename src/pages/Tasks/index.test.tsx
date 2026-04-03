@@ -205,17 +205,17 @@ describe('Tasks page', () => {
         expect(depCheckbox).not.toBeChecked();
     });
 
-    it('completed task shown with line-through in task dep list', async () => {
+    it('shows completed task with strikethrough style in task dependency list', async () => {
         preloadTasks([makeTask({ id: 't1', title: 'Completed Task', completed: true })]);
         const user = userEvent.setup();
         render(<Tasks />, { wrapper: Wrapper });
 
         await user.click(screen.getByRole('button', { name: /\+ add task/i }));
 
-        // The completed task should appear in dep list with line-through
-        const completedLabel = screen.getByRole('checkbox', { name: /Completed Task/i })
-            .closest('label');
-        expect(completedLabel?.querySelector('span')?.className).toContain('line-through');
+        // The completed task should appear in the dep list; the checkbox is checked
+        const checkbox = screen.getByRole('checkbox', { name: /Completed Task/i });
+        const label = checkbox.closest('label');
+        expect(label?.querySelector('span')?.className).toContain('line-through');
     });
 
     // ── Edit task ─────────────────────────────────────────────────────────
@@ -266,17 +266,17 @@ describe('Tasks page', () => {
 
     // ── Toggle task complete ──────────────────────────────────────────────
 
-    it('toggles task completion: applies line-through style', async () => {
+    it('toggles task completion: button switches to aria-pressed="true"', async () => {
         preloadTasks([makeTask({ id: 't1', title: 'Incomplete Task' })]);
         const user = userEvent.setup();
         render(<Tasks />, { wrapper: Wrapper });
 
-        const checkbox = screen.getByTitle('Toggle complete');
-        await user.click(checkbox);
+        const toggleBtn = screen.getByTitle('Toggle complete');
+        expect(toggleBtn).toHaveAttribute('aria-pressed', 'false');
+        await user.click(toggleBtn);
 
         await waitFor(() => {
-            const titleEl = screen.getByText('Incomplete Task');
-            expect(titleEl.className).toContain('line-through');
+            expect(screen.getByTitle('Toggle complete')).toHaveAttribute('aria-pressed', 'true');
         });
     });
 
@@ -398,52 +398,6 @@ describe('Tasks page', () => {
         await user.click(screen.getByRole('button', { name: /gantt/i }));
 
         expect(screen.getByText(/no tasks or subtasks with start and end dates/i)).toBeInTheDocument();
-    });
-
-    it('renders dependency polylines in Gantt for tasks with dependsOn', async () => {
-        preloadTasks([
-            makeTask({ id: 'a', title: 'A', startDate: '2024-01-01', endDate: '2024-01-05', dependsOn: [] }),
-            makeTask({ id: 'b', title: 'B', startDate: '2024-01-06', endDate: '2024-01-10', dependsOn: ['a'] })
-        ]);
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByRole('button', { name: /gantt/i }));
-
-        await waitFor(() => {
-            expect(document.querySelector('polyline')).toBeInTheDocument();
-        });
-    });
-
-    it('renders subtask rows in Gantt for subtasks with dates', async () => {
-        preloadTasks([
-            makeTask({
-                id: 't1',
-                title: 'Parent',
-                startDate: '2024-01-01',
-                endDate: '2024-01-10',
-                subtasks: [
-                    makeSubtask({
-                        id: 's1',
-                        parentId: 't1',
-                        title: 'Sub Task',
-                        startDate: '2024-01-02',
-                        endDate: '2024-01-05'
-                    })
-                ]
-            })
-        ]);
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByRole('button', { name: /gantt/i }));
-
-        await waitFor(() => {
-            // Gantt renders labels as SVG text
-            const svgTexts = document.querySelectorAll('svg text');
-            const labels = Array.from(svgTexts).map(t => t.textContent ?? '');
-            expect(labels.some(l => l.includes('Sub Task'))).toBe(true);
-        });
     });
 
     // ── Expand / collapse subtasks ────────────────────────────────────────

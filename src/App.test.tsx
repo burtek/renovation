@@ -67,24 +67,6 @@ describe('App', () => {
         });
     });
 
-    it('renders Tasks page at /tasks route', () => {
-        // We can't easily navigate App to a specific route without BrowserRouter manipulation,
-        // so we test that App renders and the Nav links are present
-        render(<App />);
-
-        expect(screen.getByRole('link', { name: /tasks/i })).toBeInTheDocument();
-    });
-
-    it('renders Finance page at /finance route', () => {
-        render(<App />);
-        expect(screen.getByRole('link', { name: /finance/i })).toBeInTheDocument();
-    });
-
-    it('renders Calendar page at /calendar route', () => {
-        render(<App />);
-        expect(screen.getByRole('link', { name: /calendar/i })).toBeInTheDocument();
-    });
-
     it('shows all 4 nav links', () => {
         render(<App />);
         expect(screen.getByRole('link', { name: /notes/i })).toBeInTheDocument();

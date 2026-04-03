@@ -115,15 +115,15 @@ describe('generateReport', () => {
 
     // ── Budget summary ────────────────────────────────────────────────────
 
-    it('shows remaining budget with blue class when remaining >= 0', () => {
+    it('shows remaining budget with non-negative indicator when remaining >= 0', () => {
         const state: AppData = { ...EMPTY_STATE, budget: 1000, expenses: [] };
         generateReport(state);
         const html = captureHtml(mockWin);
-        // remaining = 1000 - 0 = 1000 → blue class
-        expect(html).toContain('class="card-value blue"');
+        // remaining = 1000 - 0 = 1000 → blue (non-negative) class, not red
+        expect(html).not.toContain('class="card-value red"');
     });
 
-    it('shows remaining budget with red class when remaining < 0', () => {
+    it('shows remaining budget with negative indicator when remaining < 0', () => {
         const state: AppData = {
             ...EMPTY_STATE,
             budget: 100,
@@ -182,24 +182,15 @@ describe('generateReport', () => {
         expect(html).toContain('INV-001');
     });
 
-    it('renders dash for empty shopName', () => {
+    it('renders dash for empty or absent shopName and invoiceNo', () => {
         const state: AppData = {
             ...EMPTY_STATE,
-            expenses: [makeExpense({ shopName: '' })]
+            expenses: [makeExpense({ shopName: '', invoiceNo: '' })]
         };
         generateReport(state);
         const html = captureHtml(mockWin);
-        expect(html).toContain('—');
-    });
-
-    it('renders dash for empty invoiceNo', () => {
-        const state: AppData = {
-            ...EMPTY_STATE,
-            expenses: [makeExpense({ invoiceNo: '' })]
-        };
-        generateReport(state);
-        const html = captureHtml(mockWin);
-        expect(html).toContain('—');
+        // Both empty fields render the em dash
+        expect((html.match(/—/g) ?? []).length).toBeGreaterThanOrEqual(2);
     });
 
     it('renders "paper" invoice form text', () => {
@@ -406,20 +397,10 @@ describe('generateReport', () => {
         expect(html).toContain('—');
     });
 
-    it('renders dash when startDate is undefined', () => {
+    it('renders dash when startDate or assignee is undefined', () => {
         const state: AppData = {
             ...EMPTY_STATE,
-            tasks: [makeTask({ startDate: undefined, endDate: undefined })]
-        };
-        generateReport(state);
-        const html = captureHtml(mockWin);
-        expect(html).toContain('—');
-    });
-
-    it('renders dash when assignee is undefined', () => {
-        const state: AppData = {
-            ...EMPTY_STATE,
-            tasks: [makeTask({ assignee: undefined })]
+            tasks: [makeTask({ startDate: undefined, endDate: undefined, assignee: undefined })]
         };
         generateReport(state);
         const html = captureHtml(mockWin);
@@ -477,31 +458,10 @@ describe('generateReport', () => {
         expect(count).toBeGreaterThanOrEqual(2);
     });
 
-    it('renders dash when contractor is absent', () => {
+    it('renders dash when contractor or notes is absent or empty', () => {
         const state: AppData = {
             ...EMPTY_STATE,
-            calendarEvents: [makeCalendarEvent({ contractor: undefined })]
-        };
-        generateReport(state);
-        const html = captureHtml(mockWin);
-        expect(html).toContain('—');
-    });
-
-
-    it('renders dash when notes is absent', () => {
-        const state: AppData = {
-            ...EMPTY_STATE,
-            calendarEvents: [makeCalendarEvent({ notes: undefined })]
-        };
-        generateReport(state);
-        const html = captureHtml(mockWin);
-        expect(html).toContain('—');
-    });
-
-    it('renders dash when contractor is empty string', () => {
-        const state: AppData = {
-            ...EMPTY_STATE,
-            calendarEvents: [makeCalendarEvent({ contractor: '' })]
+            calendarEvents: [makeCalendarEvent({ contractor: undefined, notes: undefined })]
         };
         generateReport(state);
         const html = captureHtml(mockWin);

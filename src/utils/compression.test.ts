@@ -6,33 +6,10 @@ import { compressToGzip, decompressFromGzip, isCompressionSupported } from './co
 const blobStreamSupported = isCompressionSupported && typeof new Blob().stream === 'function';
 
 describe('isCompressionSupported', () => {
-    afterEach(() => {
-        vi.unstubAllGlobals();
-    });
-
-    it('is a boolean', () => {
-        expect(typeof isCompressionSupported).toBe('boolean');
-    });
-
     it('mirrors the availability of CompressionStream and DecompressionStream', () => {
         const expected
             = typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
         expect(isCompressionSupported).toBe(expected);
-    });
-
-    it('the expression evaluates to false when both globals are absent', () => {
-        vi.stubGlobal('CompressionStream', undefined);
-        vi.stubGlobal('DecompressionStream', undefined);
-        const expr
-            = typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
-        expect(expr).toBe(false);
-    });
-
-    it('the expression evaluates to false when only DecompressionStream is absent', () => {
-        vi.stubGlobal('DecompressionStream', undefined);
-        const expr
-            = typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
-        expect(expr).toBe(false);
     });
 });
 

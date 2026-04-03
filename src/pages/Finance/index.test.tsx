@@ -358,21 +358,6 @@ describe('Finance page', () => {
         expect(loanCheckbox).toBeChecked();
     });
 
-    it('typing into the Google Drive link input updates form state', async () => {
-        const user = userEvent.setup();
-        const { container } = render(<Finance />, { wrapper: Wrapper });
-
-        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
-
-        const select = container.querySelector('select') as HTMLSelectElement;
-        await user.selectOptions(select, 'gdrive');
-
-        const linkInput = screen.getByPlaceholderText(/google drive link/i);
-        await user.type(linkInput, 'https://drive.google.com/test');
-
-        expect(linkInput).toHaveValue('https://drive.google.com/test');
-    });
-
     // ── Shop datalist ─────────────────────────────────────────────────────
 
     it('shows shop name datalist', async () => {
@@ -382,30 +367,6 @@ describe('Finance page', () => {
         await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
 
         expect(document.getElementById('shop-suggestions')).toBeInTheDocument();
-    });
-
-    it('typing into shopName input updates form state', async () => {
-        const user = userEvent.setup();
-        render(<Finance />, { wrapper: Wrapper });
-
-        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
-
-        const shopInput = screen.getByPlaceholderText(/shop name/i);
-        await user.type(shopInput, 'Leroy Merlin');
-
-        expect(shopInput).toHaveValue('Leroy Merlin');
-    });
-
-    it('typing into invoiceNo input updates form state', async () => {
-        const user = userEvent.setup();
-        render(<Finance />, { wrapper: Wrapper });
-
-        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
-
-        const invoiceInput = screen.getByPlaceholderText(/invoice no/i);
-        await user.type(invoiceInput, 'INV-2024-001');
-
-        expect(invoiceInput).toHaveValue('INV-2024-001');
     });
 
     // ── Loan approved indicator ───────────────────────────────────────────

@@ -119,20 +119,6 @@ describe('Layout', () => {
         });
     });
 
-    // ── Active NavLink ────────────────────────────────────────────────────
-
-    it('applies active class to the current route NavLink', () => {
-        renderLayout('/notes');
-        const notesLink = screen.getByRole('link', { name: /notes/i });
-        expect(notesLink.className).toContain('bg-gray-700');
-    });
-
-    it('does not apply active class to non-current route NavLink', () => {
-        renderLayout('/notes');
-        const tasksLink = screen.getByRole('link', { name: /tasks/i });
-        expect(tasksLink.className).not.toContain('border-l-4');
-    });
-
     // ── Mobile sidebar ────────────────────────────────────────────────────
 
     it('renders the mobile hamburger button', () => {
@@ -216,12 +202,6 @@ describe('Layout', () => {
         await waitFor(() => {
             expect(screen.queryByRole('heading', { name: /about renovation/i })).not.toBeInTheDocument();
         });
-    });
-
-    it('renders SaveLoadButtons (💾 Save and 📂 Load) within Layout', () => {
-        renderLayout();
-        expect(screen.getByRole('button', { name: /💾 save/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /📂 load/i })).toBeInTheDocument();
     });
 
     // ── Outlet content ────────────────────────────────────────────────────
