@@ -10,7 +10,7 @@ import SubtaskModal from './SubtaskModal';
 import TaskIssuesPopup from './TaskIssuesPopup';
 import TaskModal from './TaskModal';
 import TasksList from './TasksList';
-import { detectIssues } from './taskIssues';
+import { detectIssues } from './issues';
 import type { SubtaskFormData, TaskFormData } from './types';
 import {
     emptySubtaskForm,

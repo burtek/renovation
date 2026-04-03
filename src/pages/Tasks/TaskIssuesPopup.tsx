@@ -4,8 +4,8 @@ import { createPortal } from 'react-dom';
 
 import { cn } from '../../utils/classnames';
 
-import type { TaskIssue } from './taskIssues';
-import { issuePlugins } from './taskIssues';
+import type { TaskIssue } from './issues';
+import { issuePlugins } from './issues';
 
 
 interface Props {
