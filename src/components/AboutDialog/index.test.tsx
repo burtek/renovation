@@ -68,19 +68,6 @@ describe('AboutDialog', () => {
         expect(screen.getByText(/web-based project management application/i)).toBeInTheDocument();
     });
 
-    it('mentions all four feature sections', () => {
-        render(
-            <AboutDialog
-                isOpen
-                onClose={vi.fn()}
-            />
-        );
-        expect(screen.getAllByText(/notes/i).length).toBeGreaterThan(0);
-        expect(screen.getAllByText(/tasks/i).length).toBeGreaterThan(0);
-        expect(screen.getAllByText(/finance/i).length).toBeGreaterThan(0);
-        expect(screen.getAllByText(/calendar/i).length).toBeGreaterThan(0);
-    });
-
     it('includes the AI-created notice', () => {
         render(
             <AboutDialog

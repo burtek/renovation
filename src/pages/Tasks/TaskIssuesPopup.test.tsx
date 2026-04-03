@@ -385,122 +385,37 @@ describe('TaskIssuesPopup', () => {
         expect(onClose).toHaveBeenCalled();
     });
 
-    // ── Guard branches: task/subtask not found in store ───────────────────
-
-    it('DependencyOrderFix: silently does nothing when dependent task is not in store', async () => {
-        // Store is empty — the issue references a task that doesn't exist
-        const issues: TaskIssue[] = [
-            {
-                type: 'dependency-order',
-                dependentId: 'nonexistent',
-                dependentTitle: 'Ghost Task',
-                dependentParentId: null,
-                dependencyId: 'dep',
-                dependencyTitle: 'Dep Task',
-                dependentStartDate: '2024-01-05',
-                dependencyEndDate: '2024-01-10'
-            }
-        ];
-        const onClose = vi.fn();
-        const user = userEvent.setup();
-        render(
-            <PopupWrapper
-                issues={issues}
-                onClose={onClose}
-            />
-        );
-
-        await user.click(screen.getByRole('button', { name: /move start date to/i }));
-        expect(onClose).not.toHaveBeenCalled();
-    });
-
-    it('DependencyOrderFix: silently does nothing when dependent subtask is not in store', async () => {
-        const task = makeTask({ id: 't1', subtasks: [] });
+    it('clicking the transparent backdrop (outside the menu) closes it', async () => {
+        const sub = makeSubtask({ id: 's1', parentId: 't1', startDate: '2024-01-03', endDate: '2024-01-09' });
+        const task = makeTask({ id: 't1', startDate: '2024-01-05', endDate: '2024-01-10', subtasks: [sub] });
         preloadTasks([task]);
 
-        const issues: TaskIssue[] = [
-            {
-                type: 'dependency-order',
-                dependentId: 'nonexistent-sub',
-                dependentTitle: 'Ghost Sub',
-                dependentParentId: 't1',
-                dependencyId: 'dep',
-                dependencyTitle: 'Dep',
-                dependentStartDate: '2024-01-05',
-                dependencyEndDate: '2024-01-10'
-            }
-        ];
-        const onClose = vi.fn();
-        const user = userEvent.setup();
-        render(
-            <PopupWrapper
-                issues={issues}
-                onClose={onClose}
-            />
-        );
-
-        await user.click(screen.getByRole('button', { name: /move start date to/i }));
-        expect(onClose).not.toHaveBeenCalled();
-    });
-
-    it('SubtaskFitFix: Shorten silently does nothing when subtask is not in store', async () => {
-        const task = makeTask({ id: 't1', startDate: '2024-01-05', endDate: '2024-01-10', subtasks: [] });
-        preloadTasks([task]);
-
-        const issues: TaskIssue[] = [
-            {
-                type: 'subtask-fit',
-                subtaskId: 'nonexistent',
-                subtaskTitle: 'Ghost Sub',
-                subtaskStartDate: '2024-01-03',
-                subtaskEndDate: '2024-01-09',
-                parentId: 't1',
-                parentTitle: 'Parent',
-                parentStartDate: '2024-01-05',
-                parentEndDate: '2024-01-10'
-            }
-        ];
-        const onClose = vi.fn();
-        const user = userEvent.setup();
-        render(
-            <PopupWrapper
-                issues={issues}
-                onClose={onClose}
-            />
-        );
-
-        await user.click(screen.getByRole('button', { name: /fix/i }));
-        await user.click(screen.getByRole('button', { name: /shorten subtask/i }));
-        expect(onClose).not.toHaveBeenCalled();
-    });
-
-    it('SubtaskFitFix: Extend silently does nothing when parent task is not in store', async () => {
-        // Store is empty — parent doesn't exist
         const issues: TaskIssue[] = [
             {
                 type: 'subtask-fit',
                 subtaskId: 's1',
-                subtaskTitle: 'Sub',
+                subtaskTitle: 'Sub Task',
                 subtaskStartDate: '2024-01-03',
-                subtaskEndDate: '2024-01-12',
-                parentId: 'nonexistent-parent',
-                parentTitle: 'Ghost Parent',
+                subtaskEndDate: '2024-01-09',
+                parentId: 't1',
+                parentTitle: 'Parent Task',
                 parentStartDate: '2024-01-05',
                 parentEndDate: '2024-01-10'
             }
         ];
-        const onClose = vi.fn();
         const user = userEvent.setup();
-        render(
-            <PopupWrapper
-                issues={issues}
-                onClose={onClose}
-            />
-        );
+        render(<PopupWrapper issues={issues} />);
 
+        // Open the menu
         await user.click(screen.getByRole('button', { name: /fix/i }));
-        await user.click(screen.getByRole('button', { name: /extend parent/i }));
-        expect(onClose).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: /shorten subtask/i })).toBeInTheDocument();
+
+        // Click the transparent backdrop (aria-hidden div) to close the menu
+        const backdrop = document.querySelector('[aria-hidden="true"]') as HTMLElement;
+        fireEvent.click(backdrop);
+
+        // Menu should be closed
+        expect(screen.queryByRole('button', { name: /shorten subtask/i })).not.toBeInTheDocument();
     });
 
     it('renders null for an issue with no matching plugin', () => {

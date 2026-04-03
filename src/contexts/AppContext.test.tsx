@@ -483,14 +483,14 @@ describe('saveToFile', () => {
         ).resolves.not.toThrow();
     });
 
-    it('either calls URL.createObjectURL (success) or alert (failure)', async () => {
+    it('save completes: either creates a download URL (success) or shows an alert (compression unavailable)', async () => {
         const { result } = renderHook(() => useApp(), { wrapper });
         await act(() => result.current.saveToFile());
         vi.runAllTimers();
 
-        const succeeded = (URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls.length > 0;
-        const failed = (window.alert as ReturnType<typeof vi.fn>).mock.calls.length > 0;
-        expect(succeeded || failed).toBe(true);
+        const saved = (URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls.length > 0;
+        const alerted = (window.alert as ReturnType<typeof vi.fn>).mock.calls.length > 0;
+        expect(saved || alerted).toBe(true);
     });
 });
 
@@ -616,6 +616,25 @@ describe('loadFromFile', () => {
 
         await waitFor(() => {
             expect(result.current.state.budget).toBe(55000);
+        });
+    });
+
+    it.skipIf(!blobStreamSupported)('shows alert when .json.gz content is not valid JSON after decompression', async () => {
+        // Compress garbage bytes that are not valid JSON
+        const { compressToGzip } = await import('../utils/compression');
+        const compressed = await compressToGzip('this is not json {{{');
+        const file = new File([compressed], 'backup.json.gz', { type: 'application/gzip' });
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        act(() => {
+            result.current.loadFromFile(file);
+        });
+
+        await waitFor(() => {
+            expect(window.alert).toHaveBeenCalledWith(
+                expect.stringContaining('valid renovation backup file')
+            );
         });
     });
 

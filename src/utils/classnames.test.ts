@@ -14,21 +14,12 @@ describe('cn', () => {
         expect(cn()).toBe('');
     });
 
-    it('filters out false values', () => {
-        expect(cn('a', false, 'b')).toBe('a b');
-    });
-
-    it('filters out null values', () => {
-        expect(cn('a', null, 'b')).toBe('a b');
-    });
-
-    it('filters out undefined values', () => {
-        expect(cn('a', undefined, 'b')).toBe('a b');
-    });
-
-    it('filters out empty strings', () => {
-        expect(cn('a', '', 'b')).toBe('a b');
-    });
+    it.each([false, null, undefined, ''] as const)(
+        'filters out %j',
+        falsy => {
+            expect(cn('a', falsy, 'b')).toBe('a b');
+        }
+    );
 
     it('returns empty string when all values are falsy', () => {
         expect(cn(false, null, undefined)).toBe('');

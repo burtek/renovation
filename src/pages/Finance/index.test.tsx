@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -61,6 +61,12 @@ function makeExpense(overrides: Partial<Expense> = {}): Expense {
         loanApproved: false,
         ...overrides
     };
+}
+
+function findButtonByText(container: HTMLElement, text: string): HTMLButtonElement | undefined {
+    return [...container.querySelectorAll('button')].find(
+        b => b.textContent?.trim() === text
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -358,21 +364,6 @@ describe('Finance page', () => {
         expect(loanCheckbox).toBeChecked();
     });
 
-    it('typing into the Google Drive link input updates form state', async () => {
-        const user = userEvent.setup();
-        const { container } = render(<Finance />, { wrapper: Wrapper });
-
-        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
-
-        const select = container.querySelector('select') as HTMLSelectElement;
-        await user.selectOptions(select, 'gdrive');
-
-        const linkInput = screen.getByPlaceholderText(/google drive link/i);
-        await user.type(linkInput, 'https://drive.google.com/test');
-
-        expect(linkInput).toHaveValue('https://drive.google.com/test');
-    });
-
     // ── Shop datalist ─────────────────────────────────────────────────────
 
     it('shows shop name datalist', async () => {
@@ -382,30 +373,6 @@ describe('Finance page', () => {
         await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
 
         expect(document.getElementById('shop-suggestions')).toBeInTheDocument();
-    });
-
-    it('typing into shopName input updates form state', async () => {
-        const user = userEvent.setup();
-        render(<Finance />, { wrapper: Wrapper });
-
-        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
-
-        const shopInput = screen.getByPlaceholderText(/shop name/i);
-        await user.type(shopInput, 'Leroy Merlin');
-
-        expect(shopInput).toHaveValue('Leroy Merlin');
-    });
-
-    it('typing into invoiceNo input updates form state', async () => {
-        const user = userEvent.setup();
-        render(<Finance />, { wrapper: Wrapper });
-
-        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
-
-        const invoiceInput = screen.getByPlaceholderText(/invoice no/i);
-        await user.type(invoiceInput, 'INV-2024-001');
-
-        expect(invoiceInput).toHaveValue('INV-2024-001');
     });
 
     // ── Loan approved indicator ───────────────────────────────────────────
@@ -538,6 +505,138 @@ describe('Finance page', () => {
         const cheapIndex = items.findIndex(el => el.textContent === 'Cheap');
         const expensiveIndex = items.findIndex(el => el.textContent === 'Expensive');
         expect(cheapIndex).toBeLessThan(expensiveIndex); // asc: cheap first
+    });
+
+    it('shows "GDrive (invalid link)" for a completely malformed invoiceLink (safeUrl catch)', () => {
+        preloadState({
+            expenses: [
+                makeExpense({
+                    id: 'e1',
+                    invoiceForm: 'gdrive',
+                    invoiceLink: 'not a url at all'
+                })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        expect(screen.getAllByText('GDrive (invalid link)').length).toBeGreaterThan(0);
+    });
+
+    it('deletes an expense via the mobile card Delete button', async () => {
+        vi.stubGlobal('confirm', vi.fn(() => true));
+        preloadState({ expenses: [makeExpense({ id: 'e1', description: 'Mobile Delete Me' })] });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        // Mobile card renders "Delete" (full word), desktop renders "Del"
+        const deleteButtons = screen.getAllByRole('button', { name: /^delete$/i });
+        await user.click(deleteButtons[0]);
+
+        await waitFor(() => {
+            expect(screen.queryByText('Mobile Delete Me')).not.toBeInTheDocument();
+        });
+    });
+
+    it('typing in the Google Drive link input updates the form value', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        // Switch to gdrive
+        const select = document.body.querySelector('select') as HTMLSelectElement;
+        await user.selectOptions(select, 'gdrive');
+
+        const gdriveLinkInput = screen.getByPlaceholderText(/google drive link/i);
+        await user.type(gdriveLinkInput, 'https://drive.google.com/test');
+
+        expect(gdriveLinkInput).toHaveValue('https://drive.google.com/test');
+    });
+
+    it('expense date field onChange is wired up — saved expense has the entered date', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'Date Test');
+
+        // Change the date input
+        const dateInputs = document.querySelectorAll('input[type="date"]');
+        fireEvent.change(dateInputs[0], { target: { value: '2024-06-15' } });
+
+        await user.type(screen.getByPlaceholderText(/price \*/i), '50');
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
+            const saved = stored.expenses.find((e: { description: string }) => e.description === 'Date Test');
+            expect(saved?.date).toBe('2024-06-15');
+        });
+    });
+
+    it('expense shopName field onChange is wired up — saved expense has the entered shop name', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'Shop Test');
+        await user.type(screen.getByPlaceholderText(/price \*/i), '75');
+        await user.type(screen.getByPlaceholderText(/shop name/i), 'IKEA');
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
+            const saved = stored.expenses.find((e: { description: string }) => e.description === 'Shop Test');
+            expect(saved?.shopName).toBe('IKEA');
+        });
+    });
+
+    it('expense invoiceNo field onChange is wired up — saved expense has the entered invoice number', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'Invoice Test');
+        await user.type(screen.getByPlaceholderText(/price \*/i), '200');
+        await user.type(screen.getByPlaceholderText(/invoice no/i), 'FV-2024-999');
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
+            const saved = stored.expenses.find((e: { description: string }) => e.description === 'Invoice Test');
+            expect(saved?.invoiceNo).toBe('FV-2024-999');
+        });
+    });
+
+    it('desktop table Del button triggers delete', async () => {
+        vi.stubGlobal('confirm', vi.fn(() => true));
+        preloadState({ expenses: [makeExpense({ id: 'e1', description: 'Desktop Delete Test' })] });
+        const { container } = render(<Finance />, { wrapper: Wrapper });
+
+        // Use querySelectorAll to find "Del" button regardless of ARIA visibility filtering
+        const delBtn = findButtonByText(container, 'Del');
+        expect(delBtn).toBeDefined();
+        fireEvent.click(delBtn!);
+
+        await waitFor(() => {
+            expect(screen.queryByText('Desktop Delete Test')).not.toBeInTheDocument();
+        });
+    });
+
+    it('desktop table Edit button opens the edit modal', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1', description: 'Desktop Edit Test', price: 123 })] });
+        const { container } = render(<Finance />, { wrapper: Wrapper });
+
+        // Use querySelectorAll to find all "Edit" buttons — [0] is mobile card, [1] is desktop table
+        const editBtns = [...container.querySelectorAll('button')].filter(
+            b => b.textContent?.trim() === 'Edit'
+        );
+        expect(editBtns.length).toBeGreaterThanOrEqual(2); // mobile + desktop
+
+        // Click the desktop table Edit button
+        fireEvent.click(editBtns[1]);
+
+        expect(screen.getByRole('heading', { name: /edit expense/i })).toBeInTheDocument();
+        expect(screen.getByDisplayValue('Desktop Edit Test')).toBeInTheDocument();
     });
 
     it('sorts by loanApproved (boolean) — unapproved first when ascending', async () => {

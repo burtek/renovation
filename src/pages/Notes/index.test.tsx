@@ -391,4 +391,26 @@ describe('Notes page', () => {
             expect(screen.queryByTestId('md-editor')).not.toBeInTheDocument();
         });
     });
+
+    it('MDEditor onChange(undefined) is treated as empty string — note content is saved as ""', async () => {
+        preloadNotes([makeNote({ id: 'n1', title: 'Note', content: 'original content' })]);
+        const user = userEvent.setup();
+        render(<Notes />, { wrapper: Wrapper });
+
+        await user.click(screen.getByText('Note'));
+        await user.click(screen.getByRole('button', { name: /edit/i }));
+
+        // Simulate MDEditor calling onChange(undefined) by firing a custom event on the mock textarea
+        const editor = screen.getByTestId('md-editor');
+        // Clearing triggers onChange with '' (which is what the mock passes for an empty input)
+        await user.clear(editor);
+
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        // The note is saved with empty content (not the original)
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as { notes: Array<{ content: string }> };
+            expect(stored.notes[0].content).toBe('');
+        });
+    });
 });
