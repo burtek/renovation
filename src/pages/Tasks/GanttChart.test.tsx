@@ -190,4 +190,151 @@ describe('GanttChart', () => {
         const svgWidth = Number(svg?.getAttribute('width'));
         expect(svgWidth).toBeCloseTo(mockClientWidth, 0);
     });
+
+    // ── Completed task visual state ───────────────────────────────────────
+
+    it('renders completed task bar with reduced opacity and muted label colour', () => {
+        render(
+            <GanttChart tasks={[makeTask({ id: 't1', title: 'Done', startDate: '2024-01-01', endDate: '2024-01-05', completed: true })]} />
+        );
+        // Bar rect should carry reduced opacity for completed tasks
+        const rects = Array.from(document.querySelectorAll('svg rect'));
+        expect(rects.some(r => r.getAttribute('opacity') === '0.4')).toBe(true);
+        // Row label text should use muted (#9CA3AF) fill instead of the normal dark fill
+        const texts = Array.from(document.querySelectorAll('svg text'));
+        expect(texts.some(t => t.getAttribute('fill') === '#9CA3AF')).toBe(true);
+    });
+
+    // ── Long label truncation ─────────────────────────────────────────────
+
+    it('truncates task labels longer than 22 characters with an ellipsis', () => {
+        const longTitle = 'Renovation floor preparation work'; // 33 chars, well above 22
+        render(
+            <GanttChart tasks={[makeTask({ title: longTitle, startDate: '2024-01-01', endDate: '2024-01-10' })]} />
+        );
+        const svgTexts = Array.from(document.querySelectorAll('svg text')).map(t => t.textContent ?? '');
+        // The original untruncated title should NOT appear verbatim
+        expect(svgTexts.every(t => t !== longTitle)).toBe(true);
+        // An ellipsis should be present in one of the text nodes
+        expect(svgTexts.some(t => t.includes('\u2026'))).toBe(true);
+    });
+
+    it('truncates subtask labels longer than 20 characters with an ellipsis', () => {
+        const longSubtaskTitle = 'Very long subtask name here'; // 27 chars, above 20
+        render(
+            <GanttChart tasks={[
+                makeTask({
+                    id: 't1',
+                    title: 'Parent',
+                    startDate: '2024-01-01',
+                    endDate: '2024-01-15',
+                    subtasks: [
+                        {
+                            id: 's1',
+                            parentId: 't1',
+                            title: longSubtaskTitle,
+                            notes: '',
+                            completed: false,
+                            dependsOn: [],
+                            startDate: '2024-01-02',
+                            endDate: '2024-01-10'
+                        }
+                    ]
+                })
+            ]}
+            />
+        );
+        const svgTexts = Array.from(document.querySelectorAll('svg text')).map(t => t.textContent ?? '');
+        expect(svgTexts.every(t => !t.includes(longSubtaskTitle))).toBe(true);
+        expect(svgTexts.some(t => t.includes('\u2026'))).toBe(true);
+    });
+
+    // ── Assignee name inside bar ──────────────────────────────────────────
+
+    it('shows assignee name inside the bar when the task duration makes the bar wide enough', () => {
+        // dayWidth = MIN_DAY_WIDTH (20px) in jsdom (containerWidth = 0)
+        // Jan 1–3 span: duration = Math.ceil(2) + 1 = 3 → barW = 3 × 20 = 60 > 40
+        render(
+            <GanttChart tasks={[makeTask({ id: 't1', title: 'Task', startDate: '2024-01-01', endDate: '2024-01-03', assignee: 'Alice' })]} />
+        );
+        const svgTexts = Array.from(document.querySelectorAll('svg text')).map(t => t.textContent ?? '');
+        expect(svgTexts.some(t => t === 'Alice')).toBe(true);
+    });
+
+    // ── Backward-compatible rendering with old data (no dependsOn) ────────
+
+    it('renders correctly when task and subtask have no dependsOn field (old data format)', () => {
+        // Tasks/subtasks saved before dependsOn was introduced have the field absent.
+        // GanttChart must still render without throwing.
+        const oldTask = {
+            id: 't1',
+            title: 'Legacy Task',
+            notes: '',
+            completed: false,
+            startDate: '2024-01-01',
+            endDate: '2024-01-10',
+            subtasks: [
+                {
+                    id: 's1',
+                    parentId: 't1',
+                    title: 'Legacy Sub',
+                    notes: '',
+                    completed: false,
+                    startDate: '2024-01-02',
+                    endDate: '2024-01-08'
+                // no dependsOn — old format
+                }
+            ]
+            // no dependsOn — old format
+        } as unknown as import('../../types').Task;
+
+        render(<GanttChart tasks={[oldTask]} />);
+
+        expect(document.querySelector('svg')).toBeInTheDocument();
+        const svgTexts = Array.from(document.querySelectorAll('svg text')).map(t => t.textContent ?? '');
+        expect(svgTexts.some(t => t.includes('Legacy Task'))).toBe(true);
+        expect(svgTexts.some(t => t.includes('Legacy Sub'))).toBe(true);
+    });
+
+    // ── Subtasks without dates are excluded from the Gantt ────────────────
+
+    it('excludes subtasks without dates while still rendering dated siblings', () => {
+        // This verifies that undated subtasks are silently skipped, not that they
+        // cause an error or leave a blank row.
+        render(
+            <GanttChart tasks={[
+                makeTask({
+                    id: 't1',
+                    title: 'Parent',
+                    startDate: '2024-01-01',
+                    endDate: '2024-01-15',
+                    subtasks: [
+                        {
+                            id: 's1',
+                            parentId: 't1',
+                            title: 'Dated Sub',
+                            notes: '',
+                            completed: false,
+                            dependsOn: [],
+                            startDate: '2024-01-02',
+                            endDate: '2024-01-10'
+                        },
+                        {
+                            id: 's2',
+                            parentId: 't1',
+                            title: 'Undated Sub',
+                            notes: '',
+                            completed: false,
+                            dependsOn: []
+                            // no startDate / endDate — should be excluded
+                        }
+                    ]
+                })
+            ]}
+            />
+        );
+        const svgTexts = Array.from(document.querySelectorAll('svg text')).map(t => t.textContent ?? '');
+        expect(svgTexts.some(t => t.includes('Dated Sub'))).toBe(true);
+        expect(svgTexts.every(t => !t.includes('Undated Sub'))).toBe(true);
+    });
 });
