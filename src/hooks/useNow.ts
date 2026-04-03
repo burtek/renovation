@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 
 const REFRESH_INTERVAL_MS = 60_000; // 1 minute
@@ -10,11 +10,11 @@ const REFRESH_INTERVAL_MS = 60_000; // 1 minute
 export function useNow(): number {
     const [now, setNow] = useState(() => Date.now());
 
-    useEffect(() => {
-        const refresh = () => {
-            setNow(Date.now());
-        };
+    const refresh = useCallback(() => {
+        setNow(Date.now());
+    }, []);
 
+    useEffect(() => {
         const interval = setInterval(refresh, REFRESH_INTERVAL_MS);
         document.addEventListener('visibilitychange', refresh);
 
@@ -22,7 +22,7 @@ export function useNow(): number {
             clearInterval(interval);
             document.removeEventListener('visibilitychange', refresh);
         };
-    }, []);
+    }, [refresh]);
 
     return now;
 }

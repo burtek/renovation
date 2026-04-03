@@ -1,5 +1,5 @@
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { useApp } from '../../contexts/AppContext';
 import { useNow } from '../../hooks/useNow';
@@ -53,13 +53,13 @@ export default function SaveLoadButtons() {
         }
     };
 
-    const commitRename = () => {
+    const commitRename = useCallback(() => {
         const trimmed = nameValue.trim();
         if (trimmed && projectMeta && trimmed !== projectMeta.name) {
             renameProject(trimmed);
         }
         setEditingName(false);
-    };
+    }, [nameValue, projectMeta, renameProject]);
 
     const handleNameKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
