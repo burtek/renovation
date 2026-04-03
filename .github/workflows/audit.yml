@@ -41,19 +41,47 @@ jobs:
             const fs = require('fs');
             const report = fs.readFileSync('/tmp/audit-report.txt', 'utf8');
             const now = new Date().toISOString().slice(0, 10);
+            const titlePrefix = 'Security vulnerabilities found by yarn audit';
+            const body = [
+              '## yarn audit report',
+              '',
+              'Vulnerabilities were detected during the scheduled dependency audit.',
+              '',
+              '```',
+              report,
+              '```',
+            ].join('\n');
 
-            await github.rest.issues.create({
+            const { data: openIssues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `Security vulnerabilities found by yarn audit (${now})`,
-              body: [
-                '## yarn audit report',
-                '',
-                'Vulnerabilities were detected during the scheduled dependency audit.',
-                '',
-                '```',
-                report,
-                '```',
-              ].join('\n'),
-              assignees: ['Copilot'],
+              state: 'open',
+              per_page: 100,
             });
+
+            const existingIssue = openIssues.find((issue) =>
+              !issue.pull_request && issue.title.startsWith(titlePrefix)
+            );
+
+            if (existingIssue) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: [
+                  `A scheduled yarn audit run on ${now} detected vulnerabilities again.`,
+                  '',
+                  '```',
+                  report,
+                  '```',
+                ].join('\n'),
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `${titlePrefix} (${now})`,
+                body,
+                assignees: ['Copilot'],
+              });
+            }
