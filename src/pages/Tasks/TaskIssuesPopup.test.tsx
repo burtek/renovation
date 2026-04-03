@@ -385,6 +385,39 @@ describe('TaskIssuesPopup', () => {
         expect(onClose).toHaveBeenCalled();
     });
 
+    it('clicking the transparent backdrop (outside the menu) closes it', async () => {
+        const sub = makeSubtask({ id: 's1', parentId: 't1', startDate: '2024-01-03', endDate: '2024-01-09' });
+        const task = makeTask({ id: 't1', startDate: '2024-01-05', endDate: '2024-01-10', subtasks: [sub] });
+        preloadTasks([task]);
+
+        const issues: TaskIssue[] = [
+            {
+                type: 'subtask-fit',
+                subtaskId: 's1',
+                subtaskTitle: 'Sub Task',
+                subtaskStartDate: '2024-01-03',
+                subtaskEndDate: '2024-01-09',
+                parentId: 't1',
+                parentTitle: 'Parent Task',
+                parentStartDate: '2024-01-05',
+                parentEndDate: '2024-01-10'
+            }
+        ];
+        const user = userEvent.setup();
+        render(<PopupWrapper issues={issues} />);
+
+        // Open the menu
+        await user.click(screen.getByRole('button', { name: /fix/i }));
+        expect(screen.getByRole('button', { name: /shorten subtask/i })).toBeInTheDocument();
+
+        // Click the transparent backdrop (aria-hidden div) to close the menu
+        const backdrop = document.querySelector('[aria-hidden="true"]') as HTMLElement;
+        fireEvent.click(backdrop);
+
+        // Menu should be closed
+        expect(screen.queryByRole('button', { name: /shorten subtask/i })).not.toBeInTheDocument();
+    });
+
     it('renders null for an issue with no matching plugin', () => {
         const unknownIssue = { type: 'unknown-type' } as unknown as TaskIssue;
         render(<PopupWrapper issues={[unknownIssue]} />);

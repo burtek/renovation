@@ -438,4 +438,49 @@ describe('Calendar page', () => {
         const datalist = document.getElementById('contractor-suggestions');
         expect(datalist?.querySelectorAll('option[value="Alice"]')).toHaveLength(1);
     });
+
+    // ── EventModal end date and notes fields ──────────────────────────────
+
+    it('changing the end date input in the modal updates the form', async () => {
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTestId('select-slot'));
+
+        // Both date inputs are type="date"; the second one is the end-date input
+        const dateInputs = document.querySelectorAll('input[type="date"]');
+        const endDateInput = dateInputs[1] as HTMLInputElement;
+
+        fireEvent.change(endDateInput, { target: { value: '2024-03-20' } });
+
+        expect(endDateInput.value).toBe('2024-03-20');
+    });
+
+    it('typing in the notes textarea in the modal updates the form', async () => {
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTestId('select-slot'));
+
+        await user.type(screen.getByPlaceholderText(/notes/i), 'Bring the plans');
+
+        expect(screen.getByPlaceholderText(/notes/i)).toHaveValue('Bring the plans');
+    });
+
+    it('an event saved with notes persists the notes value', async () => {
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTestId('select-slot'));
+
+        await user.type(screen.getByPlaceholderText(/title \*/i), 'Site Visit');
+        await user.type(screen.getByPlaceholderText(/notes/i), 'Bring helmet');
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
+            const saved = stored.calendarEvents.find(e => e.title === 'Site Visit');
+            expect(saved?.notes).toBe('Bring helmet');
+        });
+    });
 });

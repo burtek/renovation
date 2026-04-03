@@ -257,6 +257,17 @@ describe('generateReport', () => {
         expect(html).not.toContain('<a href="javascript:');
     });
 
+    it('renders "GDrive (invalid link)" for a completely malformed invoiceLink (safeHref catch)', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            expenses: [makeExpense({ invoiceForm: 'gdrive', invoiceLink: 'not a url at all' })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('GDrive (invalid link)');
+        expect(html).not.toContain('<a href=');
+    });
+
     it('renders gdrive form text (no anchor) when invoiceLink is absent', () => {
         const state: AppData = {
             ...EMPTY_STATE,

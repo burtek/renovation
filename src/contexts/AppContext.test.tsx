@@ -619,6 +619,25 @@ describe('loadFromFile', () => {
         });
     });
 
+    it.skipIf(!blobStreamSupported)('shows alert when .json.gz content is not valid JSON after decompression', async () => {
+        // Compress garbage bytes that are not valid JSON
+        const { compressToGzip } = await import('../utils/compression');
+        const compressed = await compressToGzip('this is not json {{{');
+        const file = new File([compressed], 'backup.json.gz', { type: 'application/gzip' });
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        act(() => {
+            result.current.loadFromFile(file);
+        });
+
+        await waitFor(() => {
+            expect(window.alert).toHaveBeenCalledWith(
+                expect.stringContaining('valid renovation backup file')
+            );
+        });
+    });
+
     it('shows alert when loading a .json.gz file and compression is not supported', async () => {
         // Temporarily pretend compression is not supported
         const compressionModule = await import('../utils/compression');
