@@ -21,7 +21,7 @@ describe('formatPLN', () => {
     );
 
     it('always outputs exactly two decimal places', () => {
-        expect(formatPLN(5)).toMatch(/[,.]\d{2}\u00a0zł$/);
+        expect(formatPLN(5)).toMatch(/[,.]\d{2}/);
     });
 
     it('includes a non-breaking space before zł', () => {

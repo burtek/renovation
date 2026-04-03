@@ -189,8 +189,10 @@ describe('generateReport', () => {
         };
         generateReport(state);
         const html = captureHtml(mockWin);
-        // Both empty fields render the em dash
-        expect((html.match(/—/g) ?? []).length).toBeGreaterThanOrEqual(2);
+        // Both empty fields each render the em dash placeholder
+        expect(html).toContain('—');
+        // And verify a second occurrence exists (one per empty field)
+        expect(html.indexOf('—')).not.toBe(html.lastIndexOf('—'));
     });
 
     it('renders "paper" invoice form text', () => {
