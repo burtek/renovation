@@ -63,6 +63,12 @@ function makeExpense(overrides: Partial<Expense> = {}): Expense {
     };
 }
 
+function findButtonByText(container: HTMLElement, text: string): HTMLButtonElement | undefined {
+    return [...container.querySelectorAll('button')].find(
+        b => b.textContent?.trim() === text
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -537,8 +543,7 @@ describe('Finance page', () => {
         await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
 
         // Switch to gdrive
-        const { container } = { container: document.body };
-        const select = container.querySelector('select') as HTMLSelectElement;
+        const select = document.body.querySelector('select') as HTMLSelectElement;
         await user.selectOptions(select, 'gdrive');
 
         const gdriveLinkInput = screen.getByPlaceholderText(/google drive link/i);
@@ -608,10 +613,9 @@ describe('Finance page', () => {
         const { container } = render(<Finance />, { wrapper: Wrapper });
 
         // Use querySelectorAll to find "Del" button regardless of ARIA visibility filtering
-        const allButtons = container.querySelectorAll('button');
-        const delBtn = [...allButtons].find(b => b.textContent?.trim() === 'Del') as HTMLButtonElement;
+        const delBtn = findButtonByText(container, 'Del');
         expect(delBtn).toBeDefined();
-        fireEvent.click(delBtn);
+        fireEvent.click(delBtn!);
 
         await waitFor(() => {
             expect(screen.queryByText('Desktop Delete Test')).not.toBeInTheDocument();
@@ -623,8 +627,9 @@ describe('Finance page', () => {
         const { container } = render(<Finance />, { wrapper: Wrapper });
 
         // Use querySelectorAll to find all "Edit" buttons — [0] is mobile card, [1] is desktop table
-        const allButtons = container.querySelectorAll('button');
-        const editBtns = [...allButtons].filter(b => b.textContent?.trim() === 'Edit');
+        const editBtns = [...container.querySelectorAll('button')].filter(
+            b => b.textContent?.trim() === 'Edit'
+        );
         expect(editBtns.length).toBeGreaterThanOrEqual(2); // mobile + desktop
 
         // Click the desktop table Edit button
