@@ -18,4 +18,6 @@ interface ImportMetaEnv {
     readonly VITE_VERCEL_GIT_REPO_SLUG?: string;
     // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_BUILD_DATE?: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    readonly VITE_VERCEL_PROJECT?: string;
 }
