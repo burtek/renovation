@@ -4,7 +4,7 @@ import { formatPLN } from './format';
 
 
 export function generateReport(state: AppData): void {
-    const { expenses, tasks, calendarEvents, budget } = state;
+    const { notes, expenses, tasks, calendarEvents, budget } = state;
 
     const totalApproved = expenses
         .filter(e => e.loanApproved)
@@ -56,6 +56,9 @@ export function generateReport(state: AppData): void {
     td { padding: 5px 8px; border: 1px solid #ccc; vertical-align: top; }
     tr:nth-child(even) td { background: #f9f9f9; }
     small { color: #555; }
+    .note { margin-bottom: 16px; border-left: 3px solid #ccc; padding-left: 12px; }
+    .note h3 { font-size: 13px; margin: 0 0 4px; }
+    pre { white-space: pre-wrap; font-family: Arial, sans-serif; font-size: 12px; margin: 0; }
     @media print { body { margin: 0; } }
   </style>
 </head>
@@ -181,6 +184,20 @@ export function generateReport(state: AppData): void {
         }
     </tbody>
   </table>
+
+  <h2>Notes (${notes.length})</h2>
+  ${
+        notes.length === 0
+            ? '<p style="color:#999">No notes.</p>'
+            : notes
+                .map(
+                    n => `<div class="note">
+    <h3>${esc(n.title)}</h3>
+    <pre>${esc(n.content)}</pre>
+  </div>`
+                )
+                .join('')
+    }
 </body>
 </html>`;
 

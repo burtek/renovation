@@ -1,4 +1,4 @@
-import type { AppData, CalendarEvent, CalendarEventType, Expense, Task } from '../types';
+import type { AppData, CalendarEvent, CalendarEventType, Expense, Note, Task } from '../types';
 
 import { generateReport } from './report';
 
@@ -63,6 +63,17 @@ function makeCalendarEvent(overrides: Partial<CalendarEvent> = {}): CalendarEven
         eventType: 'event' as CalendarEventType,
         contractor: 'Bob',
         notes: 'Bring the plans',
+        ...overrides
+    };
+}
+
+function makeNote(overrides: Partial<Note> = {}): Note {
+    return {
+        id: 'n1',
+        title: 'My Note',
+        content: 'Some **markdown** content',
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
         ...overrides
     };
 }
@@ -495,5 +506,81 @@ describe('generateReport', () => {
         generateReport(state);
         const html = captureHtml(mockWin);
         expect(html).toContain('—');
+    });
+
+    // ── Notes section ─────────────────────────────────────────────────────
+
+    it('shows "No notes." placeholder when notes array is empty', () => {
+        generateReport(EMPTY_STATE);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('No notes.');
+    });
+
+    it('shows note count in section heading', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            notes: [makeNote(), makeNote({ id: 'n2', title: 'Second Note' })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('Notes (2)');
+    });
+
+    it('renders note title and content', () => {
+        const state: AppData = { ...EMPTY_STATE, notes: [makeNote()] };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('My Note');
+        expect(html).toContain('Some **markdown** content');
+    });
+
+    it('renders note title inside <h3> tag', () => {
+        const state: AppData = { ...EMPTY_STATE, notes: [makeNote()] };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('<h3>My Note</h3>');
+    });
+
+    it('renders note content inside <pre> tag', () => {
+        const state: AppData = { ...EMPTY_STATE, notes: [makeNote()] };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('<pre>Some **markdown** content</pre>');
+    });
+
+    it('HTML-escapes special characters in note title', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            notes: [makeNote({ title: '<b>Title & "more"</b>' })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('&lt;b&gt;Title &amp; &quot;more&quot;&lt;/b&gt;');
+        expect(html).not.toContain('<b>Title');
+    });
+
+    it('HTML-escapes special characters in note content', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            notes: [makeNote({ content: '<script>alert(1)</script>' })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+        expect(html).not.toContain('<script>alert');
+    });
+
+    it('renders notes section after calendar events section', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            calendarEvents: [makeCalendarEvent()],
+            notes: [makeNote()]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        const calendarPos = html.indexOf('Calendar events');
+        const notesPos = html.indexOf('Notes (');
+        expect(calendarPos).toBeGreaterThan(-1);
+        expect(notesPos).toBeGreaterThan(calendarPos);
     });
 });
