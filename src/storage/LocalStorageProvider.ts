@@ -68,8 +68,11 @@ export class LocalStorageProvider implements StorageProvider {
                 return null;
             }
             const { name, lastModified, ...rest } = parsed;
+            const safeLastModified = typeof lastModified === 'string'
+                ? lastModified
+                : new Date().toISOString();
             return {
-                meta: { id, name, lastModified: lastModified ?? new Date().toISOString() },
+                meta: { id, name, lastModified: safeLastModified },
 
                 rawData: rest as Partial<AppData>
             };
