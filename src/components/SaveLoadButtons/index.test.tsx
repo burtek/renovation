@@ -243,6 +243,7 @@ describe('SaveLoadButtons', () => {
         });
 
         it('shows deployment as a link to Vercel dashboard when deploymentId starts with dpl_', () => {
+            vi.stubEnv('VITE_VERCEL_PROJECT', 'bartosz-ds-projects/renovation');
             vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_abc123xyz');
             render(<SaveLoadButtons />, { wrapper: Wrapper });
 
@@ -258,6 +259,14 @@ describe('SaveLoadButtons', () => {
 
             expect(screen.queryByRole('link')).not.toBeInTheDocument();
             expect(screen.getByTitle('custom_deploy_id')).toHaveTextContent('custom_deploy_id');
+        });
+
+        it('shows deployment as a plain span (not a link) when VITE_VERCEL_PROJECT is absent', () => {
+            vi.stubEnv('VITE_VERCEL_DEPLOYMENT_ID', 'dpl_abc123xyz');
+            render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+            expect(screen.queryByRole('link')).not.toBeInTheDocument();
+            expect(screen.getByTitle('dpl_abc123xyz')).toHaveTextContent('dpl_abc123xyz');
         });
 
         it('shows Build date: row when VITE_BUILD_DATE is set', () => {

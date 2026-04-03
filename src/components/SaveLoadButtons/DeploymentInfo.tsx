@@ -10,8 +10,6 @@ const GIT_PROVIDER_CONFIG: Partial<Record<string, { host: string; commitSegment:
     bitbucket: { host: 'bitbucket.org', commitSegment: 'commits' }
 };
 
-const VERCEL_DEPLOY_BASE = 'https://vercel.com/bartosz-ds-projects/renovation';
-
 export default function DeploymentInfo() {
     const env = import.meta.env.VITE_VERCEL_ENV;
     const commitSha = import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA;
@@ -32,8 +30,8 @@ export default function DeploymentInfo() {
         ? `${repoUrl}/${providerConfig.changelogSegment}`
         : undefined;
 
-    const deploymentUrl = deploymentId?.startsWith('dpl_')
-        ? `${VERCEL_DEPLOY_BASE}/${deploymentId.slice(4)}`
+    const deploymentUrl = deploymentId?.startsWith('dpl_') && import.meta.env.VITE_VERCEL_PROJECT
+        ? `https://vercel.com/${import.meta.env.VITE_VERCEL_PROJECT}/${encodeURIComponent(deploymentId.slice(4))}`
         : undefined;
 
     const hasInfo = !!env || !!commitSha || !!deploymentId || !!buildDate || !!changelogUrl;
