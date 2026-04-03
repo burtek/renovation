@@ -60,7 +60,6 @@ export function SubtaskFitFix({
     const { state: { tasks }, dispatch } = useApp();
     const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
     const fixBtnRef = useRef<HTMLButtonElement>(null);
-    const menuRef = useRef<HTMLDivElement>(null);
 
     const startViolation = issue.parentStartDate && issue.subtaskStartDate && issue.subtaskStartDate < issue.parentStartDate;
     const endViolation = issue.parentEndDate && issue.subtaskEndDate && issue.subtaskEndDate > issue.parentEndDate;
@@ -159,7 +158,6 @@ export function SubtaskFitFix({
                         }}
                     />
                     <div
-                        ref={menuRef}
                         style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
                         className="z-[60] bg-white dark:bg-gray-700 border dark:border-gray-600 rounded shadow-lg min-w-max"
                         onClick={e => {
