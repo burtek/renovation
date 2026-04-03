@@ -1308,4 +1308,85 @@ describe('Tasks page', () => {
         const depSearch = screen.getByPlaceholderText('Search subtasks…');
         expect((depSearch as HTMLInputElement).value).toBe('');
     });
+
+    // ── Task Issues badge ─────────────────────────────────────────────────
+
+    it('shows ⚠️ badge when tasks have scheduling issues', () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                startDate: '2024-01-05',
+                endDate: '2024-01-10',
+                subtasks: [
+                    makeSubtask({
+                        id: 's1',
+                        parentId: 't1',
+                        startDate: '2024-01-03',
+                        endDate: '2024-01-09'
+                    })
+                ]
+            })
+        ]);
+        render(<Tasks />, { wrapper: Wrapper });
+        expect(screen.getByTitle('View task issues')).toBeInTheDocument();
+    });
+
+    it('does not show ⚠️ badge when there are no scheduling issues', () => {
+        preloadTasks([makeTask({ id: 't1', startDate: '2024-01-01', endDate: '2024-01-10' })]);
+        render(<Tasks />, { wrapper: Wrapper });
+        expect(screen.queryByTitle('View task issues')).not.toBeInTheDocument();
+    });
+
+    it('clicking ⚠️ badge opens the issues popup', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                startDate: '2024-01-05',
+                endDate: '2024-01-10',
+                subtasks: [
+                    makeSubtask({
+                        id: 's1',
+                        parentId: 't1',
+                        startDate: '2024-01-03',
+                        endDate: '2024-01-09'
+                    })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTitle('View task issues'));
+        expect(screen.getByText(/task issues \(1\)/i)).toBeInTheDocument();
+    });
+
+    it('clicking ⚠️ badge again closes the issues popup', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                startDate: '2024-01-05',
+                endDate: '2024-01-10',
+                subtasks: [
+                    makeSubtask({
+                        id: 's1',
+                        parentId: 't1',
+                        startDate: '2024-01-03',
+                        endDate: '2024-01-09'
+                    })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        const badge = screen.getByTitle('View task issues');
+        await user.click(badge);
+        expect(screen.getByText(/task issues \(1\)/i)).toBeInTheDocument();
+
+        await user.click(badge);
+        expect(screen.queryByText(/task issues \(1\)/i)).not.toBeInTheDocument();
+    });
 });

@@ -159,6 +159,9 @@ export function SubtaskFitFix({
                         ref={menuRef}
                         style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
                         className="z-[60] bg-white dark:bg-gray-700 border dark:border-gray-600 rounded shadow-lg min-w-max"
+                        onClick={e => {
+                            e.stopPropagation();
+                        }}
                     >
                         <button
                             type="button"
