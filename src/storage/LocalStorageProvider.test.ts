@@ -47,9 +47,24 @@ describe('LocalStorageProvider', () => {
             expect(provider.listProjects()).toHaveLength(0);
         });
 
-        it('skips entries that lack a valid name or lastModified field', () => {
-            localStorage.setItem(KEY, JSON.stringify({ name: 'ok' })); // no lastModified
+        it('skips entries that lack a valid name', () => {
+            localStorage.setItem(KEY, JSON.stringify({ lastModified: '2024-01-01T00:00:00.000Z' })); // no name
             expect(provider.listProjects()).toHaveLength(0);
+        });
+
+        it('accepts entries missing lastModified, using epoch as fallback', () => {
+            localStorage.setItem(KEY, JSON.stringify({ name: 'ok' })); // no lastModified
+            const list = provider.listProjects();
+            expect(list).toHaveLength(1);
+            expect(list[0].name).toBe('ok');
+            expect(list[0].lastModified).toBe(new Date(0).toISOString());
+        });
+
+        it('accepts entries with non-string lastModified, using epoch as fallback', () => {
+            localStorage.setItem(KEY, JSON.stringify({ name: 'ok', lastModified: 12345 }));
+            const list = provider.listProjects();
+            expect(list).toHaveLength(1);
+            expect(list[0].lastModified).toBe(new Date(0).toISOString());
         });
 
         it('skips entries with invalid JSON', () => {

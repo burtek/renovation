@@ -146,6 +146,19 @@ describe('ProjectModal', () => {
             expect(lastSavedLabels.length).toBeGreaterThanOrEqual(2);
         });
 
+        it('shows the raw string when lastModified is not a valid date', () => {
+            const badDate = 'not-a-valid-date';
+            render(
+                <ProjectModal
+                    projects={[{ id: 'p1', name: 'Test', lastModified: badDate }]}
+                    onSelect={vi.fn()}
+                    onCreate={vi.fn()}
+                />
+            );
+            // The raw string should appear since it cannot be parsed as a date
+            expect(screen.getByText(badDate, { exact: false })).toBeInTheDocument();
+        });
+
         it('calls onSelect with the project id when clicking a project', async () => {
             const user = userEvent.setup();
             const onSelect = vi.fn();

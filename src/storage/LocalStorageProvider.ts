@@ -41,11 +41,15 @@ export class LocalStorageProvider implements StorageProvider {
                 const id = key.slice(STORAGE_KEY_PREFIX.length);
                 try {
                     const raw = localStorage.getItem(key);
+                    /* c8 ignore next -- key was just enumerated; getItem should never return null */
                     if (raw) {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
                         const parsed = JSON.parse(raw) as StoredProjectRecord;
-                        if (typeof parsed.name === 'string' && typeof parsed.lastModified === 'string') {
-                            projects.push({ id, name: parsed.name, lastModified: parsed.lastModified });
+                        if (typeof parsed.name === 'string') {
+                            const lastModified = typeof parsed.lastModified === 'string'
+                                ? parsed.lastModified
+                                : new Date(0).toISOString();
+                            projects.push({ id, name: parsed.name, lastModified });
                         }
                     }
                 } catch {

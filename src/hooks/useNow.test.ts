@@ -50,7 +50,7 @@ describe('useNow', () => {
         expect(result.current).toBe(t0);
     });
 
-    it('updates on visibilitychange event', () => {
+    it('updates on visibilitychange event when document is visible', () => {
         const t0 = new Date('2024-06-01T12:00:00.000Z').getTime();
         vi.setSystemTime(t0);
 
@@ -64,6 +64,23 @@ describe('useNow', () => {
         });
 
         expect(result.current).toBe(t1);
+    });
+
+    it('does not update on visibilitychange when document is hidden', () => {
+        const t0 = new Date('2024-06-01T12:00:00.000Z').getTime();
+        vi.setSystemTime(t0);
+
+        const { result } = renderHook(() => useNow());
+        expect(result.current).toBe(t0);
+
+        Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+        act(() => {
+            vi.setSystemTime(t0 + 30_000);
+            document.dispatchEvent(new Event('visibilitychange'));
+        });
+        Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+
+        expect(result.current).toBe(t0);
     });
 
     it('clears the interval on unmount', () => {

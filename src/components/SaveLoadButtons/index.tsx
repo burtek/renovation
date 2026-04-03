@@ -1,5 +1,5 @@
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { useApp } from '../../contexts/AppContext';
 import { useNow } from '../../hooks/useNow';
@@ -69,7 +69,11 @@ export default function SaveLoadButtons() {
         }
     };
 
-    const storageUsed = projectMeta ? defaultStorageProvider.getProjectSize(projectMeta.id) : 0;
+    // Recompute only when the active project or its last save time changes
+    const storageUsed = useMemo(
+        () => (projectMeta ? defaultStorageProvider.getProjectSize(projectMeta.id) : 0),
+        [projectMeta]
+    );
 
     return (
         <div className="flex flex-col gap-1 p-4">

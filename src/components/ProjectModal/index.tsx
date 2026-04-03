@@ -47,6 +47,7 @@ export default function ProjectModal({ projects, onSelect, onCreate }: ProjectMo
         const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
             'button, input, [tabindex]:not([tabindex="-1"])'
         );
+        /* c8 ignore next -- the dialog always has focusable elements in all rendered states */
         if (!focusable || focusable.length === 0) {
             return;
         }

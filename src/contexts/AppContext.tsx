@@ -260,8 +260,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const projectMetaRef = useRef(projectMeta);
     projectMetaRef.current = projectMeta;
 
+    // Tracks whether the next state change should be skipped for persistence.
+    // Initialized to true so the initial hydration render never overwrites the stored lastModified.
+    const skipNextSaveRef = useRef(true);
+
     // Persist state to the active project's storage key whenever state changes
     useEffect(() => {
+        if (skipNextSaveRef.current) {
+            skipNextSaveRef.current = false;
+            return;
+        }
         const meta = projectMetaRef.current;
         if (!meta) {
             return;
@@ -283,6 +291,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             return;
         }
         const appData = parseAppData(loaded.rawData);
+        // Prevent the persist effect from running on this load — it would overwrite lastModified with 'now'
+        skipNextSaveRef.current = true;
         dispatch({ type: 'SET_ALL', payload: appData });
         setProjectMeta(loaded.meta);
         setNeedsProjectSelection(false);
@@ -293,6 +303,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const id = defaultStorageProvider.createProject(name);
         const now = new Date().toISOString();
         const meta: ProjectMeta = { id, name, lastModified: now };
+        // Prevent the persist effect from running — createProject already wrote the initial record
+        skipNextSaveRef.current = true;
         dispatch({ type: 'SET_ALL', payload: initialState });
         setProjectMeta(meta);
         setNeedsProjectSelection(false);

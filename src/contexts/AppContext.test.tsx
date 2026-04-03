@@ -832,6 +832,40 @@ describe('AppContext – project management', () => {
         expect(localStorage.getItem(ACTIVE_PROJECT_KEY)).toBe(id2);
     });
 
+    it('selectProject does not overwrite lastModified in storage', async () => {
+        const id2 = 'project-two';
+        const originalLM = '2024-02-01T00:00:00.000Z';
+        localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}${id2}`,
+            JSON.stringify({ name: 'Second', lastModified: originalLM, ...INITIAL_EMPTY })
+        );
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        act(() => {
+            result.current.selectProject(id2);
+        });
+
+        await new Promise(r => setTimeout(r, 20));
+
+        const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${id2}`);
+        const stored = JSON.parse(raw ?? '{}') as { lastModified: string };
+        expect(stored.lastModified).toBe(originalLM);
+    });
+
+    it('initial hydration does not overwrite lastModified in storage', async () => {
+        const originalLM = '2024-01-01T00:00:00.000Z';
+        preloadState({});
+
+        renderHook(() => useApp(), { wrapper });
+
+        await new Promise(r => setTimeout(r, 20));
+
+        const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`);
+        const stored = JSON.parse(raw ?? '{}') as { lastModified: string };
+        expect(stored.lastModified).toBe(originalLM);
+    });
+
     it('selectProject does nothing for a non-existent project id', () => {
         // Start with a project selected so we can detect if it changes
         preloadState({ budget: 100 });
