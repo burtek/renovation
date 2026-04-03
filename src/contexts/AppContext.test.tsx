@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
+import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../storage/types';
 import type { AppData, CalendarEvent, Expense, Note, Subtask, Task } from '../types';
 import { isCompressionSupported } from '../utils/compression';
 
@@ -25,8 +26,19 @@ const INITIAL_EMPTY: AppData = {
     budget: 0
 };
 
+const TEST_PROJECT_ID = 'test-project-id';
+
 function preloadState(state: Partial<AppData>) {
-    localStorage.setItem('renovation-data', JSON.stringify({ ...INITIAL_EMPTY, ...state }));
+    localStorage.setItem(
+        `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
+        JSON.stringify({
+            name: 'Test Project',
+            lastModified: '2024-01-01T00:00:00.000Z',
+            ...INITIAL_EMPTY,
+            ...state
+        })
+    );
+    localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
 }
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -114,14 +126,15 @@ describe('AppContext – localStorage', () => {
         expect(result.current.state.budget).toBe(9999);
     });
 
-    it('falls back to empty state on invalid JSON', () => {
-        localStorage.setItem('renovation-data', 'not-json{{{{');
+    it('falls back to empty state on invalid JSON in legacy key', () => {
+        localStorage.setItem(LEGACY_DATA_KEY, 'not-json{{{{');
         const { result } = renderHook(() => useApp(), { wrapper });
         expect(result.current.state.budget).toBe(0);
         expect(result.current.state.notes).toHaveLength(0);
     });
 
     it('persists state to localStorage after dispatch', async () => {
+        preloadState({});
         const { result } = renderHook(() => useApp(), { wrapper });
 
         act(() => {
@@ -129,7 +142,8 @@ describe('AppContext – localStorage', () => {
         });
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
+            const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`);
+            const stored = JSON.parse(raw ?? '{}') as AppData & { name: string };
             expect(stored.budget).toBe(12345);
         });
     });

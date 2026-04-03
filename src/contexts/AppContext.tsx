@@ -1,7 +1,11 @@
 import type { Dispatch, ReactNode } from 'react';
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
+import ProjectModal from '../components/ProjectModal';
+import type { ProjectMeta } from '../storage';
+import { defaultStorageProvider } from '../storage';
+import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../storage/types';
 import type { AppData, Note, Task, Subtask, Expense, CalendarEvent, CalendarEventType } from '../types';
 import { compressToGzip, decompressFromGzip, isCompressionSupported } from '../utils/compression';
 
@@ -178,29 +182,121 @@ interface AppContextType {
     dispatch: Dispatch<Action>;
     saveToFile: () => Promise<void>;
     loadFromFile: (file: File) => void;
+    projectMeta: ProjectMeta | null;
+    needsProjectSelection: boolean;
+    openProjectSelector: () => void;
+    selectProject: (id: string) => void;
+    createNewProject: (name: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 AppContext.displayName = 'AppContext';
 
-export function AppProvider({ children }: { children: ReactNode }) {
-    const [state, dispatch] = useReducer(reducer, initialState, () => {
-        try {
-            const stored = localStorage.getItem('renovation-data');
-            if (stored) {
+interface InitResult {
+    state: AppData;
+    meta: ProjectMeta | null;
+    needsPicker: boolean;
+}
+
+function initializeFromStorage(): InitResult {
+    try {
+        // Step 1: Migrate legacy 'renovation-data' key if no projects exist yet
+        const legacyRaw = localStorage.getItem(LEGACY_DATA_KEY);
+        const hasProjects = defaultStorageProvider.listProjects().length > 0;
+
+        if (legacyRaw && !hasProjects) {
+            try {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
-                const parsed = JSON.parse(stored) as Partial<AppData>;
-                return parseAppData(parsed);
+                const parsed = JSON.parse(legacyRaw) as Partial<AppData>;
+                const appData = parseAppData(parsed);
+                const id = uuidv4();
+                const now = new Date().toISOString();
+                const meta: ProjectMeta = { id, name: 'My Project', lastModified: now };
+                localStorage.setItem(
+                    `${STORAGE_KEY_PREFIX}${id}`,
+                    JSON.stringify({ name: meta.name, lastModified: meta.lastModified, ...appData })
+                );
+                localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+                localStorage.removeItem(LEGACY_DATA_KEY);
+                return { state: appData, meta, needsPicker: false };
+            } catch {
+                localStorage.removeItem(LEGACY_DATA_KEY);
             }
-        } catch {
-            // localStorage unavailable or corrupt — start fresh
         }
-        return initialState;
+
+        // Step 2: Try to load the last active project
+        const activeId = localStorage.getItem(ACTIVE_PROJECT_KEY);
+        if (activeId) {
+            const loaded = defaultStorageProvider.loadProject(activeId);
+            if (loaded) {
+                const appData = parseAppData(loaded.rawData);
+                return { state: appData, meta: loaded.meta, needsPicker: false };
+            }
+            // Stale pointer — clear it and show picker
+            localStorage.removeItem(ACTIVE_PROJECT_KEY);
+        }
+    } catch {
+        // localStorage unavailable — start fresh
+    }
+
+    // Step 3: No active project — show project picker
+    return { state: initialState, meta: null, needsPicker: true };
+}
+
+export function AppProvider({ children }: { children: ReactNode }) {
+    const [{ state: initState, meta: initMeta, needsPicker }] = useState(initializeFromStorage);
+    const [state, dispatch] = useReducer(reducer, initState);
+    const [projectMeta, setProjectMeta] = useState<ProjectMeta | null>(initMeta);
+    const [needsProjectSelection, setNeedsProjectSelection] = useState(needsPicker);
+    const [projects, setProjects] = useState<ProjectMeta[]>(() => {
+        if (needsPicker) {
+            return defaultStorageProvider.listProjects();
+        }
+        return [];
     });
 
+    // Keep a stable ref so the save effect always sees the latest meta without being re-triggered by it
+    const projectMetaRef = useRef(projectMeta);
+    projectMetaRef.current = projectMeta;
+
+    // Persist state to the active project's storage key whenever state changes
     useEffect(() => {
-        localStorage.setItem('renovation-data', JSON.stringify(state));
+        const meta = projectMetaRef.current;
+        if (!meta) {
+            return;
+        }
+        const now = new Date().toISOString();
+        defaultStorageProvider.saveProject(meta.id, meta.name, state);
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
+        setProjectMeta(prev => (prev ? { ...prev, lastModified: now } : null));
     }, [state]);
+
+    const openProjectSelector = useCallback(() => {
+        setProjects(defaultStorageProvider.listProjects());
+        setNeedsProjectSelection(true);
+    }, []);
+
+    const selectProject = useCallback((id: string) => {
+        const loaded = defaultStorageProvider.loadProject(id);
+        if (!loaded) {
+            return;
+        }
+        const appData = parseAppData(loaded.rawData);
+        dispatch({ type: 'SET_ALL', payload: appData });
+        setProjectMeta(loaded.meta);
+        setNeedsProjectSelection(false);
+        localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+    }, []);
+
+    const createNewProject = useCallback((name: string) => {
+        const id = defaultStorageProvider.createProject(name);
+        const now = new Date().toISOString();
+        const meta: ProjectMeta = { id, name, lastModified: now };
+        dispatch({ type: 'SET_ALL', payload: initialState });
+        setProjectMeta(meta);
+        setNeedsProjectSelection(false);
+        localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+    }, []);
 
     const saveToFile = useCallback(async () => {
         try {
@@ -281,12 +377,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const contextValue = useMemo(
-        () => ({ state, dispatch, saveToFile, loadFromFile }),
-        [state, dispatch, saveToFile, loadFromFile]
+        () => ({
+            state,
+            dispatch,
+            saveToFile,
+            loadFromFile,
+            projectMeta,
+            needsProjectSelection,
+            openProjectSelector,
+            selectProject,
+            createNewProject
+        }),
+        [state, dispatch, saveToFile, loadFromFile, projectMeta, needsProjectSelection, openProjectSelector, selectProject, createNewProject]
     );
 
     return (
         <AppContext.Provider value={contextValue}>
+            {needsProjectSelection && (
+                <ProjectModal
+                    projects={projects}
+                    onSelect={selectProject}
+                    onCreate={createNewProject}
+                />
+            )}
             {children}
         </AppContext.Provider>
     );

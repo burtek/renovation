@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 import { AppProvider } from '../contexts/AppContext';
+import { ACTIVE_PROJECT_KEY, STORAGE_KEY_PREFIX } from '../storage/types';
 
 import Layout from './Layout';
 
@@ -53,6 +54,12 @@ function renderLayout(initialPath = '/notes') {
 describe('Layout', () => {
     beforeEach(() => {
         localStorage.clear();
+        // Set up a default project so the ProjectModal doesn't interfere with Layout tests
+        localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}test-project-id`,
+            JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+        );
+        localStorage.setItem(ACTIVE_PROJECT_KEY, 'test-project-id');
         vi.stubGlobal('alert', vi.fn());
         vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
         vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {

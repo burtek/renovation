@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 import { AppProvider } from '../../contexts/AppContext';
+import { ACTIVE_PROJECT_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { Note } from '../../types';
 
 import Notes from '.';
@@ -48,11 +49,14 @@ function makeWrapper(initialPath = '/notes') {
 
 const Wrapper = makeWrapper();
 
+const TEST_PROJECT_ID = 'test-project-id';
+
 function preloadNotes(notes: Note[]) {
     localStorage.setItem(
-        'renovation-data',
-        JSON.stringify({ notes, tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+        `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
+        JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes, tasks: [], expenses: [], calendarEvents: [], budget: 0 })
     );
+    localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
 }
 
 function makeNote(overrides: Partial<Note> = {}): Note {
@@ -73,6 +77,12 @@ function makeNote(overrides: Partial<Note> = {}): Note {
 describe('Notes page', () => {
     beforeEach(() => {
         localStorage.clear();
+        // Set up a default project so the ProjectModal doesn't interfere with Notes tests
+        localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
+            JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+        );
+        localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
     });
 
     afterEach(() => {
@@ -409,7 +419,8 @@ describe('Notes page', () => {
 
         // The note is saved with empty content (not the original)
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as { notes: Array<{ content: string }> };
+            const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`);
+            const stored = JSON.parse(raw ?? '{}') as { notes: Array<{ content: string }> };
             expect(stored.notes[0].content).toBe('');
         });
     });

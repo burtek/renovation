@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
 import { AppProvider } from '../../contexts/AppContext';
+import { ACTIVE_PROJECT_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { AppData } from '../../types';
 
 import SaveLoadButtons from '.';
@@ -30,6 +31,12 @@ function Wrapper({ children }: { children: ReactNode }) {
 describe('SaveLoadButtons', () => {
     beforeEach(() => {
         localStorage.clear();
+        // Set up a default project so SaveLoadButtons has an active project to work with
+        localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}test-project-id`,
+            JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+        );
+        localStorage.setItem(ACTIVE_PROJECT_KEY, 'test-project-id');
         vi.stubGlobal('alert', vi.fn());
         vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
         vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {
@@ -109,7 +116,8 @@ describe('SaveLoadButtons', () => {
         fireEvent.change(fileInput);
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem('renovation-data') ?? '{}') as AppData;
+            const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}test-project-id`);
+            const stored = JSON.parse(raw ?? '{}') as AppData;
             expect(stored.budget).toBe(77777);
         });
     });
