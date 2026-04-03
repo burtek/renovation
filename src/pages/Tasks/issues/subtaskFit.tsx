@@ -153,7 +153,10 @@ export function SubtaskFitFix({
                     <div
                         aria-hidden="true"
                         className="fixed inset-0 z-[59]"
-                        onClick={closeMenu}
+                        onClick={e => {
+                            e.stopPropagation();
+                            closeMenu();
+                        }}
                     />
                     <div
                         ref={menuRef}
