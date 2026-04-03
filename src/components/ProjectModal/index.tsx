@@ -65,11 +65,11 @@ export default function ProjectModal({ projects, onSelect, onCreate }: ProjectMo
     };
 
     const formatDate = (iso: string) => {
-        try {
-            return new Date(iso).toLocaleString();
-        } catch {
+        const date = new Date(iso);
+        if (Number.isNaN(date.getTime())) {
             return iso;
         }
+        return date.toLocaleString();
     };
 
     return (
