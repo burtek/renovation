@@ -1343,4 +1343,35 @@ describe('Tasks page', () => {
         await user.click(badge);
         expect(screen.queryByText(/task issues \(1\)/i)).not.toBeInTheDocument();
     });
+
+    it('window resize event while issues popup is open updates popup position', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                startDate: '2024-01-05',
+                endDate: '2024-01-10',
+                subtasks: [
+                    makeSubtask({
+                        id: 's1',
+                        parentId: 't1',
+                        startDate: '2024-01-03',
+                        endDate: '2024-01-09'
+                    })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        // Open the issues popup
+        await user.click(screen.getByTitle('View task issues'));
+        expect(screen.getByText(/task issues \(1\)/i)).toBeInTheDocument();
+
+        // Fire a resize event — the handler calls getBoundingClientRect() and updates popupPos
+        fireEvent(window, new Event('resize'));
+
+        // Popup should still be open (resize doesn't close it)
+        expect(screen.getByText(/task issues \(1\)/i)).toBeInTheDocument();
+    });
 });

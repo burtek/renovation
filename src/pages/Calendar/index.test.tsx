@@ -441,6 +441,17 @@ describe('Calendar page', () => {
 
     // ── EventModal end date and notes fields ──────────────────────────────
 
+    it('typing in the contractor field in the modal updates the form', async () => {
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTestId('select-slot'));
+
+        await user.type(screen.getByPlaceholderText(/contractor/i), 'Bob');
+
+        expect(screen.getByPlaceholderText(/contractor/i)).toHaveValue('Bob');
+    });
+
     it('changing the end date input in the modal updates the form', async () => {
         const user = userEvent.setup();
         render(<CalendarPage />, { wrapper: Wrapper });
