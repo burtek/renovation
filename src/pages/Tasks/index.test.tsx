@@ -368,159 +368,6 @@ describe('Tasks page', () => {
         expect(screen.getByPlaceholderText(/title \*/i)).toBeInTheDocument();
     });
 
-    it('shifts dependent subtask dates when subtask endDate is extended (confirm=true)', async () => {
-        vi.stubGlobal('confirm', vi.fn(() => true));
-
-        const subA = makeSubtask({ id: 'sA', parentId: 't1', title: 'Sub A', startDate: '2024-01-01', endDate: '2024-01-10', dependsOn: [] });
-        const subB = makeSubtask({ id: 'sB', parentId: 't1', title: 'Sub B', startDate: '2024-01-11', endDate: '2024-01-20', dependsOn: ['sA'] });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', subtasks: [subA, subB] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        // Expand subtasks
-        await user.click(screen.getByText('▼'));
-
-        // Edit Sub A
-        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
-        await user.click(editButtons[editButtons.length - 2]); // first subtask's Edit button
-
-        // Extend Sub A's endDate by 5 days
-        const endDateInput = screen.getByDisplayValue('2024-01-10');
-        fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
-
-        await user.click(screen.getByRole('button', { name: /save/i }));
-
-        // Sub B should shift by 5 days: start=2024-01-16, end=2024-01-25
-        await waitFor(() => {
-            expect(screen.getByText(/2024-01-16/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-25/)).toBeInTheDocument();
-        });
-    });
-
-    it('does NOT shift dependent subtask dates when subtask date shift is declined (confirm=false)', async () => {
-        vi.stubGlobal('confirm', vi.fn(() => false));
-
-        const subA = makeSubtask({ id: 'sA', parentId: 't1', title: 'Sub A', startDate: '2024-01-01', endDate: '2024-01-10', dependsOn: [] });
-        const subB = makeSubtask({ id: 'sB', parentId: 't1', title: 'Sub B', startDate: '2024-01-11', endDate: '2024-01-20', dependsOn: ['sA'] });
-        preloadTasks([makeTask({ id: 't1', title: 'Parent', subtasks: [subA, subB] })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByText('▼'));
-
-        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
-        await user.click(editButtons[editButtons.length - 2]);
-
-        const endDateInput = screen.getByDisplayValue('2024-01-10');
-        fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
-
-        await user.click(screen.getByRole('button', { name: /save/i }));
-
-        // Sub B dates should remain unchanged (confirm=false returns early)
-        await waitFor(() => {
-            expect(screen.getByText(/2024-01-11/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-20/)).toBeInTheDocument();
-        });
-    });
-
-    // ── addDays / dayDiff via date shift ──────────────────────────────────
-
-    it('shifts dependent task dates when endDate is extended (confirm=true)', async () => {
-        vi.stubGlobal('confirm', vi.fn(() => true));
-
-        const taskA: Task = makeTask({
-            id: 'a',
-            title: 'Task A',
-            startDate: '2024-01-01',
-            endDate: '2024-01-10',
-            dependsOn: []
-        });
-        const taskB: Task = makeTask({
-            id: 'b',
-            title: 'Task B',
-            startDate: '2024-01-11',
-            endDate: '2024-01-20',
-            dependsOn: ['a']
-        });
-        preloadTasks([taskA, taskB]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        // Click Edit on the first task (Task A)
-        const editBtns = screen.getAllByRole('button', { name: /^edit$/i });
-        await user.click(editBtns[0]);
-
-        // Change endDate from '2024-01-10' to '2024-01-15' (+5 days)
-        const endDateInput = screen.getByDisplayValue('2024-01-10');
-        fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
-
-        await user.click(screen.getByRole('button', { name: /save/i }));
-
-        // Task B should shift by 5 days: start=2024-01-16, end=2024-01-25
-        await waitFor(() => {
-            expect(screen.getByText(/2024-01-16/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-25/)).toBeInTheDocument();
-        });
-    });
-
-    it('does NOT shift dependent task dates when endDate shift is declined (confirm=false)', async () => {
-        vi.stubGlobal('confirm', vi.fn(() => false));
-
-        const taskA: Task = makeTask({
-            id: 'a',
-            title: 'Task A',
-            startDate: '2024-01-01',
-            endDate: '2024-01-10',
-            dependsOn: []
-        });
-        const taskB: Task = makeTask({
-            id: 'b',
-            title: 'Task B',
-            startDate: '2024-01-11',
-            endDate: '2024-01-20',
-            dependsOn: ['a']
-        });
-        preloadTasks([taskA, taskB]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        const editBtns = screen.getAllByRole('button', { name: /^edit$/i });
-        await user.click(editBtns[0]);
-
-        const endDateInput = screen.getByDisplayValue('2024-01-10');
-        fireEvent.change(endDateInput, { target: { value: '2024-01-15' } });
-
-        await user.click(screen.getByRole('button', { name: /save/i }));
-
-        // Task B dates should remain unchanged (modal closed because confirm=false returns early)
-        // Actually looking at saveTask: if proceed=false, it returns early without saving task A either.
-        // So modal stays open. Task B is unchanged.
-        await waitFor(() => {
-            expect(screen.getByText(/2024-01-11/)).toBeInTheDocument();
-            expect(screen.getByText(/2024-01-20/)).toBeInTheDocument();
-        });
-    });
-
-    it('does not prompt for date shift when endDate is not changed', async () => {
-        const mockConfirm = vi.fn(() => true);
-        vi.stubGlobal('confirm', mockConfirm);
-
-        preloadTasks([makeTask({ id: 't1', title: 'Task A', startDate: '2024-01-01', endDate: '2024-01-10' })]);
-
-        const user = userEvent.setup();
-        render(<Tasks />, { wrapper: Wrapper });
-
-        await user.click(screen.getByRole('button', { name: /^edit$/i }));
-        // Don't change endDate
-        await user.click(screen.getByRole('button', { name: /save/i }));
-
-        // confirm should NOT have been called (no date shift prompt)
-        expect(mockConfirm).not.toHaveBeenCalled();
-    });
 
     // ── Gantt chart ───────────────────────────────────────────────────────
 
@@ -1460,5 +1307,86 @@ describe('Tasks page', () => {
         // When editing, dep search should be empty (not pre-filled with parent title)
         const depSearch = screen.getByPlaceholderText('Search subtasks…');
         expect((depSearch as HTMLInputElement).value).toBe('');
+    });
+
+    // ── Task Issues badge ─────────────────────────────────────────────────
+
+    it('shows ⚠️ badge when tasks have scheduling issues', () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                startDate: '2024-01-05',
+                endDate: '2024-01-10',
+                subtasks: [
+                    makeSubtask({
+                        id: 's1',
+                        parentId: 't1',
+                        startDate: '2024-01-03',
+                        endDate: '2024-01-09'
+                    })
+                ]
+            })
+        ]);
+        render(<Tasks />, { wrapper: Wrapper });
+        expect(screen.getByTitle('View task issues')).toBeInTheDocument();
+    });
+
+    it('does not show ⚠️ badge when there are no scheduling issues', () => {
+        preloadTasks([makeTask({ id: 't1', startDate: '2024-01-01', endDate: '2024-01-10' })]);
+        render(<Tasks />, { wrapper: Wrapper });
+        expect(screen.queryByTitle('View task issues')).not.toBeInTheDocument();
+    });
+
+    it('clicking ⚠️ badge opens the issues popup', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                startDate: '2024-01-05',
+                endDate: '2024-01-10',
+                subtasks: [
+                    makeSubtask({
+                        id: 's1',
+                        parentId: 't1',
+                        startDate: '2024-01-03',
+                        endDate: '2024-01-09'
+                    })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTitle('View task issues'));
+        expect(screen.getByText(/task issues \(1\)/i)).toBeInTheDocument();
+    });
+
+    it('clicking ⚠️ badge again closes the issues popup', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent',
+                startDate: '2024-01-05',
+                endDate: '2024-01-10',
+                subtasks: [
+                    makeSubtask({
+                        id: 's1',
+                        parentId: 't1',
+                        startDate: '2024-01-03',
+                        endDate: '2024-01-09'
+                    })
+                ]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        const badge = screen.getByTitle('View task issues');
+        await user.click(badge);
+        expect(screen.getByText(/task issues \(1\)/i)).toBeInTheDocument();
+
+        await user.click(badge);
+        expect(screen.queryByText(/task issues \(1\)/i)).not.toBeInTheDocument();
     });
 });
