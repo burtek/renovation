@@ -2,6 +2,8 @@ import type { AppData } from '../types';
 
 
 export const STORAGE_KEY_PREFIX = 'renovation-project-';
+export const ACTIVE_PROJECT_KEY = 'renovation-active-project';
+export const LEGACY_DATA_KEY = 'renovation-data';
 
 export interface ProjectMeta {
     id: string;

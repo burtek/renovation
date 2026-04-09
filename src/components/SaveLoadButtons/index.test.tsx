@@ -34,7 +34,7 @@ describe('SaveLoadButtons', () => {
         // Set up a default project so SaveLoadButtons has an active project to work with
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}test-project-id`,
-            JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+            JSON.stringify({ meta: { name: 'Test', lastModified: '2024-01-01T00:00:00.000Z' }, data: { notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 } })
         );
         localStorage.setItem(ACTIVE_PROJECT_KEY, 'test-project-id');
         vi.stubGlobal('alert', vi.fn());
@@ -117,8 +117,8 @@ describe('SaveLoadButtons', () => {
 
         await waitFor(() => {
             const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}test-project-id`);
-            const stored = JSON.parse(raw ?? '{}') as AppData;
-            expect(stored.budget).toBe(77777);
+            const stored = JSON.parse(raw ?? '{}') as { data: AppData };
+            expect(stored.data.budget).toBe(77777);
         });
     });
 
@@ -394,7 +394,7 @@ describe('SaveLoadButtons – project info', () => {
         localStorage.clear();
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}test-project-id`,
-            JSON.stringify({ name: 'My Reno', lastModified: new Date().toISOString(), notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+            JSON.stringify({ meta: { name: 'My Reno', lastModified: new Date().toISOString() }, data: { notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 } })
         );
         localStorage.setItem(ACTIVE_PROJECT_KEY, 'test-project-id');
         vi.stubGlobal('alert', vi.fn());

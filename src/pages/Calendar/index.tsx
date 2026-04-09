@@ -63,7 +63,7 @@ const DnDCalendar = withDragAndDrop<BigCalEvent>(Calendar);
 export default function CalendarPage() {
     const { state, dispatch } = useApp();
     const [modal, setModal] = useState<{ open: boolean; editEvent?: CalendarEvent }>({ open: false });
-    const [form, setForm] = useState<EventFormData>(emptyForm);
+    const [form, setForm] = useState(emptyForm);
 
     const contractorNames = Array.from(new Set(state.calendarEvents.map(e => e.contractor).filter((c): c is string => Boolean(c))));
 

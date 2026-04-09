@@ -32,10 +32,8 @@ function preloadState(state: Partial<AppData>) {
     localStorage.setItem(
         `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
         JSON.stringify({
-            name: 'Test Project',
-            lastModified: '2024-01-01T00:00:00.000Z',
-            ...INITIAL_EMPTY,
-            ...state
+            meta: { name: 'Test Project', lastModified: '2024-01-01T00:00:00.000Z' },
+            data: { ...INITIAL_EMPTY, ...state }
         })
     );
     localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
@@ -143,8 +141,8 @@ describe('AppContext – localStorage', () => {
 
         await waitFor(() => {
             const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`);
-            const stored = JSON.parse(raw ?? '{}') as AppData & { name: string };
-            expect(stored.budget).toBe(12345);
+            const stored = JSON.parse(raw ?? '{}') as { data: AppData };
+            expect(stored.data.budget).toBe(12345);
         });
     });
 });
@@ -768,10 +766,10 @@ describe('AppContext – multi-project init', () => {
     });
 
     it('does not migrate legacy key when projects already exist', () => {
-        // Pre-create a project
+        // Pre-create a project (new format)
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
-            JSON.stringify({ name: 'Existing', lastModified: '2024-01-01T00:00:00.000Z', ...INITIAL_EMPTY })
+            JSON.stringify({ meta: { name: 'Existing', lastModified: '2024-01-01T00:00:00.000Z' }, data: INITIAL_EMPTY })
         );
         localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
         // Also set a legacy key with different budget — should be ignored
@@ -813,17 +811,17 @@ describe('AppContext – project management', () => {
         localStorage.clear();
     });
 
-    it('selectProject loads the project data into state', () => {
+    it('selectProject loads the project data into state', async () => {
         const id2 = 'project-two';
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}${id2}`,
-            JSON.stringify({ name: 'Second', lastModified: '2024-02-01T00:00:00.000Z', ...INITIAL_EMPTY, budget: 500 })
+            JSON.stringify({ meta: { name: 'Second', lastModified: '2024-02-01T00:00:00.000Z' }, data: { ...INITIAL_EMPTY, budget: 500 } })
         );
 
         const { result } = renderHook(() => useApp(), { wrapper });
 
-        act(() => {
-            result.current.selectProject(id2);
+        await act(async () => {
+            await result.current.selectProject(id2);
         });
 
         expect(result.current.state.budget).toBe(500);
@@ -837,20 +835,20 @@ describe('AppContext – project management', () => {
         const originalLM = '2024-02-01T00:00:00.000Z';
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}${id2}`,
-            JSON.stringify({ name: 'Second', lastModified: originalLM, ...INITIAL_EMPTY })
+            JSON.stringify({ meta: { name: 'Second', lastModified: originalLM }, data: INITIAL_EMPTY })
         );
 
         const { result } = renderHook(() => useApp(), { wrapper });
 
-        act(() => {
-            result.current.selectProject(id2);
+        await act(async () => {
+            await result.current.selectProject(id2);
         });
 
         await new Promise(r => setTimeout(r, 20));
 
         const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${id2}`);
-        const stored = JSON.parse(raw ?? '{}') as { lastModified: string };
-        expect(stored.lastModified).toBe(originalLM);
+        const stored = JSON.parse(raw ?? '{}') as { meta: { lastModified: string } };
+        expect(stored.meta.lastModified).toBe(originalLM);
     });
 
     it('initial hydration does not overwrite lastModified in storage', async () => {
@@ -862,29 +860,29 @@ describe('AppContext – project management', () => {
         await new Promise(r => setTimeout(r, 20));
 
         const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`);
-        const stored = JSON.parse(raw ?? '{}') as { lastModified: string };
-        expect(stored.lastModified).toBe(originalLM);
+        const stored = JSON.parse(raw ?? '{}') as { meta: { lastModified: string } };
+        expect(stored.meta.lastModified).toBe(originalLM);
     });
 
-    it('selectProject does nothing for a non-existent project id', () => {
+    it('selectProject does nothing for a non-existent project id', async () => {
         // Start with a project selected so we can detect if it changes
         preloadState({ budget: 100 });
         const { result } = renderHook(() => useApp(), { wrapper });
         const budgetBefore = result.current.state.budget;
 
-        act(() => {
-            result.current.selectProject('does-not-exist');
+        await act(async () => {
+            await result.current.selectProject('does-not-exist');
         });
 
         expect(result.current.state.budget).toBe(budgetBefore);
     });
 
-    it('createNewProject switches to a blank project', () => {
+    it('createNewProject switches to a blank project', async () => {
         preloadState({ budget: 777 });
         const { result } = renderHook(() => useApp(), { wrapper });
 
-        act(() => {
-            result.current.createNewProject('Fresh Project');
+        await act(async () => {
+            await result.current.createNewProject('Fresh Project');
         });
 
         expect(result.current.state.budget).toBe(0);
@@ -893,7 +891,7 @@ describe('AppContext – project management', () => {
         expect(localStorage.getItem(ACTIVE_PROJECT_KEY)).not.toBeNull();
     });
 
-    it('renameProject updates projectMeta.name in state', () => {
+    it('renameProject updates projectMeta.name in state', async () => {
         preloadState({});
         const { result } = renderHook(() => useApp(), { wrapper });
 
@@ -901,7 +899,9 @@ describe('AppContext – project management', () => {
             result.current.renameProject('Renamed Project');
         });
 
-        expect(result.current.projectMeta?.name).toBe('Renamed Project');
+        await waitFor(() => {
+            expect(result.current.projectMeta?.name).toBe('Renamed Project');
+        });
     });
 
     it('renameProject persists the new name to localStorage', async () => {
@@ -914,8 +914,8 @@ describe('AppContext – project management', () => {
 
         await waitFor(() => {
             const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`);
-            const stored = JSON.parse(raw ?? '{}') as { name: string };
-            expect(stored.name).toBe('Stored Name');
+            const stored = JSON.parse(raw ?? '{}') as { meta: { name: string } };
+            expect(stored.meta.name).toBe('Stored Name');
         });
     });
 
@@ -931,13 +931,13 @@ describe('AppContext – project management', () => {
         }).not.toThrow();
     });
 
-    it('openProjectSelector sets needsProjectSelection to true', () => {
+    it('openProjectSelector sets needsProjectSelection to true', async () => {
         preloadState({});
         const { result } = renderHook(() => useApp(), { wrapper });
         expect(result.current.needsProjectSelection).toBe(false);
 
-        act(() => {
-            result.current.openProjectSelector();
+        await act(async () => {
+            await result.current.openProjectSelector();
         });
 
         expect(result.current.needsProjectSelection).toBe(true);

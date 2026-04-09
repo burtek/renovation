@@ -124,7 +124,7 @@ const TEST_PROJECT_ID = 'test-project-id';
 function preloadState(state: Partial<AppData>) {
     localStorage.setItem(
         `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
-        JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0, ...state })
+        JSON.stringify({ meta: { name: 'Test', lastModified: '2024-01-01T00:00:00.000Z' }, data: { notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0, ...state } })
     );
     localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
 }
@@ -149,7 +149,7 @@ describe('Calendar page', () => {
         // Set up a default project so Calendar page renders without showing ProjectModal
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
-            JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+            JSON.stringify({ meta: { name: 'Test', lastModified: '2024-01-01T00:00:00.000Z' }, data: { notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 } })
         );
         localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
         vi.stubGlobal('confirm', vi.fn(() => true));
@@ -347,8 +347,8 @@ describe('Calendar page', () => {
         await user.click(screen.getByTestId('drop-ev1'));
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as AppData;
-            const updated = stored.calendarEvents.find(e => e.id === 'ev1');
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const updated = stored.data.calendarEvents.find(e => e.id === 'ev1');
             expect(updated?.date).toBe('2024-04-01');
             expect(updated?.endDate).toBeUndefined();
         });
@@ -363,8 +363,8 @@ describe('Calendar page', () => {
         await user.click(screen.getByTestId('resize-ev2'));
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as AppData;
-            const updated = stored.calendarEvents.find(e => e.id === 'ev2');
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const updated = stored.data.calendarEvents.find(e => e.id === 'ev2');
             expect(updated?.date).toBe('2024-04-01');
             expect(updated?.endDate).toBe('2024-04-03');
         });
@@ -387,8 +387,8 @@ describe('Calendar page', () => {
         await user.click(screen.getByTestId('drop-ev3'));
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as AppData;
-            const updated = stored.calendarEvents.find(e => e.id === 'ev3');
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const updated = stored.data.calendarEvents.find(e => e.id === 'ev3');
             expect(updated?.date).toBe('2024-04-01');
             expect(updated?.contractor).toBe('Bob');
             expect(updated?.title).toBe('Colored Event');
@@ -499,8 +499,8 @@ describe('Calendar page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }));
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as AppData;
-            const saved = stored.calendarEvents.find(e => e.title === 'Site Visit');
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.calendarEvents.find(e => e.title === 'Site Visit');
             expect(saved?.notes).toBe('Bring helmet');
         });
     });

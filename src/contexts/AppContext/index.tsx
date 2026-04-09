@@ -1,9 +1,11 @@
 import type { Dispatch, ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
 import ProjectModal from '../../components/ProjectModal';
 import type { ProjectMeta } from '../../storage';
 import { storageManager } from '../../storage';
+import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { AppData, CalendarEvent, CalendarEventType } from '../../types';
 import { compressToGzip, decompressFromGzip, isCompressionSupported } from '../../utils/compression';
 
@@ -52,6 +54,75 @@ function parseAppData(parsed: Partial<AppData>): AppData {
     };
 }
 
+// ---------------------------------------------------------------------------
+// Synchronous initial state load from localStorage
+// ---------------------------------------------------------------------------
+
+interface InitialLoadResult {
+    state: AppData;
+    meta: ProjectMeta | null;
+    needsPicker: boolean;
+}
+
+function tryLoadProjectSync(id: string): { meta: ProjectMeta; rawData: Partial<AppData> } | null {
+    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${id}`);
+    if (!raw) {
+        return null;
+    }
+    try {
+        const parsed = JSON.parse(raw) as unknown;
+        if (
+            typeof parsed !== 'object' || parsed === null
+            || !('meta' in parsed) || typeof (parsed as Record<string, unknown>).meta !== 'object'
+            || !('data' in parsed) || typeof (parsed as Record<string, unknown>).data !== 'object'
+        ) {
+            return null;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+        const { meta, data } = parsed as { meta: Record<string, unknown>; data: Partial<AppData> };
+        if (typeof meta.name !== 'string' || typeof meta.lastModified !== 'string') {
+            return null;
+        }
+        return { meta: { id, name: meta.name, lastModified: meta.lastModified }, rawData: data };
+    } catch {
+        return null;
+    }
+}
+
+function loadInitialState(): InitialLoadResult {
+    // 1. Try to restore the last active project
+    const activeId = localStorage.getItem(ACTIVE_PROJECT_KEY);
+    if (activeId) {
+        const loaded = tryLoadProjectSync(activeId);
+        if (loaded) {
+            return { state: parseAppData(loaded.rawData), meta: loaded.meta, needsPicker: false };
+        }
+        // stale pointer – clear it so the picker appears clean
+        localStorage.removeItem(ACTIVE_PROJECT_KEY);
+    }
+
+    // 2. Try to migrate the legacy single-project key
+    const legacyRaw = localStorage.getItem(LEGACY_DATA_KEY);
+    const hasProjects = Object.keys(localStorage).some(k => k.startsWith(STORAGE_KEY_PREFIX));
+    if (legacyRaw && !hasProjects) {
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+            const appData = parseAppData(JSON.parse(legacyRaw) as Partial<AppData>);
+            const id = uuidv4();
+            const lastModified = new Date().toISOString();
+            const record = { meta: { name: 'My Project', lastModified }, data: appData };
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}${id}`, JSON.stringify(record));
+            localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+            localStorage.removeItem(LEGACY_DATA_KEY);
+            return { state: appData, meta: { id, name: 'My Project', lastModified }, needsPicker: false };
+        } catch {
+            localStorage.removeItem(LEGACY_DATA_KEY);
+        }
+    }
+
+    return { state: initialState, meta: null, needsPicker: true };
+}
+
 interface AppContextType {
     state: AppData;
     dispatch: Dispatch<Action>;
@@ -59,9 +130,9 @@ interface AppContextType {
     loadFromFile: (file: File) => void;
     projectMeta: ProjectMeta | null;
     needsProjectSelection: boolean;
-    openProjectSelector: () => void;
-    selectProject: (id: string) => void;
-    createNewProject: (name: string) => void;
+    openProjectSelector: () => Promise<void>;
+    selectProject: (id: string) => Promise<void>;
+    createNewProject: (name: string) => Promise<void>;
     renameProject: (newName: string) => void;
 }
 
@@ -70,11 +141,13 @@ AppContext.displayName = 'AppContext';
 
 
 export function AppProvider({ children }: { children: ReactNode }) {
-    const [{ state: initState, meta: initMeta }] = useState({ state: initialState, meta: null });
+    const [{ state: initState, meta: initMeta, needsPicker }] = useState(loadInitialState);
     const [state, dispatch] = useReducer(reducer, initState);
-    const [projectMeta, setProjectMeta] = useState<ProjectMeta | null>(initMeta);
-    const [needsProjectSelection, setNeedsProjectSelection] = useState(true);
+    const [projectMeta, setProjectMeta] = useState(initMeta);
+    const [needsProjectSelection, setNeedsProjectSelection] = useState(needsPicker);
     const [projects, setProjects] = useState<ProjectMeta[]>([]);
+
+    // Load projects list on mount (for the project picker)
     useEffect(() => {
         // eslint-disable-next-line promise/prefer-await-to-then
         void storageManager.provider.listProjects().then(setProjects);
@@ -122,6 +195,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_ALL', payload: appData });
         setProjectMeta(loaded.meta);
         setNeedsProjectSelection(false);
+        localStorage.setItem(ACTIVE_PROJECT_KEY, id);
     }, []);
 
     const createNewProject = useCallback(async (name: string) => {
@@ -133,6 +207,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_ALL', payload: initialState });
         setProjectMeta(meta);
         setNeedsProjectSelection(false);
+        localStorage.setItem(ACTIVE_PROJECT_KEY, id);
     }, []);
 
     const renameProject = useCallback((newName: string) => {
