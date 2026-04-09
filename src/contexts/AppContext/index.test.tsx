@@ -1,11 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
-import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../storage/types';
-import type { AppData, CalendarEvent, Expense, Note, Subtask, Task } from '../types';
-import { isCompressionSupported } from '../utils/compression';
+import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
+import type { AppData, CalendarEvent, Expense, Note, Subtask, Task } from '../../types';
+import { isCompressionSupported } from '../../utils/compression';
 
-import { AppProvider, useApp } from './AppContext';
+import { AppProvider, useApp } from '.';
 
 
 // ---------------------------------------------------------------------------
@@ -617,7 +617,7 @@ describe('loadFromFile', () => {
     });
 
     it.skipIf(!blobStreamSupported)('loads a .json.gz file via decompression', async () => {
-        const { compressToGzip } = await import('../utils/compression');
+        const { compressToGzip } = await import('../../utils/compression');
         const data: AppData = { ...INITIAL_EMPTY, budget: 55000 };
         const compressed = await compressToGzip(JSON.stringify(data));
         const file = new File([compressed], 'backup.json.gz', { type: 'application/gzip' });
@@ -635,7 +635,7 @@ describe('loadFromFile', () => {
 
     it.skipIf(!blobStreamSupported)('shows alert when .json.gz content is not valid JSON after decompression', async () => {
         // Compress garbage bytes that are not valid JSON
-        const { compressToGzip } = await import('../utils/compression');
+        const { compressToGzip } = await import('../../utils/compression');
         const compressed = await compressToGzip('this is not json {{{');
         const file = new File([compressed], 'backup.json.gz', { type: 'application/gzip' });
 
@@ -654,7 +654,7 @@ describe('loadFromFile', () => {
 
     it('shows alert when loading a .json.gz file and compression is not supported', async () => {
         // Temporarily pretend compression is not supported
-        const compressionModule = await import('../utils/compression');
+        const compressionModule = await import('../../utils/compression');
         const originalValue = compressionModule.isCompressionSupported;
         Object.defineProperty(compressionModule, 'isCompressionSupported', { value: false, writable: true, configurable: true });
 

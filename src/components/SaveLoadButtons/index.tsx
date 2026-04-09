@@ -1,9 +1,9 @@
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApp } from '../../contexts/AppContext';
 import { useNow } from '../../hooks/useNow';
-import { defaultStorageProvider } from '../../storage';
+import { storageManager } from '../../storage';
 
 import DeploymentInfo from './DeploymentInfo';
 
@@ -70,10 +70,24 @@ export default function SaveLoadButtons() {
     };
 
     // Recompute only when the active project or its last save time changes
-    const storageUsed = useMemo(
-        () => (projectMeta ? defaultStorageProvider.getProjectSize(projectMeta.id) : 0),
-        [projectMeta]
-    );
+    const [projectSize, setProjectSize] = useState(0);
+    useEffect(() => {
+        let isMounted = true;
+        async function updateSize() {
+            if (projectMeta) {
+                const size = await storageManager.provider.getProjectSize(projectMeta.id);
+                if (isMounted) {
+                    setProjectSize(size);
+                }
+            } else {
+                setProjectSize(0);
+            }
+        }
+        void updateSize();
+        return () => {
+            isMounted = false;
+        };
+    }, [projectMeta]);
 
     return (
         <div className="flex flex-col gap-1 p-4">
@@ -128,15 +142,13 @@ export default function SaveLoadButtons() {
                             🔄
                         </button>
                     </div>
-                    <div>
-                        💾
-                        {' '}
+                    <div title="Last modified time">
+                        {'💾 '}
                         {formatRelativeTime(projectMeta.lastModified, now)}
                     </div>
-                    <div>
-                        📊
-                        {' '}
-                        {formatBytes(storageUsed)}
+                    <div title="Project file size">
+                        {'📊 '}
+                        {projectSize ? formatBytes(projectSize) : 'unknown'}
                     </div>
                 </div>
             )}
