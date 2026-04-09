@@ -150,6 +150,10 @@ export default function SaveLoadButtons() {
                         {'📊 '}
                         {projectSize ? formatBytes(projectSize) : 'unknown'}
                     </div>
+                    <div className="text-[10px] text-gray-500">
+                        {'🗄️ '}
+                        {storageManager.provider.label}
+                    </div>
                 </div>
             )}
             <div className="flex gap-2">

@@ -18,6 +18,8 @@ export default function ProjectModal({ projects, onSelect, onCreate }: ProjectMo
     const nameInputRef = useRef<HTMLInputElement>(null);
 
     const [newName, setNewName] = useState('');
+    // eslint-disable-next-line no-warning-comments
+    // FIXME - race condition when projects are loaded after modal is shown
     const [showNewForm, setShowNewForm] = useState(projects.length === 0);
     const [nameError, setNameError] = useState('');
 
