@@ -11,11 +11,13 @@ import CalendarPage from '.';
 
 
 vi.mock('react-big-calendar', () => ({
-    Calendar: ({ onSelectSlot, onSelectEvent, events, components }: {
+    Calendar: ({ onSelectSlot, onSelectEvent, events, components, eventPropGetter }: {
         onSelectSlot?: (slot: { start: Date; end: Date; slots: Date[]; action: string }) => void;
         onSelectEvent?: (event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }) => void;
         events?: Array<{ title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }>;
         components?: { event?: ComponentType<{ event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent } }> };
+        eventPropGetter?: (event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }) =>
+        { style?: Record<string, string> };
     }) => (
         <div data-testid="rbc-calendar">
             <button
@@ -32,10 +34,12 @@ vi.mock('react-big-calendar', () => ({
             </button>
             {events?.map(e => {
                 const EventComp = components?.event;
+                const eventProps = eventPropGetter?.(e);
                 return (
                     <button
                         type="button"
                         key={e.resource.id}
+                        style={eventProps?.style}
                         onClick={() => onSelectEvent?.(e)}
                     >
                         {EventComp ? <EventComp event={e} /> : e.title}
