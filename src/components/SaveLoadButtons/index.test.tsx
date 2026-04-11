@@ -526,11 +526,6 @@ describe('SaveLoadButtons – save error banner', () => {
             .mockRejectedValueOnce(new Error('quota exceeded'));
 
         const user = userEvent.setup();
-        render(<SaveLoadButtons />, { wrapper: Wrapper });
-
-        // Trigger a save via the file-load path that updates state (dispatch)
-        // Simpler: fire a custom event that changes context — but we can't easily
-        // dispatch from outside the hook. Instead, load a JSON file to change state.
         const jsonData = JSON.stringify({ notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 42 });
         const file = new File([jsonData], 'backup.json', { type: 'application/json' });
         const { container } = render(<SaveLoadButtons />, { wrapper: Wrapper });
