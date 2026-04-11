@@ -686,4 +686,42 @@ describe('LocalStorageProvider – OPFS mode', () => {
         );
         errorSpy.mockRestore();
     });
+
+    // ── readFromOPFS: empty / corrupted file handling ────────────────────────
+
+    it('initialize – copies LS-only record to OPFS when OPFS file is empty (new empty file)', async () => {
+        localStorage.setItem(KEY, JSON.stringify(BASE_RECORD));
+        // OPFS file exists but is empty (newly created)
+        const fileKey = `${STORAGE_KEY_PREFIX}${ID}`;
+        const { dirHandle, fileMap } = makeMockDirHandle({ [fileKey]: '' });
+        setupOPFS(dirHandle);
+        const p = new LocalStorageProvider();
+
+        await p.initialize();
+
+        // LS record should have been written to the empty OPFS file
+        const opfsParsed = JSON.parse(fileMap.get(fileKey)!.state.content) as { meta: { name: string } };
+        expect(opfsParsed.meta.name).toBe('My Project');
+    });
+
+    it('listProjects – skips OPFS entries with empty file content', async () => {
+        const fileKey = `${STORAGE_KEY_PREFIX}${ID}`;
+        // OPFS file is empty
+        const { dirHandle } = makeMockDirHandle({ [fileKey]: '' });
+        setupOPFS(dirHandle);
+        const p = new LocalStorageProvider();
+
+        const list = await p.listProjects();
+        expect(list).toHaveLength(0);
+    });
+
+    it('listProjects – skips OPFS entries with malformed JSON', async () => {
+        const fileKey = `${STORAGE_KEY_PREFIX}${ID}`;
+        const { dirHandle } = makeMockDirHandle({ [fileKey]: 'not-valid-json{{' });
+        setupOPFS(dirHandle);
+        const p = new LocalStorageProvider();
+
+        const list = await p.listProjects();
+        expect(list).toHaveLength(0);
+    });
 });

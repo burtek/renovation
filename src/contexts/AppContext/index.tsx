@@ -134,6 +134,8 @@ interface AppContextType {
     selectProject: (id: string) => Promise<void>;
     createNewProject: (name: string) => Promise<void>;
     renameProject: (newName: string) => void;
+    saveError: string | null;
+    clearSaveError: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -146,11 +148,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [projectMeta, setProjectMeta] = useState(initMeta);
     const [needsProjectSelection, setNeedsProjectSelection] = useState(needsPicker);
     const [projects, setProjects] = useState<ProjectMeta[]>([]);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const clearSaveError = useCallback(() => {
+        setSaveError(null);
+    }, []);
 
     // Load projects list on mount (for the project picker)
     useEffect(() => {
-        // eslint-disable-next-line promise/prefer-await-to-then
-        void storageManager.provider.listProjects().then(setProjects);
+        void (async () => {
+            await storageManager.provider.initialize();
+            const availableProjects = await storageManager.provider.listProjects();
+            setProjects(availableProjects);
+        })();
     }, []);
 
     // Keep a stable ref so the save effect always sees the latest meta without being re-triggered by it
@@ -175,7 +184,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         void storageManager.provider.saveProject(meta.id, meta.name, state)
             // eslint-disable-next-line promise/prefer-await-to-then
             .then(() => {
+                setSaveError(null);
                 setProjectMeta(prev => (prev ? { ...prev, lastModified: now } : null));
+            })
+            // eslint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks
+            .catch((error: unknown) => {
+                const message = error instanceof Error ? error.message : String(error);
+                // eslint-disable-next-line no-console
+                console.error('Failed to auto-save project:', error);
+                setSaveError(`Auto-save failed: ${message}`);
             });
     }, [state]);
 
@@ -312,7 +329,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             openProjectSelector,
             selectProject,
             createNewProject,
-            renameProject
+            renameProject,
+            saveError,
+            clearSaveError
         }),
         [
             state,
@@ -324,7 +343,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             openProjectSelector,
             selectProject,
             createNewProject,
-            renameProject
+            renameProject,
+            saveError,
+            clearSaveError
         ]
     );
 

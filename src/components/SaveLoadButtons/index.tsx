@@ -38,7 +38,7 @@ function formatRelativeTime(iso: string, now: number): string {
 export { formatBytes, formatRelativeTime };
 
 export default function SaveLoadButtons() {
-    const { saveToFile, loadFromFile, projectMeta, openProjectSelector, renameProject } = useApp();
+    const { saveToFile, loadFromFile, projectMeta, openProjectSelector, renameProject, saveError, clearSaveError } = useApp();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const now = useNow();
 
@@ -70,7 +70,7 @@ export default function SaveLoadButtons() {
     };
 
     // Recompute only when the active project or its last save time changes
-    const [projectSize, setProjectSize] = useState(0);
+    const [projectSize, setProjectSize] = useState<number | null>(null);
     useEffect(() => {
         let isMounted = true;
         async function updateSize() {
@@ -80,7 +80,7 @@ export default function SaveLoadButtons() {
                     setProjectSize(size);
                 }
             } else {
-                setProjectSize(0);
+                setProjectSize(null);
             }
         }
         void updateSize();
@@ -148,12 +148,31 @@ export default function SaveLoadButtons() {
                     </div>
                     <div title="Project file size">
                         {'📊 '}
-                        {projectSize ? formatBytes(projectSize) : 'unknown'}
+                        {projectSize === null ? 'unknown' : formatBytes(projectSize)}
                     </div>
                     <div className="text-[10px] text-gray-500">
                         {'🗄️ '}
                         {storageManager.provider.label}
                     </div>
+                </div>
+            )}
+            {saveError && (
+                <div
+                    role="alert"
+                    className="mb-1 flex items-start gap-1 rounded bg-red-900/60 px-2 py-1 text-xs text-red-300"
+                >
+                    <span className="min-w-0 flex-1 break-words">
+                        {'⚠️ '}
+                        {saveError}
+                    </span>
+                    <button
+                        type="button"
+                        aria-label="Dismiss save error"
+                        onClick={clearSaveError}
+                        className="shrink-0 text-red-400 hover:text-red-200 transition leading-none"
+                    >
+                        ✕
+                    </button>
                 </div>
             )}
             <div className="flex gap-2">

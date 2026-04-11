@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
+import { storageManager } from '../../storage';
 import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { AppData, CalendarEvent, Expense, Note, Subtask, Task } from '../../types';
 import { isCompressionSupported } from '../../utils/compression';
@@ -941,5 +942,71 @@ describe('AppContext – project management', () => {
         });
 
         expect(result.current.needsProjectSelection).toBe(true);
+    });
+
+    it('saveError is null initially', () => {
+        preloadState({});
+        const { result } = renderHook(() => useApp(), { wrapper });
+        expect(result.current.saveError).toBeNull();
+    });
+
+    it('saveError is set when saveProject rejects, and clearSaveError clears it', async () => {
+        preloadState({});
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+        const saveSpy = vi
+            .spyOn(storageManager.provider, 'saveProject')
+            .mockRejectedValueOnce(new Error('disk quota exceeded'));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        await act(async () => {
+            result.current.dispatch({ type: 'SET_BUDGET', payload: 12345 });
+        });
+
+        await waitFor(() => {
+            expect(result.current.saveError).toMatch(/disk quota exceeded/);
+        });
+
+        act(() => {
+            result.current.clearSaveError();
+        });
+
+        expect(result.current.saveError).toBeNull();
+
+        saveSpy.mockRestore();
+        errorSpy.mockRestore();
+    });
+
+    it('saveError is cleared on the next successful save', async () => {
+        preloadState({});
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+        const saveSpy = vi
+            .spyOn(storageManager.provider, 'saveProject')
+            .mockRejectedValueOnce(new Error('transient failure'));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        // First change causes rejected save → saveError set
+        await act(async () => {
+            result.current.dispatch({ type: 'SET_BUDGET', payload: 1 });
+        });
+
+        await waitFor(() => {
+            expect(result.current.saveError).not.toBeNull();
+        });
+
+        saveSpy.mockRestore();
+        errorSpy.mockRestore();
+
+        // Second change uses the real (succeeding) saveProject → saveError cleared
+        await act(async () => {
+            result.current.dispatch({ type: 'SET_BUDGET', payload: 2 });
+        });
+
+        await waitFor(() => {
+            expect(result.current.saveError).toBeNull();
+        });
     });
 });

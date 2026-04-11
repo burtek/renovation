@@ -55,7 +55,12 @@ export class LocalStorageProvider implements StorageProvider {
             }
         };
         if (this.mode === 'opfs') {
-            await this.saveToOPFS(id, record);
+            try {
+                await this.saveToOPFS(id, record);
+            } catch (error) {
+                console.warn('OPFS create failed, falling back to localStorage mode:', error);
+                this.mode = 'localStorage';
+            }
         }
         // always write to localStorage for backup, backward compatibility and easier debugging
         localStorage.setItem(`${STORAGE_KEY_PREFIX}${id}`, JSON.stringify(record));
@@ -86,8 +91,15 @@ export class LocalStorageProvider implements StorageProvider {
         try {
             const root = await navigator.storage.getDirectory();
             if ('requestPermission' in root && typeof root.requestPermission === 'function') {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-                await root.requestPermission({ mode: 'readwrite' });
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+                const permissionState = await root.requestPermission({ mode: 'readwrite' });
+                if (permissionState !== 'granted') {
+                    console.error(
+                        `OPFS permission state was "${permissionState}", falling back to localStorage mode`
+                    );
+                    this.mode = 'localStorage';
+                    return;
+                }
             }
         } catch (error) {
             console.error('OPFS initialization failed, falling back to localStorage mode:', error);
@@ -286,17 +298,20 @@ export class LocalStorageProvider implements StorageProvider {
     private async readFromOPFS(id: string, { create = false, throwOnCorrupted = true } = {}): Promise<DataHandleTuple | InvalidHandleTuple> {
         const root = await navigator.storage.getDirectory();
         const fileHandle = await root.getFileHandle(`${STORAGE_KEY_PREFIX}${id}`, { create });
-        const file = await fileHandle.getFile();
-        const raw = await file.text();
-        const parsed = JSON.parse(raw) as unknown;
-        if (isStoredProjectRecord(parsed)) {
-            return [parsed, fileHandle];
+        try {
+            const file = await fileHandle.getFile();
+            const raw = await file.text();
+            const parsed = JSON.parse(raw) as unknown;
+            if (isStoredProjectRecord(parsed)) {
+                return [parsed, fileHandle];
+            }
+        } catch {
+            // empty file or invalid JSON treated as corrupted
         }
         if (throwOnCorrupted) {
             throw new Error(`Invalid project record format for project ${id} in OPFS`);
-        } else {
-            return [null, fileHandle];
         }
+        return [null, fileHandle];
     }
 
     private async saveToOPFS(id: string, record: StoredProjectRecord, create?: boolean): Promise<void>;
