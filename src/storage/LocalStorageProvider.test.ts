@@ -365,7 +365,7 @@ describe('LocalStorageProvider – OPFS mode', () => {
         const p = new LocalStorageProvider();
 
         const size = await p.getProjectSize(ID);
-        expect(size).toBe(fileMap.get(fileKey)!.state.content.length);
+        expect(size).toBe(new TextEncoder().encode(fileMap.get(fileKey)!.state.content).length);
     });
 
     it('getProjectSize falls back to localStorage when OPFS file is missing', async () => {

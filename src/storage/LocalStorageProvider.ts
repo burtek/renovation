@@ -30,7 +30,7 @@ export class LocalStorageProvider implements StorageProvider {
     private mode: 'localStorage' | 'opfs';
 
     constructor() {
-        this.mode = 'storage' in navigator && 'getDirectory' in navigator.storage
+        this.mode = 'storage' in navigator && navigator.storage && 'getDirectory' in navigator.storage
             ? 'opfs'
             : 'localStorage';
     }
@@ -59,11 +59,16 @@ export class LocalStorageProvider implements StorageProvider {
                 await this.saveToOPFS(id, record);
             } catch (error) {
                 console.warn('OPFS create failed, falling back to localStorage mode:', error);
+        // always write to localStorage for backup, backward compatibility and easier debugging
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}${id}`, JSON.stringify(record));
+        if (this.mode === 'opfs') {
+            try {
+                await this.saveToOPFS(id, record);
+            } catch (error) {
+                console.warn('Falling back to localStorage after OPFS createProject failure', error);
                 this.mode = 'localStorage';
             }
         }
-        // always write to localStorage for backup, backward compatibility and easier debugging
-        localStorage.setItem(`${STORAGE_KEY_PREFIX}${id}`, JSON.stringify(record));
         return id;
     }
 
@@ -133,7 +138,14 @@ export class LocalStorageProvider implements StorageProvider {
                 const [opfsParsed, fileHandle] = await this.readFromOPFS(id, { create: true, throwOnCorrupted: false });
 
                 const lsRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${id}`);
-                const lsParsed = lsRaw ? JSON.parse(lsRaw) as unknown : null;
+                let lsParsed: unknown = null;
+                if (lsRaw) {
+                    try {
+                        lsParsed = JSON.parse(lsRaw) as unknown;
+                    } catch {
+                        console.warn(`Project ${id} is corrupted in localStorage, treating it as missing during sync`);
+                    }
+                }
 
                 let updateLS: StoredProjectRecord | null = null;
                 let updateOPFS: StoredProjectRecord | null = null;

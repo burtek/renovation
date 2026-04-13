@@ -155,11 +155,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Load projects list on mount (for the project picker)
     useEffect(() => {
+        let isMounted = true;
+
         void (async () => {
-            await storageManager.provider.initialize();
-            const availableProjects = await storageManager.provider.listProjects();
-            setProjects(availableProjects);
+            try {
+                await storageManager.provider.initialize();
+                const availableProjects = await storageManager.provider.listProjects();
+                if (isMounted) {
+                    setProjects(availableProjects);
+                }
+            } catch (error: unknown) {
+                // eslint-disable-next-line no-console
+                console.error('Failed to initialize storage provider or load projects:', error);
+                if (isMounted) {
+                    setProjects([]);
+                }
+            }
         })();
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     // Keep a stable ref so the save effect always sees the latest meta without being re-triggered by it
@@ -234,7 +250,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         setProjectMeta(prev => {
             if (prev) {
-                void commit(prev.id);
+                void commit(prev.id).catch(err => {
+                    // eslint-disable-next-line no-console
+                    console.error('Failed to rename project:', err);
+                    // eslint-disable-next-line no-alert
+                    alert('Failed to rename project. Please try again.');
+                });
             }
             return prev;
         });
@@ -244,7 +265,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         try {
             const [dateStr] = new Date().toISOString().split('T');
             let blob: Blob;
-            let filename = `renovation-backup-${dateStr}-${projectMeta?.name}`;
+            let filename = `renovation-backup-${dateStr}-${projectMeta?.name ?? 'noname'}`;
             if (isCompressionSupported) {
                 blob = await compressToGzip(JSON.stringify(state, null, 2));
                 filename = `${filename}.json.gz`;
