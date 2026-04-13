@@ -30,7 +30,7 @@ export class LocalStorageProvider implements StorageProvider {
     private mode: 'localStorage' | 'opfs';
 
     constructor() {
-        this.mode = 'storage' in navigator && navigator.storage && 'getDirectory' in navigator.storage
+        this.mode = 'storage' in navigator && 'getDirectory' in navigator.storage
             ? 'opfs'
             : 'localStorage';
     }
@@ -54,11 +54,6 @@ export class LocalStorageProvider implements StorageProvider {
                 budget: 0
             }
         };
-        if (this.mode === 'opfs') {
-            try {
-                await this.saveToOPFS(id, record);
-            } catch (error) {
-                console.warn('OPFS create failed, falling back to localStorage mode:', error);
         // always write to localStorage for backup, backward compatibility and easier debugging
         localStorage.setItem(`${STORAGE_KEY_PREFIX}${id}`, JSON.stringify(record));
         if (this.mode === 'opfs') {

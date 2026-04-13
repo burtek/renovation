@@ -155,27 +155,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Load projects list on mount (for the project picker)
     useEffect(() => {
-        let isMounted = true;
-
         void (async () => {
             try {
                 await storageManager.provider.initialize();
                 const availableProjects = await storageManager.provider.listProjects();
-                if (isMounted) {
-                    setProjects(availableProjects);
-                }
+                setProjects(availableProjects);
             } catch (error: unknown) {
                 // eslint-disable-next-line no-console
                 console.error('Failed to initialize storage provider or load projects:', error);
-                if (isMounted) {
-                    setProjects([]);
-                }
             }
         })();
-
-        return () => {
-            isMounted = false;
-        };
     }, []);
 
     // Keep a stable ref so the save effect always sees the latest meta without being re-triggered by it
@@ -244,21 +233,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const renameProject = useCallback((newName: string) => {
-        async function commit(id: string) {
-            await storageManager.provider.renameProject(id, newName);
-            setProjectMeta(prev => (prev ? { ...prev, name: newName } : prev));
+        const meta = projectMetaRef.current;
+        if (!meta) {
+            return;
         }
-        setProjectMeta(prev => {
-            if (prev) {
-                void commit(prev.id).catch(err => {
-                    // eslint-disable-next-line no-console
-                    console.error('Failed to rename project:', err);
-                    // eslint-disable-next-line no-alert
-                    alert('Failed to rename project. Please try again.');
-                });
+        const { id } = meta;
+        void (async () => {
+            try {
+                await storageManager.provider.renameProject(id, newName);
+                setProjectMeta(prev => (prev ? { ...prev, name: newName } : prev));
+            } catch (err: unknown) {
+                // eslint-disable-next-line no-console
+                console.error('Failed to rename project:', err);
+                // eslint-disable-next-line no-alert
+                alert('Failed to rename project. Please try again.');
             }
-            return prev;
-        });
+        })();
     }, []);
 
     const saveToFile = useCallback(async () => {
