@@ -12,10 +12,15 @@ export interface ProjectMeta {
 }
 
 export interface StorageProvider {
-    listProjects: () => ProjectMeta[];
-    loadProject: (id: string) => { meta: ProjectMeta; rawData: Partial<AppData> } | null;
-    saveProject: (id: string, name: string, data: AppData) => void;
-    createProject: (name: string) => string; // returns new project id (stores empty project)
-    renameProject: (id: string, newName: string) => void;
-    getProjectSize: (id: string) => number; // bytes used in storage
+    id: string;
+    label: string;
+
+    initialize: () => Promise<void>; // perform any async setup if needed (e.g. OPFS permission request)
+
+    listProjects: () => Promise<ProjectMeta[]>;
+    loadProject: (id: string) => Promise<{ meta: ProjectMeta; rawData: Partial<AppData> } | null>;
+    saveProject: (id: string, name: string, data: AppData) => Promise<void>;
+    createProject: (name: string) => Promise<string>; // returns new project id (stores empty project)
+    renameProject: (id: string, newName: string) => Promise<void>;
+    getProjectSize: (id: string) => Promise<number>; // bytes used in storage
 }

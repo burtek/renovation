@@ -18,9 +18,9 @@ export default function ProjectModal({ projects, onSelect, onCreate }: ProjectMo
     const nameInputRef = useRef<HTMLInputElement>(null);
 
     const [newName, setNewName] = useState('');
-    const [showNewForm, setShowNewForm] = useState(projects.length === 0);
+    const [showNewFormExplicit, setShowNewFormExplicit] = useState(false);
+    const showNewForm = projects.length === 0 || showNewFormExplicit;
     const [nameError, setNameError] = useState('');
-
     // Focus the first interactive element when the dialog opens
     useEffect(() => {
         if (projects.length > 0) {
@@ -125,7 +125,7 @@ export default function ProjectModal({ projects, onSelect, onCreate }: ProjectMo
                     <button
                         type="button"
                         onClick={() => {
-                            setShowNewForm(true);
+                            setShowNewFormExplicit(true);
                         }}
                         className={cn(
                             'w-full py-2 px-4 rounded-lg border-2 border-dashed',
@@ -194,7 +194,7 @@ export default function ProjectModal({ projects, onSelect, onCreate }: ProjectMo
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        setShowNewForm(false);
+                                        setShowNewFormExplicit(false);
                                         setNewName('');
                                         setNameError('');
                                     }}

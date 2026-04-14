@@ -1,23 +1,18 @@
+/// <reference types="vite/client" />
+
 interface ImportMeta {
     readonly env: ImportMetaEnv;
 }
 
 
+/* eslint-disable @typescript-eslint/naming-convention */
 interface ImportMetaEnv {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_VERCEL_ENV?: string;
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_VERCEL_GIT_COMMIT_SHA?: string;
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_VERCEL_DEPLOYMENT_ID?: string;
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_VERCEL_GIT_PROVIDER?: string;
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_VERCEL_GIT_REPO_OWNER?: string;
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_VERCEL_GIT_REPO_SLUG?: string;
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_BUILD_DATE?: string;
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     readonly VITE_VERCEL_PROJECT?: string;
 }

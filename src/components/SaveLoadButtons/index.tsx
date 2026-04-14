@@ -1,9 +1,9 @@
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApp } from '../../contexts/AppContext';
 import { useNow } from '../../hooks/useNow';
-import { defaultStorageProvider } from '../../storage';
+import { storageManager } from '../../storage';
 
 import DeploymentInfo from './DeploymentInfo';
 
@@ -38,7 +38,7 @@ function formatRelativeTime(iso: string, now: number): string {
 export { formatBytes, formatRelativeTime };
 
 export default function SaveLoadButtons() {
-    const { saveToFile, loadFromFile, projectMeta, openProjectSelector, renameProject } = useApp();
+    const { saveToFile, loadFromFile, projectMeta, openProjectSelector, renameProject, saveError, clearSaveError } = useApp();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const now = useNow();
 
@@ -70,10 +70,24 @@ export default function SaveLoadButtons() {
     };
 
     // Recompute only when the active project or its last save time changes
-    const storageUsed = useMemo(
-        () => (projectMeta ? defaultStorageProvider.getProjectSize(projectMeta.id) : 0),
-        [projectMeta]
-    );
+    const [projectSize, setProjectSize] = useState<number | null>(null);
+    useEffect(() => {
+        let isMounted = true;
+        async function updateSize() {
+            if (projectMeta) {
+                const size = await storageManager.provider.getProjectSize(projectMeta.id);
+                if (isMounted) {
+                    setProjectSize(size);
+                }
+            } else {
+                setProjectSize(null);
+            }
+        }
+        void updateSize();
+        return () => {
+            isMounted = false;
+        };
+    }, [projectMeta]);
 
     return (
         <div className="flex flex-col gap-1 p-4">
@@ -128,16 +142,37 @@ export default function SaveLoadButtons() {
                             🔄
                         </button>
                     </div>
-                    <div>
-                        💾
-                        {' '}
+                    <div title="Last modified time">
+                        {'💾 '}
                         {formatRelativeTime(projectMeta.lastModified, now)}
                     </div>
-                    <div>
-                        📊
-                        {' '}
-                        {formatBytes(storageUsed)}
+                    <div title="Project file size">
+                        {'📊 '}
+                        {projectSize === null ? 'unknown' : formatBytes(projectSize)}
                     </div>
+                    <div className="text-[10px] text-gray-500">
+                        {'🗄️ '}
+                        {storageManager.provider.label}
+                    </div>
+                </div>
+            )}
+            {saveError && (
+                <div
+                    role="alert"
+                    className="mb-1 flex items-start gap-1 rounded bg-red-900/60 px-2 py-1 text-xs text-red-300"
+                >
+                    <span className="min-w-0 flex-1 break-words">
+                        {'⚠️ '}
+                        {saveError}
+                    </span>
+                    <button
+                        type="button"
+                        aria-label="Dismiss save error"
+                        onClick={clearSaveError}
+                        className="shrink-0 text-red-400 hover:text-red-200 transition leading-none"
+                    >
+                        ✕
+                    </button>
                 </div>
             )}
             <div className="flex gap-2">

@@ -11,7 +11,6 @@ import TaskIssuesPopup from './TaskIssuesPopup';
 import TaskModal from './TaskModal';
 import TasksList from './TasksList';
 import { detectIssues } from './issues';
-import type { SubtaskFormData, TaskFormData } from './types';
 import {
     emptySubtaskForm,
     emptyTaskForm,
@@ -39,8 +38,8 @@ export default function Tasks() {
         document.title = 'Tasks | Renovation';
     }, []);
     const [subtaskModal, setSubtaskModal] = useState<{ open: boolean; taskId: string; editSubtask?: Subtask; instanceId: number }>({ open: false, taskId: '', instanceId: 0 });
-    const [taskForm, setTaskForm] = useState<TaskFormData>(emptyTaskForm);
-    const [subtaskForm, setSubtaskForm] = useState<SubtaskFormData>(emptySubtaskForm);
+    const [taskForm, setTaskForm] = useState(emptyTaskForm);
+    const [subtaskForm, setSubtaskForm] = useState(emptySubtaskForm);
 
     const openNewTask = () => {
         const today = getToday();

@@ -48,7 +48,7 @@ const TEST_PROJECT_ID = 'test-project-id';
 function preloadState(state: Partial<AppData>) {
     localStorage.setItem(
         `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
-        JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0, ...state })
+        JSON.stringify({ meta: { name: 'Test', lastModified: '2024-01-01T00:00:00.000Z' }, data: { notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0, ...state } })
     );
     localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
 }
@@ -83,7 +83,7 @@ describe('Finance page', () => {
         // Set up a default empty project so Finance page renders without showing ProjectModal
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
-            JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+            JSON.stringify({ meta: { name: 'Test', lastModified: '2024-01-01T00:00:00.000Z' }, data: { notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 } })
         );
         localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
         vi.stubGlobal('confirm', vi.fn(() => true));
@@ -312,8 +312,8 @@ describe('Finance page', () => {
         await user.tab(); // triggers blur
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as AppData;
-            expect(stored.budget).toBe(50000);
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            expect(stored.data.budget).toBe(50000);
         });
     });
 
@@ -328,8 +328,8 @@ describe('Finance page', () => {
         await user.tab();
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as AppData;
-            expect(stored.budget).toBe(1000);
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            expect(stored.data.budget).toBe(1000);
         });
     });
 
@@ -577,8 +577,8 @@ describe('Finance page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }));
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as AppData;
-            const saved = stored.expenses.find((e: { description: string }) => e.description === 'Date Test');
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.expenses.find((e: { description: string }) => e.description === 'Date Test');
             expect(saved?.date).toBe('2024-06-15');
         });
     });
@@ -594,8 +594,8 @@ describe('Finance page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }));
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as AppData;
-            const saved = stored.expenses.find((e: { description: string }) => e.description === 'Shop Test');
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.expenses.find((e: { description: string }) => e.description === 'Shop Test');
             expect(saved?.shopName).toBe('IKEA');
         });
     });
@@ -611,8 +611,8 @@ describe('Finance page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }));
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as AppData;
-            const saved = stored.expenses.find((e: { description: string }) => e.description === 'Invoice Test');
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.expenses.find((e: { description: string }) => e.description === 'Invoice Test');
             expect(saved?.invoiceNo).toBe('FV-2024-999');
         });
     });

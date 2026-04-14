@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
 import { AppProvider } from '../../contexts/AppContext';
+import { storageManager } from '../../storage';
 import { ACTIVE_PROJECT_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { AppData } from '../../types';
 
@@ -34,7 +35,7 @@ describe('SaveLoadButtons', () => {
         // Set up a default project so SaveLoadButtons has an active project to work with
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}test-project-id`,
-            JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+            JSON.stringify({ meta: { name: 'Test', lastModified: '2024-01-01T00:00:00.000Z' }, data: { notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 } })
         );
         localStorage.setItem(ACTIVE_PROJECT_KEY, 'test-project-id');
         vi.stubGlobal('alert', vi.fn());
@@ -117,8 +118,8 @@ describe('SaveLoadButtons', () => {
 
         await waitFor(() => {
             const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}test-project-id`);
-            const stored = JSON.parse(raw ?? '{}') as AppData;
-            expect(stored.budget).toBe(77777);
+            const stored = JSON.parse(raw ?? '{}') as { data: AppData };
+            expect(stored.data.budget).toBe(77777);
         });
     });
 
@@ -394,7 +395,7 @@ describe('SaveLoadButtons – project info', () => {
         localStorage.clear();
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}test-project-id`,
-            JSON.stringify({ name: 'My Reno', lastModified: new Date().toISOString(), notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+            JSON.stringify({ meta: { name: 'My Reno', lastModified: new Date().toISOString() }, data: { notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 } })
         );
         localStorage.setItem(ACTIVE_PROJECT_KEY, 'test-project-id');
         vi.stubGlobal('alert', vi.fn());
@@ -493,5 +494,79 @@ describe('SaveLoadButtons – project info', () => {
         await waitFor(() => {
             expect(screen.getByRole('button', { name: 'My Reno' })).toBeInTheDocument();
         });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// SaveLoadButtons – save error banner
+// ---------------------------------------------------------------------------
+
+describe('SaveLoadButtons – save error banner', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}test-project-id`,
+            JSON.stringify({ meta: { name: 'Test', lastModified: new Date().toISOString() }, data: { notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 } })
+        );
+        localStorage.setItem(ACTIVE_PROJECT_KEY, 'test-project-id');
+        vi.stubGlobal('alert', vi.fn());
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
+
+    it('shows a save-error banner when saveProject rejects', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+        const saveSpy = vi
+            .spyOn(storageManager.provider, 'saveProject')
+            .mockRejectedValueOnce(new Error('quota exceeded'));
+
+        const user = userEvent.setup();
+        const jsonData = JSON.stringify({ notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 42 });
+        const file = new File([jsonData], 'backup.json', { type: 'application/json' });
+        const { container } = render(<SaveLoadButtons />, { wrapper: Wrapper });
+        const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+        await user.upload(fileInput, file);
+
+        await waitFor(() => {
+            expect(screen.getByRole('alert')).toBeInTheDocument();
+            expect(screen.getByRole('alert').textContent).toMatch(/quota exceeded/);
+        });
+
+        saveSpy.mockRestore();
+        errorSpy.mockRestore();
+    });
+
+    it('dismisses the save-error banner when the ✕ button is clicked', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+        const saveSpy = vi
+            .spyOn(storageManager.provider, 'saveProject')
+            .mockRejectedValueOnce(new Error('disk full'));
+
+        const user = userEvent.setup();
+        const { container } = render(<SaveLoadButtons />, { wrapper: Wrapper });
+
+        const jsonData = JSON.stringify({ notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 99 });
+        const file = new File([jsonData], 'backup.json', { type: 'application/json' });
+        const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+        await user.upload(fileInput, file);
+
+        await waitFor(() => {
+            expect(screen.getByRole('alert')).toBeInTheDocument();
+        });
+
+        await user.click(screen.getByRole('button', { name: /dismiss save error/i }));
+
+        await waitFor(() => {
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        });
+
+        saveSpy.mockRestore();
+        errorSpy.mockRestore();
     });
 });

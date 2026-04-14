@@ -54,7 +54,7 @@ const TEST_PROJECT_ID = 'test-project-id';
 function preloadNotes(notes: Note[]) {
     localStorage.setItem(
         `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
-        JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes, tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+        JSON.stringify({ meta: { name: 'Test', lastModified: '2024-01-01T00:00:00.000Z' }, data: { notes, tasks: [], expenses: [], calendarEvents: [], budget: 0 } })
     );
     localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
 }
@@ -80,7 +80,7 @@ describe('Notes page', () => {
         // Set up a default project so the ProjectModal doesn't interfere with Notes tests
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
-            JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+            JSON.stringify({ meta: { name: 'Test', lastModified: '2024-01-01T00:00:00.000Z' }, data: { notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 } })
         );
         localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
     });
@@ -420,8 +420,8 @@ describe('Notes page', () => {
         // The note is saved with empty content (not the original)
         await waitFor(() => {
             const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`);
-            const stored = JSON.parse(raw ?? '{}') as { notes: Array<{ content: string }> };
-            expect(stored.notes[0].content).toBe('');
+            const stored = JSON.parse(raw ?? '{}') as { data: { notes: Array<{ content: string }> } };
+            expect(stored.data.notes[0].content).toBe('');
         });
     });
 });

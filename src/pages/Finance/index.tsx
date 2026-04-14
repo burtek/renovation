@@ -34,7 +34,7 @@ const emptyForm: ExpenseFormData = {
 export default function Finance() {
     const { state, dispatch } = useApp();
     const [modal, setModal] = useState<{ open: boolean; editExpense?: Expense }>({ open: false });
-    const [form, setForm] = useState<ExpenseFormData>(emptyForm);
+    const [form, setForm] = useState(emptyForm);
     const [budgetInput, setBudgetInput] = useState(String(state.budget));
     const [sortKey, setSortKey] = useState<SortKey>('date');
     const [sortDir, setSortDir] = useState<SortDir>('desc');

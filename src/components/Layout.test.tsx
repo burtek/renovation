@@ -57,7 +57,7 @@ describe('Layout', () => {
         // Set up a default project so the ProjectModal doesn't interfere with Layout tests
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}test-project-id`,
-            JSON.stringify({ name: 'Test', lastModified: '2024-01-01T00:00:00.000Z', notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 })
+            JSON.stringify({ meta: { name: 'Test', lastModified: '2024-01-01T00:00:00.000Z' }, data: { notes: [], tasks: [], expenses: [], calendarEvents: [], budget: 0 } })
         );
         localStorage.setItem(ACTIVE_PROJECT_KEY, 'test-project-id');
         vi.stubGlobal('alert', vi.fn());

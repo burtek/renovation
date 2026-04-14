@@ -1,11 +1,12 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
-import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../storage/types';
-import type { AppData, CalendarEvent, Expense, Note, Subtask, Task } from '../types';
-import { isCompressionSupported } from '../utils/compression';
+import { storageManager } from '../../storage';
+import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
+import type { AppData, CalendarEvent, Expense, Note, Subtask, Task } from '../../types';
+import { isCompressionSupported } from '../../utils/compression';
 
-import { AppProvider, useApp } from './AppContext';
+import { AppProvider, useApp } from '.';
 
 
 // ---------------------------------------------------------------------------
@@ -32,10 +33,8 @@ function preloadState(state: Partial<AppData>) {
     localStorage.setItem(
         `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
         JSON.stringify({
-            name: 'Test Project',
-            lastModified: '2024-01-01T00:00:00.000Z',
-            ...INITIAL_EMPTY,
-            ...state
+            meta: { name: 'Test Project', lastModified: '2024-01-01T00:00:00.000Z' },
+            data: { ...INITIAL_EMPTY, ...state }
         })
     );
     localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
@@ -133,6 +132,30 @@ describe('AppContext – localStorage', () => {
         expect(result.current.state.notes).toHaveLength(0);
     });
 
+    it('falls back to empty state when active project key has invalid JSON', () => {
+        localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`, 'not-valid-json{{{{');
+        const { result } = renderHook(() => useApp(), { wrapper });
+        expect(result.current.state.budget).toBe(0);
+    });
+
+    it('falls back to empty state when active project record lacks meta/data fields', () => {
+        localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`, JSON.stringify({ foo: 'bar' }));
+        const { result } = renderHook(() => useApp(), { wrapper });
+        expect(result.current.state.budget).toBe(0);
+    });
+
+    it('falls back to empty state when active project meta.name is not a string', () => {
+        localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
+        localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
+            JSON.stringify({ meta: { name: 123, lastModified: '2024-01-01T00:00:00.000Z' }, data: {} })
+        );
+        const { result } = renderHook(() => useApp(), { wrapper });
+        expect(result.current.state.budget).toBe(0);
+    });
+
     it('persists state to localStorage after dispatch', async () => {
         preloadState({});
         const { result } = renderHook(() => useApp(), { wrapper });
@@ -143,8 +166,8 @@ describe('AppContext – localStorage', () => {
 
         await waitFor(() => {
             const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`);
-            const stored = JSON.parse(raw ?? '{}') as AppData & { name: string };
-            expect(stored.budget).toBe(12345);
+            const stored = JSON.parse(raw ?? '{}') as { data: AppData };
+            expect(stored.data.budget).toBe(12345);
         });
     });
 });
@@ -506,6 +529,34 @@ describe('saveToFile', () => {
         const alerted = (window.alert as ReturnType<typeof vi.fn>).mock.calls.length > 0;
         expect(saved || alerted).toBe(true);
     });
+
+    it('uses gzip path when isCompressionSupported is true', async () => {
+        const compressionModule = await import('../../utils/compression');
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: true, writable: true, configurable: true });
+        vi.spyOn(compressionModule, 'compressToGzip').mockResolvedValue(new Blob(['gzip-data'], { type: 'application/gzip' }));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+        await act(() => result.current.saveToFile());
+        vi.runAllTimers();
+
+        expect(compressionModule.compressToGzip).toHaveBeenCalled();
+        expect(URL.createObjectURL).toHaveBeenCalled();
+
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: false, writable: true, configurable: true });
+    });
+
+    it('uses non-gzip path when isCompressionSupported is false', async () => {
+        const compressionModule = await import('../../utils/compression');
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: false, writable: true, configurable: true });
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+        await act(() => result.current.saveToFile());
+        vi.runAllTimers();
+
+        expect(URL.createObjectURL).toHaveBeenCalled();
+        // Restore to original value (true in Node.js)
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: true, writable: true, configurable: true });
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -617,7 +668,7 @@ describe('loadFromFile', () => {
     });
 
     it.skipIf(!blobStreamSupported)('loads a .json.gz file via decompression', async () => {
-        const { compressToGzip } = await import('../utils/compression');
+        const { compressToGzip } = await import('../../utils/compression');
         const data: AppData = { ...INITIAL_EMPTY, budget: 55000 };
         const compressed = await compressToGzip(JSON.stringify(data));
         const file = new File([compressed], 'backup.json.gz', { type: 'application/gzip' });
@@ -635,7 +686,7 @@ describe('loadFromFile', () => {
 
     it.skipIf(!blobStreamSupported)('shows alert when .json.gz content is not valid JSON after decompression', async () => {
         // Compress garbage bytes that are not valid JSON
-        const { compressToGzip } = await import('../utils/compression');
+        const { compressToGzip } = await import('../../utils/compression');
         const compressed = await compressToGzip('this is not json {{{');
         const file = new File([compressed], 'backup.json.gz', { type: 'application/gzip' });
 
@@ -654,7 +705,7 @@ describe('loadFromFile', () => {
 
     it('shows alert when loading a .json.gz file and compression is not supported', async () => {
         // Temporarily pretend compression is not supported
-        const compressionModule = await import('../utils/compression');
+        const compressionModule = await import('../../utils/compression');
         const originalValue = compressionModule.isCompressionSupported;
         Object.defineProperty(compressionModule, 'isCompressionSupported', { value: false, writable: true, configurable: true });
 
@@ -673,6 +724,50 @@ describe('loadFromFile', () => {
 
         // Restore
         Object.defineProperty(compressionModule, 'isCompressionSupported', { value: originalValue, writable: true, configurable: true });
+    });
+
+    it('loads a .json.gz file via mocked decompression (covers gzip path)', async () => {
+        const data: AppData = { ...INITIAL_EMPTY, budget: 77777 };
+        const compressionModule = await import('../../utils/compression');
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: true, writable: true, configurable: true });
+        vi.spyOn(compressionModule, 'decompressFromGzip').mockResolvedValue(JSON.stringify(data));
+
+        const file = new File(['fake-gz-bytes'], 'backup.json.gz', { type: 'application/gzip' });
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        act(() => {
+            result.current.loadFromFile(file);
+        });
+
+        await waitFor(() => {
+            expect(result.current.state.budget).toBe(77777);
+        });
+
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: false, writable: true, configurable: true });
+    });
+
+    it('shows alert when mocked decompression throws (covers gzip error path)', async () => {
+        const compressionModule = await import('../../utils/compression');
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: true, writable: true, configurable: true });
+        vi.spyOn(compressionModule, 'decompressFromGzip').mockRejectedValue(new Error('decompress failed'));
+
+        const file = new File(['bad-gz-bytes'], 'backup.json.gz', { type: 'application/gzip' });
+        const { result } = renderHook(() => useApp(), { wrapper });
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+
+        act(() => {
+            result.current.loadFromFile(file);
+        });
+
+        await waitFor(() => {
+            expect(window.alert).toHaveBeenCalledWith(
+                expect.stringContaining('valid renovation backup file')
+            );
+        });
+
+        consoleSpy.mockRestore();
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: false, writable: true, configurable: true });
     });
 });
 
@@ -768,10 +863,10 @@ describe('AppContext – multi-project init', () => {
     });
 
     it('does not migrate legacy key when projects already exist', () => {
-        // Pre-create a project
+        // Pre-create a project (new format)
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
-            JSON.stringify({ name: 'Existing', lastModified: '2024-01-01T00:00:00.000Z', ...INITIAL_EMPTY })
+            JSON.stringify({ meta: { name: 'Existing', lastModified: '2024-01-01T00:00:00.000Z' }, data: INITIAL_EMPTY })
         );
         localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
         // Also set a legacy key with different budget — should be ignored
@@ -798,6 +893,25 @@ describe('AppContext – multi-project init', () => {
         expect(result.current.needsProjectSelection).toBe(true);
         expect(localStorage.getItem(ACTIVE_PROJECT_KEY)).toBeNull();
     });
+
+    it('handles initialize() failure gracefully (sets projects to empty)', async () => {
+        vi.spyOn(storageManager.provider, 'initialize').mockRejectedValue(new Error('init failed'));
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        await waitFor(() => {
+            expect(consoleSpy).toHaveBeenCalledWith(
+                'Failed to initialize storage provider or load projects:',
+                expect.any(Error)
+            );
+        });
+
+        consoleSpy.mockRestore();
+        vi.restoreAllMocks();
+        expect(result.current.needsProjectSelection).toBe(true);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -813,17 +927,17 @@ describe('AppContext – project management', () => {
         localStorage.clear();
     });
 
-    it('selectProject loads the project data into state', () => {
+    it('selectProject loads the project data into state', async () => {
         const id2 = 'project-two';
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}${id2}`,
-            JSON.stringify({ name: 'Second', lastModified: '2024-02-01T00:00:00.000Z', ...INITIAL_EMPTY, budget: 500 })
+            JSON.stringify({ meta: { name: 'Second', lastModified: '2024-02-01T00:00:00.000Z' }, data: { ...INITIAL_EMPTY, budget: 500 } })
         );
 
         const { result } = renderHook(() => useApp(), { wrapper });
 
-        act(() => {
-            result.current.selectProject(id2);
+        await act(async () => {
+            await result.current.selectProject(id2);
         });
 
         expect(result.current.state.budget).toBe(500);
@@ -837,20 +951,20 @@ describe('AppContext – project management', () => {
         const originalLM = '2024-02-01T00:00:00.000Z';
         localStorage.setItem(
             `${STORAGE_KEY_PREFIX}${id2}`,
-            JSON.stringify({ name: 'Second', lastModified: originalLM, ...INITIAL_EMPTY })
+            JSON.stringify({ meta: { name: 'Second', lastModified: originalLM }, data: INITIAL_EMPTY })
         );
 
         const { result } = renderHook(() => useApp(), { wrapper });
 
-        act(() => {
-            result.current.selectProject(id2);
+        await act(async () => {
+            await result.current.selectProject(id2);
         });
 
         await new Promise(r => setTimeout(r, 20));
 
         const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${id2}`);
-        const stored = JSON.parse(raw ?? '{}') as { lastModified: string };
-        expect(stored.lastModified).toBe(originalLM);
+        const stored = JSON.parse(raw ?? '{}') as { meta: { lastModified: string } };
+        expect(stored.meta.lastModified).toBe(originalLM);
     });
 
     it('initial hydration does not overwrite lastModified in storage', async () => {
@@ -862,29 +976,29 @@ describe('AppContext – project management', () => {
         await new Promise(r => setTimeout(r, 20));
 
         const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`);
-        const stored = JSON.parse(raw ?? '{}') as { lastModified: string };
-        expect(stored.lastModified).toBe(originalLM);
+        const stored = JSON.parse(raw ?? '{}') as { meta: { lastModified: string } };
+        expect(stored.meta.lastModified).toBe(originalLM);
     });
 
-    it('selectProject does nothing for a non-existent project id', () => {
+    it('selectProject does nothing for a non-existent project id', async () => {
         // Start with a project selected so we can detect if it changes
         preloadState({ budget: 100 });
         const { result } = renderHook(() => useApp(), { wrapper });
         const budgetBefore = result.current.state.budget;
 
-        act(() => {
-            result.current.selectProject('does-not-exist');
+        await act(async () => {
+            await result.current.selectProject('does-not-exist');
         });
 
         expect(result.current.state.budget).toBe(budgetBefore);
     });
 
-    it('createNewProject switches to a blank project', () => {
+    it('createNewProject switches to a blank project', async () => {
         preloadState({ budget: 777 });
         const { result } = renderHook(() => useApp(), { wrapper });
 
-        act(() => {
-            result.current.createNewProject('Fresh Project');
+        await act(async () => {
+            await result.current.createNewProject('Fresh Project');
         });
 
         expect(result.current.state.budget).toBe(0);
@@ -893,7 +1007,7 @@ describe('AppContext – project management', () => {
         expect(localStorage.getItem(ACTIVE_PROJECT_KEY)).not.toBeNull();
     });
 
-    it('renameProject updates projectMeta.name in state', () => {
+    it('renameProject updates projectMeta.name in state', async () => {
         preloadState({});
         const { result } = renderHook(() => useApp(), { wrapper });
 
@@ -901,7 +1015,9 @@ describe('AppContext – project management', () => {
             result.current.renameProject('Renamed Project');
         });
 
-        expect(result.current.projectMeta?.name).toBe('Renamed Project');
+        await waitFor(() => {
+            expect(result.current.projectMeta?.name).toBe('Renamed Project');
+        });
     });
 
     it('renameProject persists the new name to localStorage', async () => {
@@ -914,8 +1030,8 @@ describe('AppContext – project management', () => {
 
         await waitFor(() => {
             const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`);
-            const stored = JSON.parse(raw ?? '{}') as { name: string };
-            expect(stored.name).toBe('Stored Name');
+            const stored = JSON.parse(raw ?? '{}') as { meta: { name: string } };
+            expect(stored.meta.name).toBe('Stored Name');
         });
     });
 
@@ -931,15 +1047,104 @@ describe('AppContext – project management', () => {
         }).not.toThrow();
     });
 
-    it('openProjectSelector sets needsProjectSelection to true', () => {
+    it('renameProject shows alert when storage renameProject rejects', async () => {
+        preloadState({});
+        vi.stubGlobal('alert', vi.fn());
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+        vi.spyOn(storageManager.provider, 'renameProject').mockRejectedValue(new Error('rename failed'));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+        act(() => {
+            result.current.renameProject('Bad Name');
+        });
+
+        await waitFor(() => {
+            expect(window.alert).toHaveBeenCalledWith(
+                expect.stringContaining('Failed to rename project')
+            );
+        });
+
+        consoleSpy.mockRestore();
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
+
+    it('openProjectSelector sets needsProjectSelection to true', async () => {
         preloadState({});
         const { result } = renderHook(() => useApp(), { wrapper });
         expect(result.current.needsProjectSelection).toBe(false);
 
-        act(() => {
-            result.current.openProjectSelector();
+        await act(async () => {
+            await result.current.openProjectSelector();
         });
 
         expect(result.current.needsProjectSelection).toBe(true);
+    });
+
+    it('saveError is null initially', () => {
+        preloadState({});
+        const { result } = renderHook(() => useApp(), { wrapper });
+        expect(result.current.saveError).toBeNull();
+    });
+
+    it('saveError is set when saveProject rejects, and clearSaveError clears it', async () => {
+        preloadState({});
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+        const saveSpy = vi
+            .spyOn(storageManager.provider, 'saveProject')
+            .mockRejectedValueOnce(new Error('disk quota exceeded'));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        await act(async () => {
+            result.current.dispatch({ type: 'SET_BUDGET', payload: 12345 });
+        });
+
+        await waitFor(() => {
+            expect(result.current.saveError).toMatch(/disk quota exceeded/);
+        });
+
+        act(() => {
+            result.current.clearSaveError();
+        });
+
+        expect(result.current.saveError).toBeNull();
+
+        saveSpy.mockRestore();
+        errorSpy.mockRestore();
+    });
+
+    it('saveError is cleared on the next successful save', async () => {
+        preloadState({});
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+        const saveSpy = vi
+            .spyOn(storageManager.provider, 'saveProject')
+            .mockRejectedValueOnce(new Error('transient failure'));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        // First change causes rejected save → saveError set
+        await act(async () => {
+            result.current.dispatch({ type: 'SET_BUDGET', payload: 1 });
+        });
+
+        await waitFor(() => {
+            expect(result.current.saveError).not.toBeNull();
+        });
+
+        saveSpy.mockRestore();
+        errorSpy.mockRestore();
+
+        // Second change uses the real (succeeding) saveProject → saveError cleared
+        await act(async () => {
+            result.current.dispatch({ type: 'SET_BUDGET', payload: 2 });
+        });
+
+        await waitFor(() => {
+            expect(result.current.saveError).toBeNull();
+        });
     });
 });
