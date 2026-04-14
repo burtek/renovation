@@ -132,6 +132,30 @@ describe('AppContext – localStorage', () => {
         expect(result.current.state.notes).toHaveLength(0);
     });
 
+    it('falls back to empty state when active project key has invalid JSON', () => {
+        localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`, 'not-valid-json{{{{');
+        const { result } = renderHook(() => useApp(), { wrapper });
+        expect(result.current.state.budget).toBe(0);
+    });
+
+    it('falls back to empty state when active project record lacks meta/data fields', () => {
+        localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`, JSON.stringify({ foo: 'bar' }));
+        const { result } = renderHook(() => useApp(), { wrapper });
+        expect(result.current.state.budget).toBe(0);
+    });
+
+    it('falls back to empty state when active project meta.name is not a string', () => {
+        localStorage.setItem(ACTIVE_PROJECT_KEY, TEST_PROJECT_ID);
+        localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`,
+            JSON.stringify({ meta: { name: 123, lastModified: '2024-01-01T00:00:00.000Z' }, data: {} })
+        );
+        const { result } = renderHook(() => useApp(), { wrapper });
+        expect(result.current.state.budget).toBe(0);
+    });
+
     it('persists state to localStorage after dispatch', async () => {
         preloadState({});
         const { result } = renderHook(() => useApp(), { wrapper });
@@ -505,6 +529,34 @@ describe('saveToFile', () => {
         const alerted = (window.alert as ReturnType<typeof vi.fn>).mock.calls.length > 0;
         expect(saved || alerted).toBe(true);
     });
+
+    it('uses gzip path when isCompressionSupported is true', async () => {
+        const compressionModule = await import('../../utils/compression');
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: true, writable: true, configurable: true });
+        vi.spyOn(compressionModule, 'compressToGzip').mockResolvedValue(new Blob(['gzip-data'], { type: 'application/gzip' }));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+        await act(() => result.current.saveToFile());
+        vi.runAllTimers();
+
+        expect(compressionModule.compressToGzip).toHaveBeenCalled();
+        expect(URL.createObjectURL).toHaveBeenCalled();
+
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: false, writable: true, configurable: true });
+    });
+
+    it('uses non-gzip path when isCompressionSupported is false', async () => {
+        const compressionModule = await import('../../utils/compression');
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: false, writable: true, configurable: true });
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+        await act(() => result.current.saveToFile());
+        vi.runAllTimers();
+
+        expect(URL.createObjectURL).toHaveBeenCalled();
+        // Restore to original value (true in Node.js)
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: true, writable: true, configurable: true });
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -673,6 +725,50 @@ describe('loadFromFile', () => {
         // Restore
         Object.defineProperty(compressionModule, 'isCompressionSupported', { value: originalValue, writable: true, configurable: true });
     });
+
+    it('loads a .json.gz file via mocked decompression (covers gzip path)', async () => {
+        const data: AppData = { ...INITIAL_EMPTY, budget: 77777 };
+        const compressionModule = await import('../../utils/compression');
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: true, writable: true, configurable: true });
+        vi.spyOn(compressionModule, 'decompressFromGzip').mockResolvedValue(JSON.stringify(data));
+
+        const file = new File(['fake-gz-bytes'], 'backup.json.gz', { type: 'application/gzip' });
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        act(() => {
+            result.current.loadFromFile(file);
+        });
+
+        await waitFor(() => {
+            expect(result.current.state.budget).toBe(77777);
+        });
+
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: false, writable: true, configurable: true });
+    });
+
+    it('shows alert when mocked decompression throws (covers gzip error path)', async () => {
+        const compressionModule = await import('../../utils/compression');
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: true, writable: true, configurable: true });
+        vi.spyOn(compressionModule, 'decompressFromGzip').mockRejectedValue(new Error('decompress failed'));
+
+        const file = new File(['bad-gz-bytes'], 'backup.json.gz', { type: 'application/gzip' });
+        const { result } = renderHook(() => useApp(), { wrapper });
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+
+        act(() => {
+            result.current.loadFromFile(file);
+        });
+
+        await waitFor(() => {
+            expect(window.alert).toHaveBeenCalledWith(
+                expect.stringContaining('valid renovation backup file')
+            );
+        });
+
+        consoleSpy.mockRestore();
+        Object.defineProperty(compressionModule, 'isCompressionSupported', { value: false, writable: true, configurable: true });
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -796,6 +892,25 @@ describe('AppContext – multi-project init', () => {
 
         expect(result.current.needsProjectSelection).toBe(true);
         expect(localStorage.getItem(ACTIVE_PROJECT_KEY)).toBeNull();
+    });
+
+    it('handles initialize() failure gracefully (sets projects to empty)', async () => {
+        vi.spyOn(storageManager.provider, 'initialize').mockRejectedValue(new Error('init failed'));
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+
+        await waitFor(() => {
+            expect(consoleSpy).toHaveBeenCalledWith(
+                'Failed to initialize storage provider or load projects:',
+                expect.any(Error)
+            );
+        });
+
+        consoleSpy.mockRestore();
+        vi.restoreAllMocks();
+        expect(result.current.needsProjectSelection).toBe(true);
     });
 });
 
@@ -930,6 +1045,29 @@ describe('AppContext – project management', () => {
                 result.current.renameProject('Anything');
             });
         }).not.toThrow();
+    });
+
+    it('renameProject shows alert when storage renameProject rejects', async () => {
+        preloadState({});
+        vi.stubGlobal('alert', vi.fn());
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+        vi.spyOn(storageManager.provider, 'renameProject').mockRejectedValue(new Error('rename failed'));
+
+        const { result } = renderHook(() => useApp(), { wrapper });
+        act(() => {
+            result.current.renameProject('Bad Name');
+        });
+
+        await waitFor(() => {
+            expect(window.alert).toHaveBeenCalledWith(
+                expect.stringContaining('Failed to rename project')
+            );
+        });
+
+        consoleSpy.mockRestore();
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
     });
 
     it('openProjectSelector sets needsProjectSelection to true', async () => {

@@ -355,6 +355,33 @@ describe('LocalStorageProvider – OPFS mode', () => {
         expect(opfsParsed.meta.name).toBe('OPFS Project');
     });
 
+    it('createProject falls back to localStorage when OPFS write fails', async () => {
+        const { dirHandle } = makeMockDirHandle();
+        dirHandle.getFileHandle = vi.fn(async () => ({
+            kind: 'file' as const,
+            state: { content: '' },
+            getFile: vi.fn(),
+            createWritable: vi.fn(async () => {
+                throw new Error('OPFS write failure');
+            })
+        }));
+        setupOPFS(dirHandle);
+        const p = new LocalStorageProvider();
+
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {
+        });
+        const id = await p.createProject('Fallback Project');
+        warnSpy.mockRestore();
+
+        // localStorage should still have the project
+        const lsRaw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${id}`);
+        expect(lsRaw).not.toBeNull();
+        const lsParsed = JSON.parse(lsRaw!) as { meta: { name: string } };
+        expect(lsParsed.meta.name).toBe('Fallback Project');
+        // Provider fell back to LS mode
+        expect(p.label).toBe('Local Storage');
+    });
+
     // ── getProjectSize ────────────────────────────────────────────────────────
 
     it('getProjectSize returns OPFS file byte size', async () => {
@@ -527,6 +554,20 @@ describe('LocalStorageProvider – OPFS mode', () => {
         expect(p.label).toBe('Local Storage');
     });
 
+    it('initialize – permission not granted falls back to localStorage mode', async () => {
+        const { dirHandle } = makeMockDirHandle();
+        dirHandle.requestPermission.mockResolvedValue('denied' as PermissionState);
+        setupOPFS(dirHandle);
+        const p = new LocalStorageProvider();
+
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+        });
+        await p.initialize();
+        errorSpy.mockRestore();
+
+        expect(p.label).toBe('Local Storage');
+    });
+
     it('initialize – OPFS iteration failure falls back to localStorage mode', async () => {
         const { dirHandle } = makeMockDirHandle();
         // Make the iteration (second getDirectory call) work for permissions, but fail on iteration
@@ -563,6 +604,27 @@ describe('LocalStorageProvider – OPFS mode', () => {
         errorSpy.mockRestore();
 
         expect(p.label).toBe('Local Storage');
+    });
+
+    it('initialize – treats corrupted localStorage entry as absent during sync', async () => {
+        // Put corrupted JSON in localStorage
+        localStorage.setItem(KEY, 'not-valid-json{{{');
+        // OPFS has a valid record
+        const fileKey = `${STORAGE_KEY_PREFIX}${ID}`;
+        const { dirHandle } = makeMockDirHandle({ [fileKey]: JSON.stringify(BASE_RECORD) });
+        setupOPFS(dirHandle);
+        const p = new LocalStorageProvider();
+
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {
+        });
+        await p.initialize();
+        warnSpy.mockRestore();
+
+        // OPFS record is valid, so LS should be updated from OPFS
+        const lsParsed = JSON.parse(localStorage.getItem(KEY)!) as { meta: { name: string } };
+        expect(lsParsed.meta.name).toBe('My Project');
+        // Provider stays in OPFS mode
+        expect(p.label).toBe('Local Storage (OPFS)');
     });
 
     it('initialize – syncs OPFS → LS when OPFS is newer', async () => {
