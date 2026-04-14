@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 
 import { cn } from '../../utils/classnames';
 
@@ -15,7 +15,6 @@ export default function StorageProviderModal({
     onSelectGDrive
 }: StorageProviderModalProps) {
     const titleId = useId();
-    const dialogRef = useRef<HTMLDivElement>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +45,6 @@ export default function StorageProviderModal({
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div
-                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}

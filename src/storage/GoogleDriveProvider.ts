@@ -99,7 +99,8 @@ async function loadGIS(): Promise<void> {
 /** Build a fetch `headers` init with an Authorization bearer token. */
 function makeHeaders(token: string, extra?: Record<string, string>): Record<string, string> {
     const headers: Record<string, string> = { ...extra };
-    // HTTP header names are case-insensitive strings, not camelCase identifiers
+    // 'Authorization' starts with a capital letter, which violates the camelCase naming-convention
+    // rule. Using bracket notation with an eslint-disable comment is the cleanest workaround.
     // eslint-disable-next-line @typescript-eslint/dot-notation
     headers['Authorization'] = `Bearer ${token}`;
     return headers;
@@ -299,6 +300,9 @@ export class GoogleDriveProvider implements StorageProvider {
             throw new Error(`Google Drive API error ${response.status}: ${response.statusText}`);
         }
         const json: unknown = await response.json();
+        // The shape of `T` is always a well-typed Google Drive API response object
+        // (e.g. `{ files: GDriveFileInfo[] }`). We trust the API contract here since
+        // the response has already been verified as ok (2xx status above).
         // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
         return json as T;
     }
