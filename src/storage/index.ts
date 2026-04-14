@@ -1,10 +1,21 @@
+import { GoogleDriveProvider } from './GoogleDriveProvider';
 import { localStorageProvider } from './LocalStorageProvider';
 import type { StorageProvider } from './types';
 
 
 class StorageManager {
-    private readonly allProviders: StorageProvider[] = [localStorageProvider];
-    private currentProvider: StorageProvider = localStorageProvider;
+    private readonly allProviders: StorageProvider[];
+    private currentProvider: StorageProvider;
+
+    constructor() {
+        const providers: StorageProvider[] = [localStorageProvider];
+        const gdriveClientId = import.meta.env.VITE_STORAGE_GDRIVE_CLIENT_ID;
+        if (gdriveClientId) {
+            providers.push(new GoogleDriveProvider(gdriveClientId));
+        }
+        this.allProviders = providers;
+        this.currentProvider = localStorageProvider;
+    }
 
     get hasProviderSelected() {
         return !!this.currentProvider;

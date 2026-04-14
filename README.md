@@ -78,3 +78,47 @@ src/
 ## Deployment
 
 The project is configured for deployment on [Vercel](https://vercel.com/). A `vercel.json` file is included that rewrites all routes to `index.html` for proper SPA routing.
+
+## Google Drive Storage (optional)
+
+By default the app stores all project data locally in the browser (OPFS / localStorage). To enable **Google Drive** as an alternative storage back-end, follow the steps below.
+
+### 1 – Create a Google Cloud project
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and create a new project (or reuse an existing one).
+2. In **APIs & Services → Library**, enable the **Google Drive API**.
+
+### 2 – Configure the OAuth consent screen
+
+1. In **APIs & Services → OAuth consent screen**, choose **External** (or **Internal** for a G Suite domain).
+2. Fill in the required fields (app name, support e-mail, etc.).
+3. Add the scope `https://www.googleapis.com/auth/drive.appdata`.
+4. Add your own e-mail address as a **test user** while the app is in _Testing_ mode.
+
+### 3 – Create an OAuth 2.0 client ID
+
+1. Go to **APIs & Services → Credentials** and click **Create credentials → OAuth client ID**.
+2. Select **Web application** as the application type.
+3. Under **Authorised JavaScript origins**, add every URL the app will be served from, for example:
+   - `http://localhost:5173` (local dev)
+   - `https://<your-project>.vercel.app` (production)
+4. Leave **Authorised redirect URIs** empty (the implicit / token flow does not use redirects).
+5. Copy the **Client ID** that is shown.
+
+### 4 – Set the environment variable
+
+| Variable | Description |
+|---|---|
+| `VITE_STORAGE_GDRIVE_CLIENT_ID` | The OAuth 2.0 Client ID from step 3 |
+
+**Local development** – create a `.env.local` file in the repo root:
+
+```env
+VITE_STORAGE_GDRIVE_CLIENT_ID=YOUR_CLIENT_ID_HERE
+```
+
+**Vercel deployment** – add the variable in **Project Settings → Environment Variables**.
+
+### How it works
+
+When `VITE_STORAGE_GDRIVE_CLIENT_ID` is set, the app shows a storage-selection modal on every load (the choice is never persisted). Selecting **Google Drive** triggers a Google sign-in popup and requests the `drive.appdata` scope. Project files are stored in the special [appdata folder](https://developers.google.com/drive/api/guides/appdata) which is invisible to the user in the Drive UI. The OAuth access token is kept only in memory and is never written to `localStorage` or any other browser storage.

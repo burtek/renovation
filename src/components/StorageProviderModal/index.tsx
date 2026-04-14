@@ -1,0 +1,129 @@
+import { useId, useRef, useState } from 'react';
+
+import { cn } from '../../utils/classnames';
+
+
+interface StorageProviderModalProps {
+    gdriveAvailable: boolean;
+    onSelectLocal: () => Promise<void>;
+    onSelectGDrive: () => Promise<void>;
+}
+
+export default function StorageProviderModal({
+    gdriveAvailable,
+    onSelectLocal,
+    onSelectGDrive
+}: StorageProviderModalProps) {
+    const titleId = useId();
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleLocal = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            await onSelectLocal();
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to initialize local storage.');
+            setLoading(false);
+        }
+    };
+
+    const handleGDrive = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            await onSelectGDrive();
+        } catch (err: unknown) {
+            setError(
+                err instanceof Error ? err.message : 'Failed to connect to Google Drive. Please try again.'
+            );
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+            <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg shadow-xl max-w-md w-full p-6"
+            >
+                <h2
+                    id={titleId}
+                    className="text-xl font-bold mb-2"
+                >
+                    🏠 Choose Storage
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                    Where would you like to store your projects? Your choice is not remembered — you
+                    will be asked again on the next visit.
+                </p>
+
+                <div className="space-y-3">
+                    <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => {
+                            void handleLocal();
+                        }}
+                        className={cn(
+                            'w-full flex items-center gap-4 px-5 py-4 rounded-lg border-2 text-left transition',
+                            'border-gray-300 dark:border-gray-600',
+                            'hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20',
+                            'disabled:opacity-50 disabled:cursor-not-allowed'
+                        )}
+                    >
+                        <span className="text-2xl">💾</span>
+                        <div>
+                            <div className="font-semibold">
+                                Local Storage
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                                Store projects in your browser (OPFS / localStorage)
+                            </div>
+                        </div>
+                    </button>
+
+                    {gdriveAvailable && (
+                        <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => {
+                                void handleGDrive();
+                            }}
+                            className={cn(
+                                'w-full flex items-center gap-4 px-5 py-4 rounded-lg border-2 text-left transition',
+                                'border-gray-300 dark:border-gray-600',
+                                'hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20',
+                                'disabled:opacity-50 disabled:cursor-not-allowed'
+                            )}
+                        >
+                            <span className="text-2xl">☁️</span>
+                            <div>
+                                <div className="font-semibold">
+                                    {loading ? 'Connecting…' : 'Google Drive'}
+                                </div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">
+                                    Store projects in your Google Drive (app data only)
+                                </div>
+                            </div>
+                        </button>
+                    )}
+                </div>
+
+                {error && (
+                    <p
+                        role="alert"
+                        className="mt-4 text-sm text-red-600 dark:text-red-400"
+                    >
+                        {error}
+                    </p>
+                )}
+            </div>
+        </div>
+    );
+}

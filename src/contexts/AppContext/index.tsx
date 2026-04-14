@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { v4 as uuidv4 } from 'uuid';
 
 import ProjectModal from '../../components/ProjectModal';
+import StorageProviderModal from '../../components/StorageProviderModal';
 import type { ProjectMeta } from '../../storage';
 import { storageManager } from '../../storage';
 import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
@@ -143,18 +144,34 @@ AppContext.displayName = 'AppContext';
 
 
 export function AppProvider({ children }: { children: ReactNode }) {
-    const [{ state: initState, meta: initMeta, needsPicker }] = useState(loadInitialState);
+    // When GDrive is configured, always start with provider selection; otherwise skip straight to
+    // the existing local-storage flow (backward-compatible).
+    const gdriveConfigured = !!import.meta.env.VITE_STORAGE_GDRIVE_CLIENT_ID;
+
+    const [{ state: initState, meta: initMeta, needsPicker }] = useState(() => {
+        if (gdriveConfigured) {
+            return { state: initialState, meta: null as ProjectMeta | null, needsPicker: false };
+        }
+        return loadInitialState();
+    });
     const [state, dispatch] = useReducer(reducer, initState);
     const [projectMeta, setProjectMeta] = useState(initMeta);
-    const [needsProjectSelection, setNeedsProjectSelection] = useState(needsPicker);
+    const [needsProjectSelection, setNeedsProjectSelection] = useState(
+        gdriveConfigured ? false : needsPicker
+    );
+    const [needsProviderSelection, setNeedsProviderSelection] = useState(gdriveConfigured);
     const [projects, setProjects] = useState<ProjectMeta[]>([]);
     const [saveError, setSaveError] = useState<string | null>(null);
     const clearSaveError = useCallback(() => {
         setSaveError(null);
     }, []);
 
-    // Load projects list on mount (for the project picker)
+    // Load projects list on mount (for the project picker) – only when GDrive is not configured
+    // so that the existing auto-load / project-picker flow continues to work unchanged.
     useEffect(() => {
+        if (gdriveConfigured) {
+            return;
+        }
         void (async () => {
             try {
                 await storageManager.provider.initialize();
@@ -165,7 +182,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 console.error('Failed to initialize storage provider or load projects:', error);
             }
         })();
-    }, []);
+    }, [gdriveConfigured]);
 
     // Keep a stable ref so the save effect always sees the latest meta without being re-triggered by it
     const projectMetaRef = useRef(projectMeta);
@@ -201,6 +218,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
             });
     }, [state]);
 
+    // ── Storage provider selection callbacks ─────────────────────────────
+
+    const handleSelectLocalProvider = useCallback(async () => {
+        // Ensure the local provider is active (may already be, but explicit is safer)
+        storageManager.setProvider('LS_OPFS');
+        setNeedsProviderSelection(false);
+
+        // Run the same synchronous initial-state load that would have happened on mount
+        const { state: localState, meta: localMeta, needsPicker: localNeedsPicker } = loadInitialState();
+        if (localState !== initialState) {
+            skipNextSaveRef.current = true;
+            dispatch({ type: 'SET_ALL', payload: localState });
+        }
+        setProjectMeta(localMeta);
+        setNeedsProjectSelection(localNeedsPicker);
+
+        try {
+            await storageManager.provider.initialize();
+            const availableProjects = await storageManager.provider.listProjects();
+            setProjects(availableProjects);
+        } catch (error: unknown) {
+            // eslint-disable-next-line no-console
+            console.error('Failed to initialize local storage provider:', error);
+        }
+    }, []);
+
+    const handleSelectGDriveProvider = useCallback(async () => {
+        storageManager.setProvider('GDRIVE');
+        await storageManager.provider.initialize(); // triggers OAuth popup
+        setNeedsProviderSelection(false);
+        const availableProjects = await storageManager.provider.listProjects();
+        setProjects(availableProjects);
+        setNeedsProjectSelection(true);
+    }, []);
+
+    // ── Project management callbacks ─────────────────────────────────────
+
     const openProjectSelector = useCallback(async () => {
         setProjects(await storageManager.provider.listProjects());
         setNeedsProjectSelection(true);
@@ -217,7 +271,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_ALL', payload: appData });
         setProjectMeta(loaded.meta);
         setNeedsProjectSelection(false);
-        localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+        // Only persist the active project pointer for the local provider
+        if (storageManager.provider.id === 'LS_OPFS') {
+            localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+        }
     }, []);
 
     const createNewProject = useCallback(async (name: string) => {
@@ -229,7 +286,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_ALL', payload: initialState });
         setProjectMeta(meta);
         setNeedsProjectSelection(false);
-        localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+        // Only persist the active project pointer for the local provider
+        if (storageManager.provider.id === 'LS_OPFS') {
+            localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+        }
     }, []);
 
     const renameProject = useCallback((newName: string) => {
@@ -362,7 +422,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return (
         <AppContext.Provider value={contextValue}>
-            {needsProjectSelection && (
+            {needsProviderSelection && (
+                <StorageProviderModal
+                    gdriveAvailable={gdriveConfigured}
+                    onSelectLocal={handleSelectLocalProvider}
+                    onSelectGDrive={handleSelectGDriveProvider}
+                />
+            )}
+            {!needsProviderSelection && needsProjectSelection && (
                 <ProjectModal
                     projects={projects}
                     onSelect={selectProject}
