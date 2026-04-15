@@ -1,0 +1,75 @@
+name: Coverage (base compute)
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to check out (defaults to the calling workflow ref)
+        required: false
+        type: string
+        default: ''
+      lookup-only:
+        description: Only check cache existence without downloading (for pre-population runs)
+        required: false
+        type: boolean
+        default: false
+      artifact-name:
+        description: Upload coverage summary as artifact with this name (empty to skip)
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  compute:
+    name: Coverage (base)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Get commit SHA
+        id: sha
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Restore/check coverage cache
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: coverage/coverage-summary.json
+          key: coverage-base-ubuntu-latest-node24-${{ steps.sha.outputs.sha }}
+          lookup-only: ${{ inputs.lookup-only }}
+
+      - uses: actions/setup-node@v6
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          node-version: 24
+          cache: yarn
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: yarn install --frozen-lockfile --silent
+
+      - name: Run tests with coverage
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: yarn test:coverage --coverage.reporter=json-summary || true
+
+      - name: Save coverage cache
+        if: steps.cache.outputs.cache-hit != 'true' && hashFiles('coverage/coverage-summary.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: coverage/coverage-summary.json
+          key: coverage-base-ubuntu-latest-node24-${{ steps.sha.outputs.sha }}
+
+      - name: Upload coverage summary
+        if: inputs.artifact-name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: coverage/coverage-summary.json
+          if-no-files-found: warn

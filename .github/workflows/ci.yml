@@ -66,55 +66,10 @@ jobs:
 
   coverage-base:
     name: Coverage (base)
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.base_ref }}
-          fetch-depth: 0
-
-      - name: Get base branch HEAD SHA
-        id: base-sha
-        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Restore base coverage cache
-        id: cache-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: coverage/coverage-summary.json
-          key: coverage-base-ubuntu-latest-node24-${{ steps.base-sha.outputs.sha }}
-
-      - uses: actions/setup-node@v6
-        if: steps.cache-restore.outputs.cache-hit != 'true'
-        with:
-          node-version: 24
-          cache: yarn
-
-      - name: Install dependencies
-        if: steps.cache-restore.outputs.cache-hit != 'true'
-        run: yarn install --frozen-lockfile --silent
-
-      - name: Run tests with coverage (base)
-        if: steps.cache-restore.outputs.cache-hit != 'true'
-        run: yarn test:coverage --coverage.reporter=json-summary || true
-
-      - name: Save base coverage cache
-        if: steps.cache-restore.outputs.cache-hit != 'true' && hashFiles('coverage/coverage-summary.json') != ''
-        uses: actions/cache/save@v4
-        with:
-          path: coverage/coverage-summary.json
-          key: coverage-base-ubuntu-latest-node24-${{ steps.base-sha.outputs.sha }}
-
-      - name: Upload base coverage summary
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-base
-          path: coverage/coverage-summary.json
-          if-no-files-found: warn
+    uses: ./.github/workflows/coverage-base-compute.yml
+    with:
+      ref: ${{ github.base_ref }}
+      artifact-name: coverage-base
 
   coverage-check:
     name: Coverage (check thresholds)
