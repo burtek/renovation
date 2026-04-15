@@ -33,18 +33,16 @@ jobs:
           ref: ${{ inputs.ref || github.sha }}
           fetch-depth: 0
 
-      - name: Get commit SHA and runner info
+      - name: Get commit SHA
         id: sha
-        run: |
-          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-          echo "os=${{ runner.os }}" >> $GITHUB_OUTPUT
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Restore/check coverage cache
         id: cache
         uses: actions/cache/restore@v4
         with:
           path: coverage/coverage-summary.json
-          key: coverage-base-${{ steps.sha.outputs.os }}-node24-${{ steps.sha.outputs.sha }}
+          key: coverage-base-${{ runner.os }}-node24-${{ steps.sha.outputs.sha }}
           lookup-only: ${{ inputs.lookup-only }}
 
       - uses: actions/setup-node@v6
@@ -66,7 +64,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: coverage/coverage-summary.json
-          key: coverage-base-${{ steps.sha.outputs.os }}-node24-${{ steps.sha.outputs.sha }}
+          key: coverage-base-${{ runner.os }}-node24-${{ steps.sha.outputs.sha }}
 
       - name: Upload coverage summary
         if: inputs.artifact-name != ''
