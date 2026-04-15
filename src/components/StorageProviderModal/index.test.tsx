@@ -108,10 +108,37 @@ describe('StorageProviderModal', () => {
         await user.click(screen.getByRole('button', { name: /local storage/i }));
 
         // Both buttons should be disabled while the operation is pending
-        expect(screen.getByRole('button', { name: /local storage/i })).toBeDisabled();
-        expect(screen.getByRole('button', { name: /google drive|connecting/i })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /loading/i })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /google drive/i })).toBeDisabled();
 
         // Cleanup: resolve the promise
+        resolve();
+    });
+
+    it('shows "Loading…" on the Local Storage button while local is in-flight', async () => {
+        const user = userEvent.setup();
+        let resolve: () => void = () => {
+        };
+        const onSelectLocal = vi.fn(
+            () => new Promise<void>(res => {
+                resolve = res;
+            })
+        );
+
+        render(
+            <StorageProviderModal
+                gdriveAvailable
+                onSelectLocal={onSelectLocal}
+                onSelectGDrive={noop}
+            />
+        );
+
+        await user.click(screen.getByRole('button', { name: /local storage/i }));
+
+        expect(screen.getByText(/loading…/i)).toBeInTheDocument();
+        // GDrive button should still say "Google Drive", not "Connecting…"
+        expect(screen.queryByText(/connecting/i)).not.toBeInTheDocument();
+
         resolve();
     });
 
@@ -135,7 +162,7 @@ describe('StorageProviderModal', () => {
         });
     });
 
-    it('shows "Connecting…" label on the Google Drive button while loading', async () => {
+    it('shows "Connecting…" label on the Google Drive button while gdrive is in-flight', async () => {
         const user = userEvent.setup();
         let resolve: () => void = () => {
         };
@@ -156,8 +183,36 @@ describe('StorageProviderModal', () => {
         await user.click(screen.getByRole('button', { name: /google drive/i }));
 
         expect(screen.getByText(/connecting/i)).toBeInTheDocument();
+        // Local Storage button should still say "Local Storage", not "Loading…"
+        expect(screen.queryByText(/loading…/i)).not.toBeInTheDocument();
 
         // Cleanup
+        resolve();
+    });
+
+    it('disables both buttons while onSelectGDrive is in-flight', async () => {
+        const user = userEvent.setup();
+        let resolve: () => void = () => {
+        };
+        const onSelectGDrive = vi.fn(
+            () => new Promise<void>(res => {
+                resolve = res;
+            })
+        );
+
+        render(
+            <StorageProviderModal
+                gdriveAvailable
+                onSelectLocal={noop}
+                onSelectGDrive={onSelectGDrive}
+            />
+        );
+
+        await user.click(screen.getByRole('button', { name: /google drive/i }));
+
+        expect(screen.getByRole('button', { name: /local storage/i })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /connecting/i })).toBeDisabled();
+
         resolve();
     });
 
@@ -236,5 +291,29 @@ describe('StorageProviderModal', () => {
 
         expect(screen.getByRole('button', { name: /local storage/i })).not.toBeDisabled();
         expect(screen.getByRole('button', { name: /google drive/i })).not.toBeDisabled();
+    });
+
+    it('clears the previous error when a new action is started', async () => {
+        const user = userEvent.setup();
+        // First click fails
+        const onSelectGDrive = vi.fn()
+            .mockRejectedValueOnce(new Error('first error'))
+            .mockResolvedValueOnce(undefined);
+        render(
+            <StorageProviderModal
+                gdriveAvailable
+                onSelectLocal={noop}
+                onSelectGDrive={onSelectGDrive}
+            />
+        );
+
+        await user.click(screen.getByRole('button', { name: /google drive/i }));
+        await waitFor(() => {
+            expect(screen.getByRole('alert')).toHaveTextContent('first error');
+        });
+
+        // Second click should clear the error immediately
+        await user.click(screen.getByRole('button', { name: /google drive/i }));
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 });

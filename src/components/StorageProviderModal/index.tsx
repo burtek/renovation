@@ -15,22 +15,24 @@ export default function StorageProviderModal({
     onSelectGDrive
 }: StorageProviderModalProps) {
     const titleId = useId();
-    const [loading, setLoading] = useState(false);
+    const [loadingProvider, setLoadingProvider] = useState<'local' | 'gdrive' | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    const isLoading = loadingProvider !== null;
+
     const handleLocal = async () => {
-        setLoading(true);
+        setLoadingProvider('local');
         setError(null);
         try {
             await onSelectLocal();
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to initialize local storage.');
-            setLoading(false);
+            setLoadingProvider(null);
         }
     };
 
     const handleGDrive = async () => {
-        setLoading(true);
+        setLoadingProvider('gdrive');
         setError(null);
         try {
             await onSelectGDrive();
@@ -38,7 +40,7 @@ export default function StorageProviderModal({
             setError(
                 err instanceof Error ? err.message : 'Failed to connect to Google Drive. Please try again.'
             );
-            setLoading(false);
+            setLoadingProvider(null);
         }
     };
 
@@ -64,7 +66,7 @@ export default function StorageProviderModal({
                 <div className="space-y-3">
                     <button
                         type="button"
-                        disabled={loading}
+                        disabled={isLoading}
                         onClick={() => {
                             void handleLocal();
                         }}
@@ -78,7 +80,7 @@ export default function StorageProviderModal({
                         <span className="text-2xl">💾</span>
                         <div>
                             <div className="font-semibold">
-                                Local Storage
+                                {loadingProvider === 'local' ? 'Loading…' : 'Local Storage'}
                             </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
                                 Store projects in your browser (OPFS / localStorage)
@@ -89,7 +91,7 @@ export default function StorageProviderModal({
                     {gdriveAvailable && (
                         <button
                             type="button"
-                            disabled={loading}
+                            disabled={isLoading}
                             onClick={() => {
                                 void handleGDrive();
                             }}
@@ -103,7 +105,7 @@ export default function StorageProviderModal({
                             <span className="text-2xl">☁️</span>
                             <div>
                                 <div className="font-semibold">
-                                    {loading ? 'Connecting…' : 'Google Drive'}
+                                    {loadingProvider === 'gdrive' ? 'Connecting…' : 'Google Drive'}
                                 </div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
                                     Store projects in your Google Drive (app data only)

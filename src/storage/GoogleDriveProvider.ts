@@ -11,6 +11,9 @@ const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 
+/** HTTP status code for an expired or invalid bearer token. */
+const HTTP_UNAUTHORIZED = 401;
+
 // ---------------------------------------------------------------------------
 // Minimal TypeScript declarations for Google Identity Services (GIS)
 // ---------------------------------------------------------------------------
@@ -106,6 +109,11 @@ function makeHeaders(token: string, extra?: Record<string, string>): Record<stri
     return headers;
 }
 
+/** Escape a value for use inside a Drive `q` query string (single-quoted strings). */
+function escapeDriveQueryValue(value: string): string {
+    return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 // ---------------------------------------------------------------------------
 // GoogleDriveProvider
 // ---------------------------------------------------------------------------
@@ -113,7 +121,7 @@ function makeHeaders(token: string, extra?: Record<string, string>): Record<stri
 /**
  * Implements StorageProvider using the Google Drive appdata folder.
  * Files are invisible from the user's Drive UI; auth is handled
- * backend-less via Google Identity Services (OAuth2 implicit grant).
+ * backend-less via Google Identity Services (OAuth2 token model).
  * The access token is kept only in memory – never persisted to any
  * browser storage.
  */
@@ -289,13 +297,7 @@ export class GoogleDriveProvider implements StorageProvider {
     // ── Private helpers (alphabetical) ───────────────────────────────────
 
     private async driveGet<T>(path: string): Promise<T> {
-        if (!this.accessToken) {
-            throw new Error('Google Drive not authenticated. Please reload and sign in again.');
-        }
-        const response = await fetch(
-            `${DRIVE_API_BASE}${path}`,
-            { headers: makeHeaders(this.accessToken) }
-        );
+        const response = await this.fetchWithAuthRetry(`${DRIVE_API_BASE}${path}`, {});
         if (!response.ok) {
             throw new Error(`Google Drive API error ${response.status}: ${response.statusText}`);
         }
@@ -308,12 +310,9 @@ export class GoogleDriveProvider implements StorageProvider {
     }
 
     private async driveGetMedia(fileId: string): Promise<Response> {
-        if (!this.accessToken) {
-            throw new Error('Google Drive not authenticated. Please reload and sign in again.');
-        }
-        const response = await fetch(
+        const response = await this.fetchWithAuthRetry(
             `${DRIVE_API_BASE}/files/${fileId}?alt=media`,
-            { headers: makeHeaders(this.accessToken) }
+            {}
         );
         if (!response.ok) {
             throw new Error(`Google Drive API error ${response.status}: ${response.statusText}`);
@@ -327,10 +326,9 @@ export class GoogleDriveProvider implements StorageProvider {
         metadata: object,
         content: string
     ): Promise<void> {
-        if (!this.accessToken) {
-            throw new Error('Google Drive not authenticated. Please reload and sign in again.');
-        }
-        const boundary = 'renovation_gdrive_boundary';
+        // Use a unique boundary per request to ensure correctness even if the JSON content
+        // happens to contain the boundary string.
+        const boundary = `renovation_gdrive_boundary_${uuidv4()}`;
         const metaStr = JSON.stringify(metadata);
         const body = [
             `--${boundary}`,
@@ -344,16 +342,69 @@ export class GoogleDriveProvider implements StorageProvider {
             `--${boundary}--`
         ].join('\r\n');
 
-        const headers = makeHeaders(this.accessToken, { 'Content-Type': `multipart/related; boundary=${boundary}` });
-        const response = await fetch(url, { method, headers, body });
+        const response = await this.fetchWithAuthRetry(
+            url,
+            { method, body },
+            { 'Content-Type': `multipart/related; boundary=${boundary}` }
+        );
         if (!response.ok) {
             throw new Error(`Google Drive API error ${response.status}: ${response.statusText}`);
         }
     }
 
+    /**
+     * Wraps `fetch` with automatic token-refresh on 401.
+     * On the first `HTTP_UNAUTHORIZED` response the provider attempts a silent
+     * GIS refresh (empty prompt = no user interaction) and retries once.
+     * If the silent refresh fails, a descriptive "session expired" error is thrown
+     * so the UI can prompt the user to reconnect.
+     */
+    private async fetchWithAuthRetry(
+        url: string,
+        init: Omit<RequestInit, 'headers'>,
+        extraHeaders?: Record<string, string>
+    ): Promise<Response> {
+        if (!this.accessToken) {
+            throw new Error('Google Drive not authenticated. Please reload and sign in again.');
+        }
+
+        const firstResponse = await fetch(url, {
+            ...init,
+            headers: makeHeaders(this.accessToken, extraHeaders)
+        });
+
+        if (firstResponse.status !== HTTP_UNAUTHORIZED) {
+            return firstResponse;
+        }
+
+        // Token may have expired – attempt a silent refresh (empty prompt avoids user interaction)
+        try {
+            this.accessToken = await this.requestNewToken('');
+        } catch {
+            throw new Error('Google Drive session expired. Please reconnect to Google Drive.');
+        }
+
+        return await fetch(url, {
+            ...init,
+            headers: makeHeaders(this.accessToken, extraHeaders)
+        });
+    }
+
+    /**
+     * Finds the Drive file entry for a specific project ID using a targeted query.
+     * This avoids fetching the full project list when only one file is needed.
+     */
     private async getFileInfo(projectId: string): Promise<GDriveFileInfo | null> {
-        const files = await this.listDriveFiles();
-        return files.find(f => f.name === `${GDRIVE_FILE_PREFIX}${projectId}.json`) ?? null;
+        const fileName = `${GDRIVE_FILE_PREFIX}${projectId}.json`;
+        const escapedName = escapeDriveQueryValue(fileName);
+        const qs = [
+            'spaces=appDataFolder',
+            'fields=files(id,name,size,appProperties)',
+            'pageSize=1',
+            `q=name='${escapedName}'`
+        ].join('&');
+        const result = await this.driveGet<{ files: GDriveFileInfo[] }>(`/files?${qs}`);
+        return result.files[0] ?? null;
     }
 
     private getOrCreateTokenClient(): TokenClient {
@@ -386,14 +437,38 @@ export class GoogleDriveProvider implements StorageProvider {
         return this.tokenClient;
     }
 
+    /**
+     * Lists all Drive files in the appdata folder matching the project prefix.
+     * Handles pagination automatically so all projects are returned even if there
+     * are more than the default page size.
+     */
     private async listDriveFiles(): Promise<GDriveFileInfo[]> {
-        const qs = [
-            'spaces=appDataFolder',
-            'fields=files(id,name,size,appProperties)',
-            `q=name+contains+'${GDRIVE_FILE_PREFIX}'`
-        ].join('&');
-        const result = await this.driveGet<{ files: GDriveFileInfo[] }>(`/files?${qs}`);
-        return result.files;
+        const files: GDriveFileInfo[] = [];
+        let pageToken: string | undefined;
+
+        // Pages must be fetched sequentially since each page's token comes from the previous response.
+
+        while (true) {
+            const qs = [
+                'spaces=appDataFolder',
+                'fields=nextPageToken,files(id,name,size,appProperties)',
+                'pageSize=1000',
+                `q=name+contains+'${GDRIVE_FILE_PREFIX}'`,
+
+                ...pageToken === undefined ? [] : [`pageToken=${encodeURIComponent(pageToken)}`]
+            ].join('&');
+            // eslint-disable-next-line no-await-in-loop
+            const result = await this.driveGet<{ files?: GDriveFileInfo[]; nextPageToken?: string }>(
+                `/files?${qs}`
+            );
+            files.push(...result.files ?? []);
+            pageToken = result.nextPageToken;
+            if (pageToken === undefined) {
+                break;
+            }
+        }
+
+        return files;
     }
 
     private requestNewToken(prompt?: string): Promise<string> {

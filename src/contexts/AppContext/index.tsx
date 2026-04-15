@@ -223,9 +223,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const handleSelectLocalProvider = useCallback(async () => {
         // Ensure the local provider is active (may already be, but explicit is safer)
         storageManager.setProvider('LS_OPFS');
-        setNeedsProviderSelection(false);
 
-        // Run the same synchronous initial-state load that would have happened on mount
+        // Initialize storage and list projects; if this fails the error propagates to the modal
+        // so the user sees an error message and can retry.
+        await storageManager.provider.initialize();
+        const availableProjects = await storageManager.provider.listProjects();
+        setProjects(availableProjects);
+
+        // Load initial state from localStorage synchronously (cannot fail)
         const { state: localState, meta: localMeta, needsPicker: localNeedsPicker } = loadInitialState();
         if (localState !== initialState) {
             skipNextSaveRef.current = true;
@@ -234,22 +239,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setProjectMeta(localMeta);
         setNeedsProjectSelection(localNeedsPicker);
 
-        try {
-            await storageManager.provider.initialize();
-            const availableProjects = await storageManager.provider.listProjects();
-            setProjects(availableProjects);
-        } catch (error: unknown) {
-            // eslint-disable-next-line no-console
-            console.error('Failed to initialize local storage provider:', error);
-        }
+        // Dismiss the provider-selection modal only after everything succeeds
+        setNeedsProviderSelection(false);
     }, []);
 
     const handleSelectGDriveProvider = useCallback(async () => {
         storageManager.setProvider('GDRIVE');
-        await storageManager.provider.initialize(); // triggers OAuth popup
-        setNeedsProviderSelection(false);
+        // triggers OAuth popup; if it throws the error propagates to the modal
+        await storageManager.provider.initialize();
         const availableProjects = await storageManager.provider.listProjects();
         setProjects(availableProjects);
+        // Dismiss modal and proceed to project selection only after all async steps succeed
+        setNeedsProviderSelection(false);
         setNeedsProjectSelection(true);
     }, []);
 

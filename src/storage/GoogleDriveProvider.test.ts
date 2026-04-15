@@ -42,11 +42,16 @@ function mockGIS(accessToken = 'fake-access-token') {
 const FAKE_TOKEN = 'fake-access-token';
 
 /** Convenience: build what google returns for a file list */
-function driveFileList(files: object[]) {
+function driveFileList(files: object[], nextPageToken?: string) {
     return Promise.resolve({
         ok: true,
-        json: async () => ({ files })
+        json: async () => ({ files, ...nextPageToken !== undefined && { nextPageToken } })
     } as unknown as Response);
+}
+
+/** Convenience: build a single-file search result (for getFileInfo) */
+function driveFileSearch(file: object | null) {
+    return driveFileList(file === null ? [] : [file]);
 }
 
 /** Convenience: build a media response (file content) */
@@ -63,6 +68,15 @@ function driveError(status = 400) {
         ok: false,
         status,
         statusText: 'Error'
+    } as unknown as Response);
+}
+
+/** A 401 Unauthorized response */
+function drive401() {
+    return Promise.resolve({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized'
     } as unknown as Response);
 }
 
@@ -245,6 +259,35 @@ describe('GoogleDriveProvider', () => {
             // Do NOT call initialize() — accessToken remains null
             await expect(unauthProvider.listProjects()).rejects.toThrow(/not authenticated/i);
         });
+
+        it('collects files across multiple pages using nextPageToken', async () => {
+            // Page 1 returns one file and a nextPageToken
+            fetchMock
+                .mockResolvedValueOnce(
+                    driveFileList(
+                        [{ id: 'gid1', name: 'renovation-project-p1.json', appProperties: { projectName: 'P1', lastModified: NOW } }],
+                        'token-page-2'
+                    )
+                )
+                // Page 2 returns the second file and no more pages
+                .mockResolvedValueOnce(
+                    driveFileList([{ id: 'gid2', name: 'renovation-project-p2.json', appProperties: { projectName: 'P2', lastModified: NOW } }])
+                );
+
+            const projects = await provider.listProjects();
+            expect(projects).toHaveLength(2);
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            // Second call should include the pageToken
+            const [secondUrl] = fetchMock.mock.calls[1] as [string];
+            expect(secondUrl).toContain('pageToken=token-page-2');
+        });
+
+        it('includes pageSize=1000 in the list query', async () => {
+            fetchMock.mockResolvedValueOnce(driveFileList([]));
+            await provider.listProjects();
+            const [url] = fetchMock.mock.calls[0] as [string];
+            expect(url).toContain('pageSize=1000');
+        });
     });
 
     // ── loadProject ──────────────────────────────────────────────────────
@@ -255,7 +298,8 @@ describe('GoogleDriveProvider', () => {
         });
 
         it('returns null when the project file does not exist in Drive', async () => {
-            fetchMock.mockResolvedValueOnce(driveFileList([]));
+            // getFileInfo does a targeted name-query; return empty list
+            fetchMock.mockResolvedValueOnce(driveFileSearch(null));
             await expect(provider.loadProject('nonexistent')).resolves.toBeNull();
         });
 
@@ -263,7 +307,7 @@ describe('GoogleDriveProvider', () => {
             const record = makeRecord('My Project', NOW);
             fetchMock
                 .mockResolvedValueOnce(
-                    driveFileList([{ id: 'gid1', name: 'renovation-project-p1.json' }])
+                    driveFileSearch({ id: 'gid1', name: 'renovation-project-p1.json' })
                 )
                 .mockResolvedValueOnce(driveMedia(record));
 
@@ -276,7 +320,7 @@ describe('GoogleDriveProvider', () => {
         it('returns null when file content is not a valid record', async () => {
             fetchMock
                 .mockResolvedValueOnce(
-                    driveFileList([{ id: 'gid1', name: 'renovation-project-p1.json' }])
+                    driveFileSearch({ id: 'gid1', name: 'renovation-project-p1.json' })
                 )
                 .mockResolvedValueOnce(driveMedia({ invalid: true }));
 
@@ -286,7 +330,7 @@ describe('GoogleDriveProvider', () => {
         it('returns null when the media fetch fails', async () => {
             fetchMock
                 .mockResolvedValueOnce(
-                    driveFileList([{ id: 'gid1', name: 'renovation-project-p1.json' }])
+                    driveFileSearch({ id: 'gid1', name: 'renovation-project-p1.json' })
                 )
                 .mockResolvedValueOnce(driveError(500));
 
@@ -322,6 +366,25 @@ describe('GoogleDriveProvider', () => {
             fetchMock.mockResolvedValueOnce(driveError(403));
             await expect(provider.createProject('Fail')).rejects.toThrow(/403/);
         });
+
+        it('uses a unique multipart boundary for each call', async () => {
+            fetchMock
+                .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+                .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+
+            await provider.createProject('A');
+            await provider.createProject('B');
+
+            const [, opts1] = fetchMock.mock.calls[0] as [string, RequestInit];
+            const [, opts2] = fetchMock.mock.calls[1] as [string, RequestInit];
+
+            const ct1 = (opts1.headers as Record<string, string>)['Content-Type'] ?? '';
+            const ct2 = (opts2.headers as Record<string, string>)['Content-Type'] ?? '';
+            expect(ct1).toContain('boundary=');
+            expect(ct2).toContain('boundary=');
+            // Boundaries must differ between calls
+            expect(ct1).not.toBe(ct2);
+        });
     });
 
     // ── saveProject ───────────────────────────────────────────────────────
@@ -336,7 +399,7 @@ describe('GoogleDriveProvider', () => {
         it('PATCHes an existing file if it is found in Drive', async () => {
             fetchMock
                 .mockResolvedValueOnce(
-                    driveFileList([{ id: 'gid1', name: 'renovation-project-p1.json' }])
+                    driveFileSearch({ id: 'gid1', name: 'renovation-project-p1.json' })
                 )
                 .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
 
@@ -349,7 +412,7 @@ describe('GoogleDriveProvider', () => {
 
         it('POSTs a new file when it does not exist yet', async () => {
             fetchMock
-                .mockResolvedValueOnce(driveFileList([]))
+                .mockResolvedValueOnce(driveFileSearch(null))
                 .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
 
             await expect(provider.saveProject('new-id', 'New', FAKE_DATA)).resolves.toBeUndefined();
@@ -361,7 +424,7 @@ describe('GoogleDriveProvider', () => {
         it('throws when the PATCH request fails', async () => {
             fetchMock
                 .mockResolvedValueOnce(
-                    driveFileList([{ id: 'gid1', name: 'renovation-project-p1.json' }])
+                    driveFileSearch({ id: 'gid1', name: 'renovation-project-p1.json' })
                 )
                 .mockResolvedValueOnce(driveError(500));
 
@@ -377,9 +440,9 @@ describe('GoogleDriveProvider', () => {
         });
 
         it('does nothing when the project file is not found', async () => {
-            fetchMock.mockResolvedValueOnce(driveFileList([]));
+            fetchMock.mockResolvedValueOnce(driveFileSearch(null));
             await expect(provider.renameProject('missing', 'New Name')).resolves.toBeUndefined();
-            // Only one fetch call (listing)
+            // Only one fetch call (getFileInfo targeted query)
             expect(fetchMock).toHaveBeenCalledTimes(1);
         });
 
@@ -387,7 +450,7 @@ describe('GoogleDriveProvider', () => {
             const record = makeRecord('Old Name', NOW);
             fetchMock
                 .mockResolvedValueOnce(
-                    driveFileList([{ id: 'gid1', name: 'renovation-project-p1.json' }])
+                    driveFileSearch({ id: 'gid1', name: 'renovation-project-p1.json' })
                 )
                 .mockResolvedValueOnce(driveMedia(record))
                 .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
@@ -403,12 +466,12 @@ describe('GoogleDriveProvider', () => {
         it('does nothing when the file content is an invalid record', async () => {
             fetchMock
                 .mockResolvedValueOnce(
-                    driveFileList([{ id: 'gid1', name: 'renovation-project-p1.json' }])
+                    driveFileSearch({ id: 'gid1', name: 'renovation-project-p1.json' })
                 )
                 .mockResolvedValueOnce(driveMedia({ bad: 'data' }));
 
             await expect(provider.renameProject('p1', 'New Name')).resolves.toBeUndefined();
-            // Only 2 fetches: list + media read (no PATCH because record is invalid)
+            // Only 2 fetches: getFileInfo + media read (no PATCH because record is invalid)
             expect(fetchMock).toHaveBeenCalledTimes(2);
         });
     });
@@ -421,22 +484,123 @@ describe('GoogleDriveProvider', () => {
         });
 
         it('returns 0 when the project is not found', async () => {
-            fetchMock.mockResolvedValueOnce(driveFileList([]));
+            fetchMock.mockResolvedValueOnce(driveFileSearch(null));
             await expect(provider.getProjectSize('missing')).resolves.toBe(0);
         });
 
         it('returns 0 when the file entry has no size', async () => {
             fetchMock.mockResolvedValueOnce(
-                driveFileList([{ id: 'gid1', name: 'renovation-project-p1.json' }])
+                driveFileSearch({ id: 'gid1', name: 'renovation-project-p1.json' })
             );
             await expect(provider.getProjectSize('p1')).resolves.toBe(0);
         });
 
         it('returns the numeric size when present', async () => {
             fetchMock.mockResolvedValueOnce(
-                driveFileList([{ id: 'gid1', name: 'renovation-project-p1.json', size: '1234' }])
+                driveFileSearch({ id: 'gid1', name: 'renovation-project-p1.json', size: '1234' })
             );
             await expect(provider.getProjectSize('p1')).resolves.toBe(1234);
+        });
+    });
+
+    // ── getFileInfo targeted query ────────────────────────────────────────
+
+    describe('getFileInfo (targeted query)', () => {
+        beforeEach(async () => {
+            await provider.initialize();
+        });
+
+        it('queries Drive with an exact name match (q=name=…)', async () => {
+            fetchMock.mockResolvedValueOnce(driveFileSearch(null));
+            await provider.loadProject('my-project-id');
+
+            const [url] = fetchMock.mock.calls[0] as [string];
+            // The query should use exact name match, not contains
+            expect(url).toContain('q=name=');
+            expect(url).toContain('renovation-project-my-project-id.json');
+        });
+
+        it('uses pageSize=1 in the targeted query', async () => {
+            fetchMock.mockResolvedValueOnce(driveFileSearch(null));
+            await provider.loadProject('any-id');
+
+            const [url] = fetchMock.mock.calls[0] as [string];
+            expect(url).toContain('pageSize=1');
+        });
+
+        it('escapes special characters in project IDs within the query', async () => {
+            fetchMock.mockResolvedValueOnce(driveFileSearch(null));
+            // Project id with a single-quote (edge case); should not break the q= parameter
+            await provider.loadProject("tricky'id");
+
+            const [url] = fetchMock.mock.calls[0] as [string];
+            // The single-quote in the project ID must be backslash-escaped so the Drive query is valid
+            expect(url).toContain("renovation-project-tricky\\'id.json");
+        });
+    });
+
+    // ── Token expiry / 401 handling ───────────────────────────────────────
+
+    describe('token expiry (401 handling)', () => {
+        beforeEach(async () => {
+            await provider.initialize();
+        });
+
+        it('retries the request with a new token after a 401', async () => {
+            // First list call returns 401
+            fetchMock
+                .mockResolvedValueOnce(drive401())
+                // After silent token refresh, retry succeeds
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: async () => ({ files: [] })
+                });
+
+            await expect(provider.listProjects()).resolves.toEqual([]);
+            // Two fetch calls total: initial 401, then retry
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        });
+
+        it('calls requestAccessToken again for silent refresh after a 401', async () => {
+            // The initTokenClient mock was called once during initialize() (in beforeEach).
+            // Get the token client it returned so we can assert against its requestAccessToken.
+            const initMock = window.google!.accounts.oauth2.initTokenClient as ReturnType<typeof vi.fn>;
+            const cachedTokenClient = initMock.mock.results[0]?.value as { requestAccessToken: ReturnType<typeof vi.fn> };
+
+            fetchMock
+                .mockResolvedValueOnce(drive401())
+                .mockResolvedValueOnce({ ok: true, json: async () => ({ files: [] }) });
+
+            await provider.listProjects();
+
+            // requestAccessToken: once during initialize() + once for silent refresh
+            expect(cachedTokenClient.requestAccessToken).toHaveBeenCalledTimes(2);
+            // Silent refresh must pass an empty prompt to avoid user interaction
+            expect(cachedTokenClient.requestAccessToken).toHaveBeenLastCalledWith({ prompt: '' });
+        });
+
+        it('throws a session-expired error when silent refresh fails', async () => {
+            // Retrieve the token client and its config (including error_callback) that were
+            // captured by the initTokenClient mock during initialize() in beforeEach.
+            const initMock = window.google!.accounts.oauth2.initTokenClient as ReturnType<typeof vi.fn>;
+            const tokenClientConfig = initMock.mock.calls[0]?.[0] as { error_callback?: (e: { message: string; type: string }) => void };
+            const cachedTokenClient = initMock.mock.results[0]?.value as { requestAccessToken: ReturnType<typeof vi.fn> };
+
+            // Make the next requestAccessToken call invoke error_callback (simulates failed silent refresh)
+            cachedTokenClient.requestAccessToken.mockImplementationOnce(() => {
+                tokenClientConfig.error_callback?.({ message: 'silent_refresh_failed', type: 'token_error' });
+            });
+
+            fetchMock.mockResolvedValueOnce(drive401());
+
+            await expect(provider.listProjects()).rejects.toThrow(/session expired/i);
+        });
+
+        it('does not retry on non-401 errors', async () => {
+            fetchMock.mockResolvedValueOnce(driveError(403));
+            await expect(provider.listProjects()).rejects.toThrow(/403/);
+            // Only one fetch call – no retry for 403
+            expect(fetchMock).toHaveBeenCalledTimes(1);
         });
     });
 
