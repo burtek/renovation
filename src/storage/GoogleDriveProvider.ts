@@ -377,9 +377,10 @@ export class GoogleDriveProvider implements StorageProvider {
             return firstResponse;
         }
 
-        // Token may have expired – attempt a silent refresh (empty prompt avoids user interaction)
+        // Token may have expired – attempt a silent refresh.
+        // An empty string prompt tells GIS to refresh without showing a user consent dialog.
         try {
-            this.accessToken = await this.requestNewToken('');
+            this.accessToken = await this.requestNewToken(/* prompt= */ '');
         } catch {
             throw new Error('Google Drive session expired. Please reconnect to Google Drive.');
         }
@@ -449,17 +450,18 @@ export class GoogleDriveProvider implements StorageProvider {
         // Pages must be fetched sequentially since each page's token comes from the previous response.
 
         while (true) {
-            const qs = [
+            const qsParts = [
                 'spaces=appDataFolder',
                 'fields=nextPageToken,files(id,name,size,appProperties)',
                 'pageSize=1000',
-                `q=name+contains+'${GDRIVE_FILE_PREFIX}'`,
-
-                ...pageToken === undefined ? [] : [`pageToken=${encodeURIComponent(pageToken)}`]
-            ].join('&');
+                `q=name+contains+'${GDRIVE_FILE_PREFIX}'`
+            ];
+            if (pageToken !== undefined) {
+                qsParts.push(`pageToken=${encodeURIComponent(pageToken)}`);
+            }
             // eslint-disable-next-line no-await-in-loop
             const result = await this.driveGet<{ files?: GDriveFileInfo[]; nextPageToken?: string }>(
-                `/files?${qs}`
+                `/files?${qsParts.join('&')}`
             );
             files.push(...result.files ?? []);
             pageToken = result.nextPageToken;
