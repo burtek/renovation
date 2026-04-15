@@ -114,8 +114,8 @@ jobs:
           name: coverage-base
           path: coverage-base
 
-      - name: Fail on coverage regression
-        # Disabled intentionally — set to true to keep the code in place for easy re-enablement
+      - name: Check coverage regression (non-blocking)
+        # Disabled intentionally — set to false (or remove this line) to re-enable failing the job on regression
         continue-on-error: true
         uses: actions/github-script@v7
         with:
