@@ -6,6 +6,12 @@ on:
 permissions:
   contents: read
 
+env:
+  COVERAGE_THRESHOLD_STATEMENTS: 95
+  COVERAGE_THRESHOLD_BRANCHES: 95
+  COVERAGE_THRESHOLD_FUNCTIONS: 95
+  COVERAGE_THRESHOLD_LINES: 95
+
 jobs:
   lint-and-build:
     name: Lint & Build
@@ -115,11 +121,15 @@ jobs:
             const current = JSON.parse(fs.readFileSync(currentPath, 'utf8'));
 
             const thresholds = {
-              statements: 95,
-              branches: 94,
-              functions: 95,
-              lines: 95,
+              statements: Number(process.env.COVERAGE_THRESHOLD_STATEMENTS),
+              branches: Number(process.env.COVERAGE_THRESHOLD_BRANCHES),
+              functions: Number(process.env.COVERAGE_THRESHOLD_FUNCTIONS),
+              lines: Number(process.env.COVERAGE_THRESHOLD_LINES),
             };
+            if (Object.values(thresholds).some(v => Number.isNaN(v))) {
+              core.setFailed('Invalid coverage threshold configuration — check workflow env vars');
+              return;
+            }
             const failures = Object.entries(thresholds).filter(([key, threshold]) => current.total[key].pct < threshold);
 
             if (failures.length > 0) {
