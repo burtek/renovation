@@ -114,12 +114,16 @@ jobs:
             const currentPath = path.join(process.env.GITHUB_WORKSPACE, 'coverage-current', 'coverage-summary.json');
             const current = JSON.parse(fs.readFileSync(currentPath, 'utf8'));
 
-            const THRESHOLD = 95;
-            const metrics = ['statements', 'branches', 'functions', 'lines'];
-            const failures = metrics.filter(key => current.total[key].pct < THRESHOLD);
+            const thresholds = {
+              statements: 95,
+              branches: 95,
+              functions: 95,
+              lines: 95,
+            };
+            const failures = Object.entries(thresholds).filter(([key, threshold]) => current.total[key].pct < threshold);
 
             if (failures.length > 0) {
-              core.setFailed(`Coverage below ${THRESHOLD}% threshold for: ${failures.map(k => `${k} (${current.total[k].pct.toFixed(1)}%)`).join(', ')}`);
+              core.setFailed(`Coverage below threshold for: ${failures.map(([k, t]) => `${k} (${current.total[k].pct.toFixed(1)}% < ${t}%)`).join(', ')}`);
             }
 
   coverage-compare:
@@ -147,7 +151,8 @@ jobs:
           name: coverage-base
           path: coverage-base
 
-      - name: Fail on coverage regression
+      - name: Check coverage regression (non-blocking)
+        # Disabled intentionally — set to false (or remove this line) to re-enable failing the job on regression
         continue-on-error: true
         uses: actions/github-script@v7
         with:
