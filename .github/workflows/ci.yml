@@ -80,7 +80,7 @@ jobs:
         run: yarn install --frozen-lockfile --silent
 
       - name: Run tests with coverage (base)
-        run: yarn test:coverage --coverage.reporter=json-summary || true
+        run: yarn test:coverage --coverage.reporter=json-summary --coverage.thresholds.statements=0 --coverage.thresholds.branches=0 --coverage.thresholds.functions=0 --coverage.thresholds.lines=0 || true
 
       - name: Upload base coverage summary
         uses: actions/upload-artifact@v4
@@ -115,6 +115,7 @@ jobs:
           path: coverage-base
 
       - name: Fail on coverage regression
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |

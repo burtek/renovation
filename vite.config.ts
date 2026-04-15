@@ -22,7 +22,13 @@ export default defineConfig(({ command }) => ({
                 'src/test-setup.ts',
                 'src/**/*.test.{ts,tsx}',
                 'src/**/__tests__/**'
-            ]
+            ],
+            thresholds: {
+                statements: 95,
+                branches: 95,
+                functions: 95,
+                lines: 95
+            }
         }
     }
 }));
