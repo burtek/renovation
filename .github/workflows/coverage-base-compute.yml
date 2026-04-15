@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       ref:
-        description: Git ref to check out (defaults to the calling workflow ref)
+        description: Git ref to check out (defaults to the calling workflow SHA)
         required: false
         type: string
         default: ''
@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref || github.sha }}
           fetch-depth: 0
 
       - name: Get commit SHA and runner info
