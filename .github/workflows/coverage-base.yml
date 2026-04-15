@@ -1,0 +1,50 @@
+name: Coverage (base branch)
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  coverage-base:
+    name: Coverage (base branch)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Get commit SHA
+        id: sha
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Check coverage cache
+        id: cache-check
+        uses: actions/cache/restore@v4
+        with:
+          path: coverage/coverage-summary.json
+          key: coverage-base-ubuntu-latest-node24-${{ steps.sha.outputs.sha }}
+          lookup-only: true
+
+      - uses: actions/setup-node@v6
+        if: steps.cache-check.outputs.cache-hit != 'true'
+        with:
+          node-version: 24
+          cache: yarn
+
+      - name: Install dependencies
+        if: steps.cache-check.outputs.cache-hit != 'true'
+        run: yarn install --frozen-lockfile --silent
+
+      - name: Run tests with coverage
+        if: steps.cache-check.outputs.cache-hit != 'true'
+        run: yarn test:coverage --coverage.reporter=json-summary || true
+
+      - name: Save coverage cache
+        if: steps.cache-check.outputs.cache-hit != 'true' && hashFiles('coverage/coverage-summary.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: coverage/coverage-summary.json
+          key: coverage-base-ubuntu-latest-node24-${{ steps.sha.outputs.sha }}
