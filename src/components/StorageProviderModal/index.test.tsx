@@ -393,4 +393,68 @@ describe('StorageProviderModal', () => {
         await user.keyboard('{ArrowDown}');
         expect(document.activeElement).toBe(localBtn);
     });
+
+    it('does not wrap Tab focus when not on the last element', async () => {
+        const user = userEvent.setup();
+        render(
+            <StorageProviderModal
+                gdriveAvailable
+                onSelectLocal={noop}
+                onSelectGDrive={noop}
+            />
+        );
+        const localBtn = screen.getByRole('button', { name: /local storage/i });
+        const gdriveBtn = screen.getByRole('button', { name: /google drive/i });
+
+        localBtn.focus();
+        expect(document.activeElement).toBe(localBtn);
+
+        // Tab from the first button should move naturally to the second (no wrap)
+        await user.tab();
+
+        await waitFor(() => {
+            expect(document.activeElement).toBe(gdriveBtn);
+        });
+    });
+
+    it('does not wrap Shift+Tab focus when not on the first element', async () => {
+        const user = userEvent.setup();
+        render(
+            <StorageProviderModal
+                gdriveAvailable
+                onSelectLocal={noop}
+                onSelectGDrive={noop}
+            />
+        );
+        const localBtn = screen.getByRole('button', { name: /local storage/i });
+        const gdriveBtn = screen.getByRole('button', { name: /google drive/i });
+
+        gdriveBtn.focus();
+        expect(document.activeElement).toBe(gdriveBtn);
+
+        // Shift+Tab from the last button should move naturally to the first (no wrap)
+        await user.tab({ shift: true });
+
+        await waitFor(() => {
+            expect(document.activeElement).toBe(localBtn);
+        });
+    });
+
+    it('shows a fallback error message when onSelectLocal rejects with a non-Error value', async () => {
+        const user = userEvent.setup();
+        const onSelectLocal = vi.fn().mockRejectedValue('storage unavailable string');
+        render(
+            <StorageProviderModal
+                gdriveAvailable={false}
+                onSelectLocal={onSelectLocal}
+                onSelectGDrive={noop}
+            />
+        );
+
+        await user.click(screen.getByRole('button', { name: /local storage/i }));
+
+        await waitFor(() => {
+            expect(screen.getByRole('alert')).toHaveTextContent('Failed to initialize local storage.');
+        });
+    });
 });

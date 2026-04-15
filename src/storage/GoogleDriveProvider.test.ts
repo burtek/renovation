@@ -618,13 +618,14 @@ describe('GoogleDriveProvider', () => {
             const config = initMock.mock.calls[0]?.[0] as { callback: (r: { access_token: string }) => void };
 
             let silentRefreshCount = 0;
-            let resolveRefresh: (() => void) | null = null;
+            // Use an object to avoid TypeScript's control-flow narrowing on the let binding
+            const refreshRef: { fn: (() => void) | null } = { fn: null };
 
             cachedTokenClient.requestAccessToken.mockImplementation((opts?: { prompt?: string }) => {
                 if (opts?.prompt === '') {
                     // Silent-refresh path: don't call back yet (simulates async GIS flow)
                     silentRefreshCount++;
-                    resolveRefresh = () => config.callback({ access_token: 'refreshed-token' });
+                    refreshRef.fn = () => config.callback({ access_token: 'refreshed-token' });
                 } else {
                     // Interactive path (initialize): call back immediately as before
                     config.callback({ access_token: 'fake-access-token' });
@@ -652,7 +653,7 @@ describe('GoogleDriveProvider', () => {
             } as unknown as Response);
 
             // Now resolve the token refresh – both callers should get the same token
-            resolveRefresh?.();
+            refreshRef.fn?.();
 
             const [r1, r2] = await Promise.all([p1, p2]);
             expect(r1).toEqual([]);

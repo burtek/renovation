@@ -62,3 +62,25 @@ describe('StorageManager', () => {
         storageManager.setProvider('LS_OPFS');
     });
 });
+
+describe('StorageManager with VITE_STORAGE_GDRIVE_CLIENT_ID set', () => {
+    beforeEach(() => {
+        vi.stubEnv('VITE_STORAGE_GDRIVE_CLIENT_ID', 'test-gdrive-client-id');
+        vi.resetModules();
+    });
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
+        vi.resetModules();
+    });
+
+    it('registers GoogleDriveProvider when env var is set', async () => {
+        const { storageManager: sm } = await import('./index');
+        // Allow the async IIFE to complete
+        await new Promise<void>(r => {
+            setTimeout(r, 50);
+        });
+        // GoogleDriveProvider should have been registered
+        expect(sm.providers.some(p => p.id === 'GDRIVE')).toBe(true);
+    });
+});
