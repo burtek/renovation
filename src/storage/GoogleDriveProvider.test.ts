@@ -515,9 +515,11 @@ describe('GoogleDriveProvider', () => {
             await provider.loadProject('my-project-id');
 
             const [url] = fetchMock.mock.calls[0] as [string];
+            // URLSearchParams URL-encodes the q= value; decode before asserting
+            const decodedUrl = decodeURIComponent(url);
             // The query should use exact name match, not contains
-            expect(url).toContain('q=name=');
-            expect(url).toContain('renovation-project-my-project-id.json');
+            expect(decodedUrl).toContain("q=name='");
+            expect(decodedUrl).toContain('renovation-project-my-project-id.json');
         });
 
         it('uses pageSize=1 in the targeted query', async () => {
@@ -525,7 +527,8 @@ describe('GoogleDriveProvider', () => {
             await provider.loadProject('any-id');
 
             const [url] = fetchMock.mock.calls[0] as [string];
-            expect(url).toContain('pageSize=1');
+            const decodedUrl = decodeURIComponent(url);
+            expect(decodedUrl).toContain('pageSize=1');
         });
 
         it('escapes special characters in project IDs within the query', async () => {
@@ -534,8 +537,10 @@ describe('GoogleDriveProvider', () => {
             await provider.loadProject("tricky'id");
 
             const [url] = fetchMock.mock.calls[0] as [string];
+            // URLSearchParams URL-encodes special chars; decode before asserting the Drive query
+            const decodedUrl = decodeURIComponent(url);
             // The single-quote in the project ID must be backslash-escaped so the Drive query is valid
-            expect(url).toContain("renovation-project-tricky\\'id.json");
+            expect(decodedUrl).toContain("renovation-project-tricky\\'id.json");
         });
     });
 
@@ -602,6 +607,60 @@ describe('GoogleDriveProvider', () => {
             // Only one fetch call – no retry for 403
             expect(fetchMock).toHaveBeenCalledTimes(1);
         });
+
+        it('deduplicates concurrent token requests when multiple 401s race', async () => {
+            // In production the GIS library calls back asynchronously (user interaction needed),
+            // so two concurrent requests hitting 401 should share one token-refresh call.
+            // We simulate this by making the silent-refresh mock NOT call back immediately,
+            // then manually triggering it so both waiters share the same resolved token.
+            const initMock = window.google!.accounts.oauth2.initTokenClient as ReturnType<typeof vi.fn>;
+            const cachedTokenClient = initMock.mock.results[0]?.value as { requestAccessToken: ReturnType<typeof vi.fn> };
+            const config = initMock.mock.calls[0]?.[0] as { callback: (r: { access_token: string }) => void };
+
+            let silentRefreshCount = 0;
+            let resolveRefresh: (() => void) | null = null;
+
+            cachedTokenClient.requestAccessToken.mockImplementation((opts?: { prompt?: string }) => {
+                if (opts?.prompt === '') {
+                    // Silent-refresh path: don't call back yet (simulates async GIS flow)
+                    silentRefreshCount++;
+                    resolveRefresh = () => config.callback({ access_token: 'refreshed-token' });
+                } else {
+                    // Interactive path (initialize): call back immediately as before
+                    config.callback({ access_token: 'fake-access-token' });
+                }
+            });
+
+            // Both list calls will get 401; retry fetches succeed
+            fetchMock
+                .mockResolvedValue(drive401()); // first two calls: 401; retries use the resolved value below
+
+            // Start both requests — both hit 401 and both will call requestNewToken('')
+            const p1 = provider.listProjects();
+            const p2 = provider.listProjects();
+
+            // Yield to let both promises hit the 401 and call requestNewToken('') before
+            // the refresh resolves, so the second call can de-duplicate onto the first.
+            await new Promise<void>(r => {
+                setTimeout(r, 0);
+            });
+
+            // Swap mock so retry fetches succeed
+            fetchMock.mockResolvedValue({
+                ok: true,
+                json: async () => ({ files: [] })
+            } as unknown as Response);
+
+            // Now resolve the token refresh – both callers should get the same token
+            resolveRefresh?.();
+
+            const [r1, r2] = await Promise.all([p1, p2]);
+            expect(r1).toEqual([]);
+            expect(r2).toEqual([]);
+
+            // Only one silent-refresh call despite two concurrent 401 retries
+            expect(silentRefreshCount).toBe(1);
+        });
     });
 
     // ── Authorization header ──────────────────────────────────────────────
@@ -624,5 +683,67 @@ describe('GoogleDriveProvider', () => {
     it('throws when any API call is made before initialize()', async () => {
         const unauthProvider = new GoogleDriveProvider(CLIENT_ID);
         await expect(unauthProvider.loadProject('x')).rejects.toThrow(/not authenticated/i);
+    });
+
+    // ── isStoredProjectRecord validation ─────────────────────────────────
+
+    describe('record validation (isStoredProjectRecord)', () => {
+        beforeEach(async () => {
+            await provider.initialize();
+        });
+
+        it('accepts a well-formed record', async () => {
+            fetchMock
+                .mockResolvedValueOnce(driveFileSearch({ id: 'f1', name: 'renovation-project-abc.json' }))
+                .mockResolvedValueOnce(driveMedia(makeRecord('MyProject')));
+            const result = await provider.loadProject('abc');
+            expect(result).not.toBeNull();
+            expect(result?.meta.name).toBe('MyProject');
+        });
+
+        it('rejects a record where meta.name is missing', async () => {
+            const badRecord = { meta: { lastModified: NOW }, data: {} };
+            fetchMock
+                .mockResolvedValueOnce(driveFileSearch({ id: 'f1', name: 'renovation-project-abc.json' }))
+                .mockResolvedValueOnce(driveMedia(badRecord));
+            const result = await provider.loadProject('abc');
+            expect(result).toBeNull();
+        });
+
+        it('rejects a record where meta.name is not a string', async () => {
+            const badRecord = { meta: { name: 42, lastModified: NOW }, data: {} };
+            fetchMock
+                .mockResolvedValueOnce(driveFileSearch({ id: 'f1', name: 'renovation-project-abc.json' }))
+                .mockResolvedValueOnce(driveMedia(badRecord));
+            const result = await provider.loadProject('abc');
+            expect(result).toBeNull();
+        });
+
+        it('rejects a record where meta.lastModified is missing', async () => {
+            const badRecord = { meta: { name: 'Project' }, data: {} };
+            fetchMock
+                .mockResolvedValueOnce(driveFileSearch({ id: 'f1', name: 'renovation-project-abc.json' }))
+                .mockResolvedValueOnce(driveMedia(badRecord));
+            const result = await provider.loadProject('abc');
+            expect(result).toBeNull();
+        });
+
+        it('rejects a record where meta.lastModified is not a string', async () => {
+            const badRecord = { meta: { name: 'Project', lastModified: 12345 }, data: {} };
+            fetchMock
+                .mockResolvedValueOnce(driveFileSearch({ id: 'f1', name: 'renovation-project-abc.json' }))
+                .mockResolvedValueOnce(driveMedia(badRecord));
+            const result = await provider.loadProject('abc');
+            expect(result).toBeNull();
+        });
+
+        it('rejects a record with no meta property', async () => {
+            const badRecord = { data: {} };
+            fetchMock
+                .mockResolvedValueOnce(driveFileSearch({ id: 'f1', name: 'renovation-project-abc.json' }))
+                .mockResolvedValueOnce(driveMedia(badRecord));
+            const result = await provider.loadProject('abc');
+            expect(result).toBeNull();
+        });
     });
 });

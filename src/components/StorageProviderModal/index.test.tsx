@@ -316,4 +316,81 @@ describe('StorageProviderModal', () => {
         await user.click(screen.getByRole('button', { name: /google drive/i }));
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
+
+    // ── Initial focus ─────────────────────────────────────────────────────
+
+    it('moves focus to the Local Storage button on mount', () => {
+        render(
+            <StorageProviderModal
+                gdriveAvailable={false}
+                onSelectLocal={noop}
+                onSelectGDrive={noop}
+            />
+        );
+        expect(document.activeElement).toBe(
+            screen.getByRole('button', { name: /local storage/i })
+        );
+    });
+
+    // ── Tab focus trap ────────────────────────────────────────────────────
+
+    it('wraps Tab focus from the last button back to the first', async () => {
+        const user = userEvent.setup();
+        render(
+            <StorageProviderModal
+                gdriveAvailable
+                onSelectLocal={noop}
+                onSelectGDrive={noop}
+            />
+        );
+        const localBtn = screen.getByRole('button', { name: /local storage/i });
+        const gdriveBtn = screen.getByRole('button', { name: /google drive/i });
+
+        gdriveBtn.focus();
+        expect(document.activeElement).toBe(gdriveBtn);
+
+        await user.tab();
+
+        await waitFor(() => {
+            expect(document.activeElement).toBe(localBtn);
+        });
+    });
+
+    it('wraps Shift+Tab focus from the first button back to the last', async () => {
+        const user = userEvent.setup();
+        render(
+            <StorageProviderModal
+                gdriveAvailable
+                onSelectLocal={noop}
+                onSelectGDrive={noop}
+            />
+        );
+        const localBtn = screen.getByRole('button', { name: /local storage/i });
+        const gdriveBtn = screen.getByRole('button', { name: /google drive/i });
+
+        localBtn.focus();
+        expect(document.activeElement).toBe(localBtn);
+
+        await user.tab({ shift: true });
+
+        await waitFor(() => {
+            expect(document.activeElement).toBe(gdriveBtn);
+        });
+    });
+
+    it('ignores non-Tab keydown events in the focus trap handler', async () => {
+        const user = userEvent.setup();
+        render(
+            <StorageProviderModal
+                gdriveAvailable
+                onSelectLocal={noop}
+                onSelectGDrive={noop}
+            />
+        );
+        const localBtn = screen.getByRole('button', { name: /local storage/i });
+        localBtn.focus();
+
+        await user.keyboard('{ArrowDown}');
+        expect(document.activeElement).toBe(localBtn);
+    });
 });

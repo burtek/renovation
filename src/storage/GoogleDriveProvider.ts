@@ -59,11 +59,15 @@ function isStoredProjectRecord(obj: unknown): obj is StoredProjectRecord {
         typeof obj === 'object'
         && obj !== null
         && 'meta' in obj
-        && typeof (obj as Record<string, unknown>).meta === 'object'
-        && (obj as Record<string, unknown>).meta !== null
+        && typeof obj.meta === 'object'
+        && obj.meta !== null
+        && 'name' in obj.meta
+        && typeof obj.meta.name === 'string'
+        && 'lastModified' in obj.meta
+        && typeof obj.meta.lastModified === 'string'
         && 'data' in obj
-        && typeof (obj as Record<string, unknown>).data === 'object'
-        && (obj as Record<string, unknown>).data !== null
+        && typeof obj.data === 'object'
+        && obj.data !== null
     );
 }
 
@@ -133,6 +137,12 @@ export class GoogleDriveProvider implements StorageProvider {
     private pendingTokenReject: ((error: Error) => void) | null = null;
     private pendingTokenResolve: ((token: string) => void) | null = null;
     private tokenClient: TokenClient | null = null;
+    /**
+     * When a token request is in-flight this holds its Promise so that concurrent
+     * callers (e.g. multiple 401 retries racing) share the same request instead of
+     * overwriting each other's resolve/reject callbacks.
+     */
+    private tokenRequestInFlight: Promise<string> | null = null;
 
     constructor(private readonly clientId: string) {
         // clientId captured as parameter property
@@ -394,17 +404,19 @@ export class GoogleDriveProvider implements StorageProvider {
     /**
      * Finds the Drive file entry for a specific project ID using a targeted query.
      * This avoids fetching the full project list when only one file is needed.
+     * `URLSearchParams` ensures the `q=` value is correctly URL-encoded so project
+     * IDs containing characters like `&`, `#`, or `%` don't break the request.
      */
     private async getFileInfo(projectId: string): Promise<GDriveFileInfo | null> {
         const fileName = `${GDRIVE_FILE_PREFIX}${projectId}.json`;
         const escapedName = escapeDriveQueryValue(fileName);
-        const qs = [
-            'spaces=appDataFolder',
-            'fields=files(id,name,size,appProperties)',
-            'pageSize=1',
-            `q=name='${escapedName}'`
-        ].join('&');
-        const result = await this.driveGet<{ files: GDriveFileInfo[] }>(`/files?${qs}`);
+        const qs = new URLSearchParams({
+            spaces: 'appDataFolder',
+            fields: 'files(id,name,size,appProperties)',
+            pageSize: '1',
+            q: `name='${escapedName}'`
+        });
+        const result = await this.driveGet<{ files: GDriveFileInfo[] }>(`/files?${qs.toString()}`);
         return result.files[0] ?? null;
     }
 
@@ -426,12 +438,14 @@ export class GoogleDriveProvider implements StorageProvider {
                     }
                     this.pendingTokenResolve = null;
                     this.pendingTokenReject = null;
+                    this.tokenRequestInFlight = null;
                 },
                 // eslint-disable-next-line @typescript-eslint/naming-convention
                 error_callback: (error: { message: string; type: string }) => {
                     this.pendingTokenReject?.(new Error(error.message));
                     this.pendingTokenResolve = null;
                     this.pendingTokenReject = null;
+                    this.tokenRequestInFlight = null;
                 }
             });
         }
@@ -474,11 +488,23 @@ export class GoogleDriveProvider implements StorageProvider {
     }
 
     private requestNewToken(prompt?: string): Promise<string> {
-        return new Promise((resolve, reject) => {
+        // Deduplicate concurrent token requests – if one is already in-flight, reuse it.
+        // This prevents a race where multiple 401 retries overwrite each other's callbacks.
+        if (this.tokenRequestInFlight !== null) {
+            return this.tokenRequestInFlight;
+        }
+        // Capture resolve/reject outside the executor so we can store the reference BEFORE
+        // calling requestAccessToken. The GIS library may invoke the callback synchronously,
+        // which would clear tokenRequestInFlight, but we need that cleared AFTER we set it.
+        const promise = new Promise<string>((resolve, reject) => {
             this.pendingTokenResolve = resolve;
             this.pendingTokenReject = reject;
-            const client = this.getOrCreateTokenClient();
-            client.requestAccessToken(prompt === undefined ? undefined : { prompt });
         });
+        // Set BEFORE calling requestAccessToken so that the synchronous GIS callback clears
+        // the correct reference (and doesn't accidentally leave a stale resolved promise).
+        this.tokenRequestInFlight = promise;
+        const client = this.getOrCreateTokenClient();
+        client.requestAccessToken(prompt === undefined ? undefined : { prompt });
+        return promise;
     }
 }

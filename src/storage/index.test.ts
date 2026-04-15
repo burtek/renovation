@@ -35,4 +35,30 @@ describe('StorageManager', () => {
 
         warnSpy.mockRestore();
     });
+
+    it('addProvider registers a new provider that setProvider can find', () => {
+        const fakeProvider = {
+            id: 'FAKE',
+            label: 'Fake Storage',
+            initialize: async () => {
+            },
+            listProjects: async () => [],
+            loadProject: async () => null,
+            saveProject: async () => {
+            },
+            createProject: async () => 'new-id',
+            renameProject: async () => {
+            },
+            getProjectSize: async () => 0
+        };
+
+        storageManager.addProvider(fakeProvider);
+        expect(storageManager.providers).toContain(fakeProvider);
+
+        storageManager.setProvider('FAKE');
+        expect(storageManager.provider.id).toBe('FAKE');
+
+        // Reset back to local so other tests are not affected
+        storageManager.setProvider('LS_OPFS');
+    });
 });

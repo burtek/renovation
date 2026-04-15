@@ -1,4 +1,5 @@
-import { useId, useState } from 'react';
+import type { KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { cn } from '../../utils/classnames';
 
@@ -15,10 +16,43 @@ export default function StorageProviderModal({
     onSelectGDrive
 }: StorageProviderModalProps) {
     const titleId = useId();
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const firstButtonRef = useRef<HTMLButtonElement>(null);
     const [loadingProvider, setLoadingProvider] = useState<'local' | 'gdrive' | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const isLoading = loadingProvider !== null;
+
+    // Focus the first button when the modal mounts
+    useEffect(() => {
+        firstButtonRef.current?.focus();
+    }, []);
+
+    // Keep Tab / Shift+Tab focus within the dialog
+    const handleTabKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+        if (e.key !== 'Tab') {
+            return;
+        }
+        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        /* c8 ignore next -- the dialog always has at least one focusable button */
+        if (!focusable || focusable.length === 0) {
+            return;
+        }
+        const focusableArray = Array.from(focusable);
+        const [first] = focusableArray;
+        const last = focusableArray[focusableArray.length - 1];
+        if (e.shiftKey) {
+            if (document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            }
+        } else if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    };
 
     const handleLocal = async () => {
         setLoadingProvider('local');
@@ -47,10 +81,12 @@ export default function StorageProviderModal({
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
                 className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg shadow-xl max-w-md w-full p-6"
+                onKeyDown={handleTabKeyDown}
             >
                 <h2
                     id={titleId}
@@ -65,6 +101,7 @@ export default function StorageProviderModal({
 
                 <div className="space-y-3">
                     <button
+                        ref={firstButtonRef}
                         type="button"
                         disabled={isLoading}
                         onClick={() => {
