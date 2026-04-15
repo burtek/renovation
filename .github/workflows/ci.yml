@@ -66,34 +66,10 @@ jobs:
 
   coverage-base:
     name: Coverage (base)
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.base_ref }}
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: yarn
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile --silent
-
-      - name: Run tests with coverage (base)
-        run: yarn test:coverage --coverage.reporter=json-summary || true
-
-      - name: Upload base coverage summary
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-base
-          path: coverage/coverage-summary.json
-          if-no-files-found: warn
+    uses: ./.github/workflows/coverage-base-compute.yml
+    with:
+      ref: ${{ github.event.pull_request.base.sha }}
+      artifact-name: coverage-base
 
   coverage-check:
     name: Coverage (check thresholds)
