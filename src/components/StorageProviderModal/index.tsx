@@ -24,6 +24,15 @@ export default function StorageProviderModal({
     const [error, setError] = useState<string | null>(null);
 
     const isLoading = loadingProvider !== null;
+    const gdriveButtonLabel = (() => {
+        if (loadingProvider === 'gdrive') {
+            return 'Connecting…';
+        }
+        if (!gdriveReady) {
+            return 'Loading…';
+        }
+        return 'Google Drive';
+    })();
 
     // Focus the first button when the modal mounts
     useEffect(() => {
@@ -144,8 +153,7 @@ export default function StorageProviderModal({
                             <span className="text-2xl">☁️</span>
                             <div>
                                 <div className="font-semibold">
-                                    {/* eslint-disable-next-line no-nested-ternary */}
-                                    {loadingProvider === 'gdrive' ? 'Connecting…' : gdriveReady ? 'Google Drive' : 'Loading…'}
+                                    {gdriveButtonLabel}
                                 </div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
                                     Store projects in your Google Drive (app data only)
