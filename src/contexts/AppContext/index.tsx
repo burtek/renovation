@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import ProjectModal from '../../components/ProjectModal';
 import StorageProviderModal from '../../components/StorageProviderModal';
 import type { ProjectMeta } from '../../storage';
-import { gdriveProviderReady, storageManager } from '../../storage';
+import { allProvidersReady, hasOptionalProviders, storageManager } from '../../storage';
 import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { AppData, CalendarEvent, CalendarEventType } from '../../types';
 import { compressToGzip, decompressFromGzip, isCompressionSupported } from '../../utils/compression';
@@ -144,12 +144,11 @@ AppContext.displayName = 'AppContext';
 
 
 export function AppProvider({ children }: { children: ReactNode }) {
-    // When GDrive is configured, always start with provider selection; otherwise skip straight to
-    // the existing local-storage flow (backward-compatible).
-    const gdriveConfigured = !!import.meta.env.VITE_STORAGE_GDRIVE_CLIENT_ID;
+    // When any optional provider is configured, always start with provider selection;
+    // otherwise skip straight to the existing local-storage flow (backward-compatible).
 
     const [{ state: initState, meta: initMeta, needsPicker }] = useState(() => {
-        if (gdriveConfigured) {
+        if (hasOptionalProviders) {
             return { state: initialState, meta: null as ProjectMeta | null, needsPicker: false };
         }
         return loadInitialState();
@@ -157,32 +156,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [state, dispatch] = useReducer(reducer, initState);
     const [projectMeta, setProjectMeta] = useState(initMeta);
     const [needsProjectSelection, setNeedsProjectSelection] = useState(
-        gdriveConfigured ? false : needsPicker
+        hasOptionalProviders ? false : needsPicker
     );
-    const [needsProviderSelection, setNeedsProviderSelection] = useState(gdriveConfigured);
+    const [needsProviderSelection, setNeedsProviderSelection] = useState(hasOptionalProviders);
     const [projects, setProjects] = useState<ProjectMeta[]>([]);
     const [saveError, setSaveError] = useState<string | null>(null);
     const clearSaveError = useCallback(() => {
         setSaveError(null);
     }, []);
 
-    // Track whether the GoogleDriveProvider module has finished loading.
-    // Starts as false when GDrive is configured (module loads asynchronously), true otherwise.
-    const [gdriveReady, setGdriveReady] = useState(!gdriveConfigured);
+    // Track whether all optional provider modules have finished loading.
+    // Starts as false when any optional provider is configured (modules load asynchronously), true otherwise.
+    const [providersReady, setProvidersReady] = useState(!hasOptionalProviders);
     useEffect(() => {
-        if (!gdriveProviderReady) {
+        if (!hasOptionalProviders) {
             return;
         }
         void (async () => {
-            await gdriveProviderReady;
-            setGdriveReady(true);
+            await allProvidersReady;
+            setProvidersReady(true);
         })();
     }, []);
 
-    // Load projects list on mount (for the project picker) – only when GDrive is not configured
-    // so that the existing auto-load / project-picker flow continues to work unchanged.
+    // Load projects list on mount (for the project picker) – only when no optional providers are
+    // configured so that the existing auto-load / project-picker flow continues to work unchanged.
     useEffect(() => {
-        if (gdriveConfigured) {
+        if (hasOptionalProviders) {
             return;
         }
         void (async () => {
@@ -195,7 +194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 console.error('Failed to initialize storage provider or load projects:', error);
             }
         })();
-    }, [gdriveConfigured]);
+    }, []);
 
     // Keep a stable ref so the save effect always sees the latest meta without being re-triggered by it
     const projectMetaRef = useRef(projectMeta);
@@ -438,8 +437,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         <AppContext.Provider value={contextValue}>
             {needsProviderSelection && (
                 <StorageProviderModal
-                    gdriveAvailable={gdriveConfigured}
-                    gdriveReady={gdriveReady}
+                    gdriveAvailable={hasOptionalProviders}
+                    gdriveReady={providersReady}
                     onSelectLocal={handleSelectLocalProvider}
                     onSelectGDrive={handleSelectGDriveProvider}
                 />

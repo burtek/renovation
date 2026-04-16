@@ -40,21 +40,46 @@ class StorageManager {
 
 export const storageManager = new StorageManager();
 
-// GoogleDriveProvider is only imported when the GDrive client ID env var is set,
-// keeping it out of the main bundle for users who don't enable GDrive.
-// gdriveProviderReady resolves when the provider has been registered (or failed to load),
-// so callers can await it before calling storageManager.setProvider('GDRIVE').
-const gdriveClientId = import.meta.env.VITE_STORAGE_GDRIVE_CLIENT_ID;
-export const gdriveProviderReady: Promise<void> | null = gdriveClientId
-    ? (async () => {
-        try {
-            const gdriveModule = await import('./GoogleDriveProvider');
-            storageManager.addProvider(new gdriveModule.GoogleDriveProvider(gdriveClientId));
-        } catch (err) {
-            // eslint-disable-next-line no-console
-            console.error('Failed to load GoogleDriveProvider module:', err);
-        }
-    })()
-    : null;
+// ---------------------------------------------------------------------------
+// Dynamic provider registration
+// Each entry is [envKeyValue, importerFn]. To add a new optional provider,
+// append a new line here — no other changes needed (Open-Closed principle).
+// ---------------------------------------------------------------------------
+type ProviderConstructor = new (key: string) => StorageProvider;
+type DynamicProviderEntry = readonly [string | undefined, () => Promise<ProviderConstructor>];
+
+const dynamicProviders: DynamicProviderEntry[] = [
+    [
+        import.meta.env.VITE_STORAGE_GDRIVE_CLIENT_ID,
+        async () => (await import('./GoogleDriveProvider')).GoogleDriveProvider
+    ]
+];
+
+// True when at least one optional provider env var is set — drives the provider-selection UI.
+export const hasOptionalProviders = dynamicProviders.some(([key]) => Boolean(key));
+
+// Resolves once all configured optional providers have been loaded and registered.
+const { promise: allProvidersReadyPromise, resolve: resolveAllProviders }
+    = Promise.withResolvers<undefined>();
+export const allProvidersReady: Promise<undefined> = allProvidersReadyPromise;
+
+void (async () => {
+    await Promise.allSettled(
+        dynamicProviders.map(async ([key, importer]) => {
+            if (!key) {
+                return;
+            }
+            try {
+                const providerConstructor = await importer();
+                // eslint-disable-next-line new-cap
+                storageManager.addProvider(new providerConstructor(key));
+            } catch (err) {
+                // eslint-disable-next-line no-console
+                console.error('Failed to load dynamic storage provider:', err);
+            }
+        })
+    );
+    resolveAllProviders(undefined);
+})();
 
 export type { ProjectMeta, StorageProvider } from './types';
