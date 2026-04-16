@@ -6,12 +6,14 @@ import { cn } from '../../utils/classnames';
 
 interface StorageProviderModalProps {
     gdriveAvailable: boolean;
+    gdriveReady?: boolean;
     onSelectLocal: () => Promise<void>;
     onSelectGDrive: () => Promise<void>;
 }
 
 export default function StorageProviderModal({
     gdriveAvailable,
+    gdriveReady = true,
     onSelectLocal,
     onSelectGDrive
 }: StorageProviderModalProps) {
@@ -128,7 +130,7 @@ export default function StorageProviderModal({
                     {gdriveAvailable && (
                         <button
                             type="button"
-                            disabled={isLoading}
+                            disabled={isLoading || !gdriveReady}
                             onClick={() => {
                                 void handleGDrive();
                             }}
@@ -142,7 +144,8 @@ export default function StorageProviderModal({
                             <span className="text-2xl">☁️</span>
                             <div>
                                 <div className="font-semibold">
-                                    {loadingProvider === 'gdrive' ? 'Connecting…' : 'Google Drive'}
+                                    {/* eslint-disable-next-line no-nested-ternary */}
+                                    {loadingProvider === 'gdrive' ? 'Connecting…' : gdriveReady ? 'Google Drive' : 'Loading…'}
                                 </div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
                                     Store projects in your Google Drive (app data only)

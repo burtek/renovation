@@ -75,11 +75,9 @@ describe('StorageManager with VITE_STORAGE_GDRIVE_CLIENT_ID set', () => {
     });
 
     it('registers GoogleDriveProvider when env var is set', async () => {
-        const { storageManager: sm } = await import('./index');
-        // Allow the async IIFE to complete
-        await new Promise<void>(r => {
-            setTimeout(r, 50);
-        });
+        const { storageManager: sm, gdriveProviderReady } = await import('./index');
+        // Wait for the provider module to be dynamically imported and registered
+        await gdriveProviderReady;
         // GoogleDriveProvider should have been registered
         expect(sm.providers.some(p => p.id === 'GDRIVE')).toBe(true);
     });

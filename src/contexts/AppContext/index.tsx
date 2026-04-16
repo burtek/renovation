@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import ProjectModal from '../../components/ProjectModal';
 import StorageProviderModal from '../../components/StorageProviderModal';
 import type { ProjectMeta } from '../../storage';
-import { storageManager } from '../../storage';
+import { gdriveProviderReady, storageManager } from '../../storage';
 import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { AppData, CalendarEvent, CalendarEventType } from '../../types';
 import { compressToGzip, decompressFromGzip, isCompressionSupported } from '../../utils/compression';
@@ -164,6 +164,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [saveError, setSaveError] = useState<string | null>(null);
     const clearSaveError = useCallback(() => {
         setSaveError(null);
+    }, []);
+
+    // Track whether the GoogleDriveProvider module has finished loading.
+    // Starts as false when GDrive is configured (module loads asynchronously), true otherwise.
+    const [gdriveReady, setGdriveReady] = useState(!gdriveConfigured);
+    useEffect(() => {
+        if (!gdriveProviderReady) {
+            return;
+        }
+        void (async () => {
+            await gdriveProviderReady;
+            setGdriveReady(true);
+        })();
     }, []);
 
     // Load projects list on mount (for the project picker) – only when GDrive is not configured
@@ -426,6 +439,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             {needsProviderSelection && (
                 <StorageProviderModal
                     gdriveAvailable={gdriveConfigured}
+                    gdriveReady={gdriveReady}
                     onSelectLocal={handleSelectLocalProvider}
                     onSelectGDrive={handleSelectGDriveProvider}
                 />

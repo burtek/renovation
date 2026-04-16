@@ -457,4 +457,49 @@ describe('StorageProviderModal', () => {
             expect(screen.getByRole('alert')).toHaveTextContent('Failed to initialize local storage.');
         });
     });
+
+    // ── gdriveReady loading state ─────────────────────────────────────────
+
+    it('disables the Google Drive button and shows "Loading…" when gdriveReady is false', () => {
+        render(
+            <StorageProviderModal
+                gdriveAvailable
+                gdriveReady={false}
+                onSelectLocal={noop}
+                onSelectGDrive={noop}
+            />
+        );
+        const gdriveBtn = screen.getByRole('button', { name: /loading…/i });
+        expect(gdriveBtn).toBeDisabled();
+    });
+
+    it('enables the Google Drive button and shows "Google Drive" when gdriveReady is true', () => {
+        render(
+            <StorageProviderModal
+                gdriveAvailable
+                gdriveReady
+                onSelectLocal={noop}
+                onSelectGDrive={noop}
+            />
+        );
+        const gdriveBtn = screen.getByRole('button', { name: /google drive/i });
+        expect(gdriveBtn).not.toBeDisabled();
+    });
+
+    it('does not call onSelectGDrive when gdriveReady is false and the button is clicked', async () => {
+        const user = userEvent.setup();
+        const onSelectGDrive = vi.fn().mockResolvedValue(undefined);
+        render(
+            <StorageProviderModal
+                gdriveAvailable
+                gdriveReady={false}
+                onSelectLocal={noop}
+                onSelectGDrive={onSelectGDrive}
+            />
+        );
+        // The button is disabled, so clicking it should not trigger the handler
+        const gdriveBtn = screen.getByRole('button', { name: /loading…/i });
+        await user.click(gdriveBtn);
+        expect(onSelectGDrive).not.toHaveBeenCalled();
+    });
 });

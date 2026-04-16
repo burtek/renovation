@@ -122,12 +122,16 @@ describe('GoogleDriveProvider', () => {
         it('uses the loaded GIS library if it is already on window', async () => {
             mockGIS(); // already set up in beforeEach – just ensure no script is appended
             const appendSpy = vi.spyOn(document.head, 'appendChild');
-            await provider.initialize();
-            // No new script tag should have been inserted (library was already present)
-            const scriptCalls = appendSpy.mock.calls.filter(
-                args => args[0] instanceof HTMLScriptElement
-            );
-            expect(scriptCalls).toHaveLength(0);
+            try {
+                await provider.initialize();
+                // No new script tag should have been inserted (library was already present)
+                const scriptCalls = appendSpy.mock.calls.filter(
+                    args => args[0] instanceof HTMLScriptElement
+                );
+                expect(scriptCalls).toHaveLength(0);
+            } finally {
+                appendSpy.mockRestore();
+            }
         });
 
         it('rejects when the GIS script fails to load', async () => {

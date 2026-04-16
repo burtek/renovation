@@ -42,10 +42,11 @@ export const storageManager = new StorageManager();
 
 // GoogleDriveProvider is only imported when the GDrive client ID env var is set,
 // keeping it out of the main bundle for users who don't enable GDrive.
+// gdriveProviderReady resolves when the provider has been registered (or failed to load),
+// so callers can await it before calling storageManager.setProvider('GDRIVE').
 const gdriveClientId = import.meta.env.VITE_STORAGE_GDRIVE_CLIENT_ID;
-if (gdriveClientId) {
-    // Inline async IIFE so we can use await without .then() (satisfies promise/prefer-await-to-then)
-    void (async () => {
+export const gdriveProviderReady: Promise<void> | null = gdriveClientId
+    ? (async () => {
         try {
             const gdriveModule = await import('./GoogleDriveProvider');
             storageManager.addProvider(new gdriveModule.GoogleDriveProvider(gdriveClientId));
@@ -53,7 +54,7 @@ if (gdriveClientId) {
             // eslint-disable-next-line no-console
             console.error('Failed to load GoogleDriveProvider module:', err);
         }
-    })();
-}
+    })()
+    : null;
 
 export type { ProjectMeta, StorageProvider } from './types';
