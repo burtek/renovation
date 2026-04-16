@@ -40,6 +40,8 @@ describe('StorageManager', () => {
         const fakeProvider = {
             id: 'FAKE',
             label: 'Fake Storage',
+            icon: '🔧',
+            description: 'Fake storage for testing',
             initialize: async () => {
             },
             listProjects: async () => [],
@@ -87,5 +89,51 @@ describe('StorageManager with VITE_STORAGE_GDRIVE_CLIENT_ID set', () => {
         await allProvidersReady;
         // GoogleDriveProvider should have been registered
         expect(sm.providers.some(p => p.id === 'GDRIVE')).toBe(true);
+    });
+});
+
+describe('getAvailableProviders', () => {
+    it('always includes the local provider first with ready:true', async () => {
+        const { getAvailableProviders } = await import('./index');
+        const options = getAvailableProviders(false);
+        expect(options[0].providerId).toBe('LS_OPFS');
+        expect(options[0].ready).toBe(true);
+    });
+
+    it('returns only the local provider when no env keys are set', async () => {
+        // VITE_STORAGE_GDRIVE_CLIENT_ID is not set in this test suite
+        const { getAvailableProviders } = await import('./index');
+        const options = getAvailableProviders(false);
+        expect(options).toHaveLength(1);
+        expect(options[0].providerId).toBe('LS_OPFS');
+    });
+});
+
+describe('getAvailableProviders with VITE_STORAGE_GDRIVE_CLIENT_ID set', () => {
+    beforeEach(() => {
+        vi.stubEnv('VITE_STORAGE_GDRIVE_CLIENT_ID', 'test-gdrive-client-id');
+        vi.resetModules();
+    });
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
+        vi.resetModules();
+    });
+
+    it('includes the GDrive option with ready matching the argument', async () => {
+        const { getAvailableProviders } = await import('./index');
+        const notReady = getAvailableProviders(false);
+        expect(notReady).toHaveLength(2);
+        expect(notReady[1].providerId).toBe('GDRIVE');
+        expect(notReady[1].ready).toBe(false);
+
+        const ready = getAvailableProviders(true);
+        expect(ready[1].ready).toBe(true);
+    });
+
+    it('GDrive option has inFlightLabel "Connecting…"', async () => {
+        const { getAvailableProviders } = await import('./index');
+        const [, gdriveOption] = getAvailableProviders(true);
+        expect(gdriveOption.inFlightLabel).toBe('Connecting…');
     });
 });

@@ -26,6 +26,8 @@ function isStoredProjectRecord(obj: unknown): obj is StoredProjectRecord {
  *   values containing the project's name, last modified timestamp, and app data.
  */
 export class LocalStorageProvider implements StorageProvider {
+    readonly description = 'Store projects in your browser (OPFS / localStorage)';
+    readonly icon = '💾';
     readonly id = 'LS_OPFS';
     private mode: 'localStorage' | 'opfs';
 

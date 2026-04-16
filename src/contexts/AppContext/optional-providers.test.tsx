@@ -45,6 +45,23 @@ const {
 vi.mock('../../storage', () => ({
     hasOptionalProviders: true,
     allProvidersReady: Promise.resolve(undefined),
+    getAvailableProviders: (ready: boolean) => [
+        {
+            providerId: 'LS_OPFS',
+            name: 'Local Storage',
+            description: 'Store locally',
+            icon: '💾',
+            ready: true
+        },
+        {
+            providerId: 'GDRIVE',
+            name: 'Google Drive',
+            description: 'Store in Drive',
+            icon: '☁️',
+            ready,
+            inFlightLabel: 'Connecting…'
+        }
+    ],
     storageManager: {
         get provider() {
             return {

@@ -131,6 +131,8 @@ function escapeDriveQueryValue(value: string): string {
  * browser storage.
  */
 export class GoogleDriveProvider implements StorageProvider {
+    readonly description = 'Store projects in your Google Drive (app data only)';
+    readonly icon = '☁️';
     readonly id = 'GDRIVE';
     readonly label = 'Google Drive';
 

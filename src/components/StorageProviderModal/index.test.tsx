@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import type { ProviderOption } from '../../storage';
+
 import StorageProviderModal from '.';
 
 
@@ -8,14 +10,32 @@ describe('StorageProviderModal', () => {
     const noop = async () => {
     };
 
+    // ── Test fixtures ─────────────────────────────────────────────────────
+
+    const localProvider: ProviderOption = {
+        providerId: 'LS_OPFS',
+        name: 'Local Storage',
+        description: 'Store projects in your browser (OPFS / localStorage)',
+        icon: '💾',
+        ready: true
+    };
+    const gdriveProvider: ProviderOption = {
+        providerId: 'GDRIVE',
+        name: 'Google Drive',
+        description: 'Store projects in your Google Drive (app data only)',
+        icon: '☁️',
+        ready: true,
+        inFlightLabel: 'Connecting…'
+    };
+    const gdriveProviderNotReady: ProviderOption = { ...gdriveProvider, ready: false };
+
     // ── Basic rendering ───────────────────────────────────────────────────
 
     it('renders the dialog with correct role and aria attributes', () => {
         render(
             <StorageProviderModal
-                hasOptionalProviders={false}
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider]}
+                onSelectProvider={noop}
             />
         );
         const dialog = screen.getByRole('dialog');
@@ -26,72 +46,68 @@ describe('StorageProviderModal', () => {
     it('renders the "Choose Storage" heading', () => {
         render(
             <StorageProviderModal
-                hasOptionalProviders={false}
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider]}
+                onSelectProvider={noop}
             />
         );
         expect(screen.getByRole('heading', { name: /choose storage/i })).toBeInTheDocument();
     });
 
-    it('always shows the Local Storage button', () => {
+    it('renders a button for each provider in availableProviders', () => {
         render(
             <StorageProviderModal
-                hasOptionalProviders={false}
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider]}
+                onSelectProvider={noop}
             />
         );
         expect(screen.getByRole('button', { name: /local storage/i })).toBeInTheDocument();
     });
 
-    it('shows the Google Drive button when hasOptionalProviders is true', () => {
+    it('shows the Google Drive button when it is in availableProviders', () => {
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={noop}
             />
         );
         expect(screen.getByRole('button', { name: /google drive/i })).toBeInTheDocument();
     });
 
-    it('hides the Google Drive button when hasOptionalProviders is false', () => {
+    it('does not show the Google Drive button when it is not in availableProviders', () => {
         render(
             <StorageProviderModal
-                hasOptionalProviders={false}
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider]}
+                onSelectProvider={noop}
             />
         );
         expect(screen.queryByRole('button', { name: /google drive/i })).not.toBeInTheDocument();
     });
 
-    // ── Local Storage selection ───────────────────────────────────────────
+    // ── Provider selection ────────────────────────────────────────────────
 
-    it('calls onSelectLocal when the Local Storage button is clicked', async () => {
+    it('calls onSelectProvider with the local provider id when the Local Storage button is clicked', async () => {
         const user = userEvent.setup();
-        const onSelectLocal = vi.fn().mockResolvedValue(undefined);
+        const onSelectProvider = vi.fn().mockResolvedValue(undefined);
         render(
             <StorageProviderModal
-                hasOptionalProviders={false}
-                onSelectLocal={onSelectLocal}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
         await user.click(screen.getByRole('button', { name: /local storage/i }));
 
         await waitFor(() => {
-            expect(onSelectLocal).toHaveBeenCalledOnce();
+            expect(onSelectProvider).toHaveBeenCalledOnce();
+            expect(onSelectProvider).toHaveBeenCalledWith('LS_OPFS');
         });
     });
 
-    it('disables both buttons while onSelectLocal is in-flight', async () => {
+    it('disables all buttons while a selection is in-flight', async () => {
         const user = userEvent.setup();
         let resolve: () => void = () => {
         };
-        const onSelectLocal = vi.fn(
+        const onSelectProvider = vi.fn(
             () => new Promise<void>(res => {
                 resolve = res;
             })
@@ -99,27 +115,26 @@ describe('StorageProviderModal', () => {
 
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={onSelectLocal}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
         await user.click(screen.getByRole('button', { name: /local storage/i }));
 
         // Both buttons should be disabled while the operation is pending
-        expect(screen.getByRole('button', { name: /loading/i })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /loading…/i })).toBeDisabled();
         expect(screen.getByRole('button', { name: /google drive/i })).toBeDisabled();
 
         // Cleanup: resolve the promise
         resolve();
     });
 
-    it('shows "Loading…" on the Local Storage button while local is in-flight', async () => {
+    it('shows "Loading…" on the selected button (no inFlightLabel) while in-flight', async () => {
         const user = userEvent.setup();
         let resolve: () => void = () => {
         };
-        const onSelectLocal = vi.fn(
+        const onSelectProvider = vi.fn(
             () => new Promise<void>(res => {
                 resolve = res;
             })
@@ -127,9 +142,8 @@ describe('StorageProviderModal', () => {
 
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={onSelectLocal}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
@@ -144,29 +158,29 @@ describe('StorageProviderModal', () => {
 
     // ── Google Drive selection ────────────────────────────────────────────
 
-    it('calls onSelectGDrive when the Google Drive button is clicked', async () => {
+    it('calls onSelectProvider with the gdrive id when the Google Drive button is clicked', async () => {
         const user = userEvent.setup();
-        const onSelectGDrive = vi.fn().mockResolvedValue(undefined);
+        const onSelectProvider = vi.fn().mockResolvedValue(undefined);
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={onSelectGDrive}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
         await user.click(screen.getByRole('button', { name: /google drive/i }));
 
         await waitFor(() => {
-            expect(onSelectGDrive).toHaveBeenCalledOnce();
+            expect(onSelectProvider).toHaveBeenCalledOnce();
+            expect(onSelectProvider).toHaveBeenCalledWith('GDRIVE');
         });
     });
 
-    it('shows "Connecting…" label on the Google Drive button while gdrive is in-flight', async () => {
+    it('shows the inFlightLabel on the Google Drive button while gdrive is in-flight', async () => {
         const user = userEvent.setup();
         let resolve: () => void = () => {
         };
-        const onSelectGDrive = vi.fn(
+        const onSelectProvider = vi.fn(
             () => new Promise<void>(res => {
                 resolve = res;
             })
@@ -174,9 +188,8 @@ describe('StorageProviderModal', () => {
 
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={onSelectGDrive}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
@@ -190,11 +203,11 @@ describe('StorageProviderModal', () => {
         resolve();
     });
 
-    it('disables both buttons while onSelectGDrive is in-flight', async () => {
+    it('disables all buttons while onSelectProvider is in-flight for gdrive', async () => {
         const user = userEvent.setup();
         let resolve: () => void = () => {
         };
-        const onSelectGDrive = vi.fn(
+        const onSelectProvider = vi.fn(
             () => new Promise<void>(res => {
                 resolve = res;
             })
@@ -202,9 +215,8 @@ describe('StorageProviderModal', () => {
 
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={onSelectGDrive}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
@@ -218,14 +230,13 @@ describe('StorageProviderModal', () => {
 
     // ── Error handling ────────────────────────────────────────────────────
 
-    it('shows an error alert when onSelectGDrive rejects', async () => {
+    it('shows an error alert when onSelectProvider rejects with an Error', async () => {
         const user = userEvent.setup();
-        const onSelectGDrive = vi.fn().mockRejectedValue(new Error('OAuth cancelled'));
+        const onSelectProvider = vi.fn().mockRejectedValue(new Error('OAuth cancelled'));
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={onSelectGDrive}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
@@ -236,14 +247,13 @@ describe('StorageProviderModal', () => {
         });
     });
 
-    it('shows an error alert when onSelectLocal rejects', async () => {
+    it('shows an error alert when onSelectProvider rejects for the local button', async () => {
         const user = userEvent.setup();
-        const onSelectLocal = vi.fn().mockRejectedValue(new Error('Storage unavailable'));
+        const onSelectProvider = vi.fn().mockRejectedValue(new Error('Storage unavailable'));
         render(
             <StorageProviderModal
-                hasOptionalProviders={false}
-                onSelectLocal={onSelectLocal}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
@@ -256,12 +266,11 @@ describe('StorageProviderModal', () => {
 
     it('shows a fallback error message when the rejection value is not an Error', async () => {
         const user = userEvent.setup();
-        const onSelectGDrive = vi.fn().mockRejectedValue('raw string error');
+        const onSelectProvider = vi.fn().mockRejectedValue('raw string error');
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={onSelectGDrive}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
@@ -274,12 +283,11 @@ describe('StorageProviderModal', () => {
 
     it('re-enables buttons after an error so the user can try again', async () => {
         const user = userEvent.setup();
-        const onSelectGDrive = vi.fn().mockRejectedValue(new Error('popup closed'));
+        const onSelectProvider = vi.fn().mockRejectedValue(new Error('popup closed'));
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={onSelectGDrive}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
@@ -296,14 +304,13 @@ describe('StorageProviderModal', () => {
     it('clears the previous error when a new action is started', async () => {
         const user = userEvent.setup();
         // First click fails
-        const onSelectGDrive = vi.fn()
+        const onSelectProvider = vi.fn()
             .mockRejectedValueOnce(new Error('first error'))
             .mockResolvedValueOnce(undefined);
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={onSelectGDrive}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
@@ -319,12 +326,11 @@ describe('StorageProviderModal', () => {
 
     // ── Initial focus ─────────────────────────────────────────────────────
 
-    it('moves focus to the Local Storage button on mount', () => {
+    it('moves focus to the first button on mount', () => {
         render(
             <StorageProviderModal
-                hasOptionalProviders={false}
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider]}
+                onSelectProvider={noop}
             />
         );
         expect(document.activeElement).toBe(
@@ -338,9 +344,8 @@ describe('StorageProviderModal', () => {
         const user = userEvent.setup();
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={noop}
             />
         );
         const localBtn = screen.getByRole('button', { name: /local storage/i });
@@ -360,9 +365,8 @@ describe('StorageProviderModal', () => {
         const user = userEvent.setup();
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={noop}
             />
         );
         const localBtn = screen.getByRole('button', { name: /local storage/i });
@@ -382,9 +386,8 @@ describe('StorageProviderModal', () => {
         const user = userEvent.setup();
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={noop}
             />
         );
         const localBtn = screen.getByRole('button', { name: /local storage/i });
@@ -398,9 +401,8 @@ describe('StorageProviderModal', () => {
         const user = userEvent.setup();
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={noop}
             />
         );
         const localBtn = screen.getByRole('button', { name: /local storage/i });
@@ -421,9 +423,8 @@ describe('StorageProviderModal', () => {
         const user = userEvent.setup();
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={noop}
             />
         );
         const localBtn = screen.getByRole('button', { name: /local storage/i });
@@ -440,66 +441,61 @@ describe('StorageProviderModal', () => {
         });
     });
 
-    it('shows a fallback error message when onSelectLocal rejects with a non-Error value', async () => {
+    it('shows a fallback error message when onSelectProvider rejects with a non-Error value for local', async () => {
         const user = userEvent.setup();
-        const onSelectLocal = vi.fn().mockRejectedValue('storage unavailable string');
+        const onSelectProvider = vi.fn().mockRejectedValue('storage unavailable string');
         render(
             <StorageProviderModal
-                hasOptionalProviders={false}
-                onSelectLocal={onSelectLocal}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider]}
+                onSelectProvider={onSelectProvider}
             />
         );
 
         await user.click(screen.getByRole('button', { name: /local storage/i }));
 
         await waitFor(() => {
-            expect(screen.getByRole('alert')).toHaveTextContent('Failed to initialize local storage.');
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                'Failed to select storage provider. Please try again.'
+            );
         });
     });
 
-    // ── providersReady loading state ─────────────────────────────────────────
+    // ── ready flag loading state ──────────────────────────────────────────
 
-    it('disables the Google Drive button and shows "Loading…" when providersReady is false', () => {
+    it('disables the Google Drive button and shows "Loading…" when ready is false', () => {
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                providersReady={false}
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider, gdriveProviderNotReady]}
+                onSelectProvider={noop}
             />
         );
         const gdriveBtn = screen.getByRole('button', { name: /loading…/i });
         expect(gdriveBtn).toBeDisabled();
     });
 
-    it('enables the Google Drive button and shows "Google Drive" when providersReady is true', () => {
+    it('enables the Google Drive button and shows "Google Drive" when ready is true', () => {
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                providersReady
-                onSelectLocal={noop}
-                onSelectGDrive={noop}
+                availableProviders={[localProvider, gdriveProvider]}
+                onSelectProvider={noop}
             />
         );
         const gdriveBtn = screen.getByRole('button', { name: /google drive/i });
         expect(gdriveBtn).not.toBeDisabled();
     });
 
-    it('does not call onSelectGDrive when providersReady is false and the button is clicked', async () => {
+    it('does not call onSelectProvider when a not-ready button is clicked', async () => {
         const user = userEvent.setup();
-        const onSelectGDrive = vi.fn().mockResolvedValue(undefined);
+        const onSelectProvider = vi.fn().mockResolvedValue(undefined);
         render(
             <StorageProviderModal
-                hasOptionalProviders
-                providersReady={false}
-                onSelectLocal={noop}
-                onSelectGDrive={onSelectGDrive}
+                availableProviders={[localProvider, gdriveProviderNotReady]}
+                onSelectProvider={onSelectProvider}
             />
         );
         // The button is disabled, so clicking it should not trigger the handler
         const gdriveBtn = screen.getByRole('button', { name: /loading…/i });
         await user.click(gdriveBtn);
-        expect(onSelectGDrive).not.toHaveBeenCalled();
+        expect(onSelectProvider).not.toHaveBeenCalled();
     });
 });

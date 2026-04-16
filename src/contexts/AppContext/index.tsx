@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import ProjectModal from '../../components/ProjectModal';
 import StorageProviderModal from '../../components/StorageProviderModal';
 import type { ProjectMeta } from '../../storage';
-import { allProvidersReady, hasOptionalProviders, storageManager } from '../../storage';
+import { allProvidersReady, getAvailableProviders, hasOptionalProviders, storageManager } from '../../storage';
 import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { AppData, CalendarEvent, CalendarEventType } from '../../types';
 import { compressToGzip, decompressFromGzip, isCompressionSupported } from '../../utils/compression';
@@ -178,6 +178,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })();
     }, []);
 
+    // Build the list of provider options to show in the storage-selection modal.
+    // Recomputes when `providersReady` changes (optional providers flip from disabled→enabled).
+    const availableProviders = useMemo(
+        () => getAvailableProviders(providersReady),
+        [providersReady]
+    );
+
     // Load projects list on mount (for the project picker) – only when no optional providers are
     // configured so that the existing auto-load / project-picker flow continues to work unchanged.
     useEffect(() => {
@@ -232,42 +239,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // ── Storage provider selection callbacks ─────────────────────────────
 
-    const handleSelectLocalProvider = useCallback(async () => {
-        // Ensure the local provider is active (may already be, but explicit is safer)
-        storageManager.setProvider('LS_OPFS');
+    const handleSelectProvider = useCallback(async (id: string) => {
+        // Always call setProvider so the manager records the choice explicitly
+        storageManager.setProvider(id);
+        if (storageManager.provider.id !== id) {
+            throw new Error(`${id} provider failed to load. Please reload the page and try again.`);
+        }
 
-        // Initialize storage and list projects; if this fails the error propagates to the modal
+        // Initialize storage and list projects; if this throws the error propagates to the modal
         // so the user sees an error message and can retry.
         await storageManager.provider.initialize();
         const availableProjects = await storageManager.provider.listProjects();
         setProjects(availableProjects);
 
-        // Load initial state from localStorage synchronously (cannot fail)
-        const { state: localState, meta: localMeta, needsPicker: localNeedsPicker } = loadInitialState();
-        if (localState !== initialState) {
-            skipNextSaveRef.current = true;
-            dispatch({ type: 'SET_ALL', payload: localState });
+        if (id === 'LS_OPFS') {
+            // Load initial state from localStorage synchronously (cannot fail)
+            const { state: localState, meta: localMeta, needsPicker: localNeedsPicker } = loadInitialState();
+            if (localState !== initialState) {
+                skipNextSaveRef.current = true;
+                dispatch({ type: 'SET_ALL', payload: localState });
+            }
+            setProjectMeta(localMeta);
+            setNeedsProjectSelection(localNeedsPicker);
+        } else {
+            // Non-local providers always show the project picker after auth
+            setNeedsProjectSelection(true);
         }
-        setProjectMeta(localMeta);
-        setNeedsProjectSelection(localNeedsPicker);
 
         // Dismiss the provider-selection modal only after everything succeeds
         setNeedsProviderSelection(false);
-    }, []);
-
-    const handleSelectGDriveProvider = useCallback(async () => {
-        storageManager.setProvider('GDRIVE');
-        if (storageManager.provider.id !== 'GDRIVE') {
-            throw new Error('Google Drive provider failed to load. Please reload the page and try again.');
-        }
-        // triggers OAuth popup; if it throws the error propagates to the modal
-        await storageManager.provider.initialize();
-        const availableProjects = await storageManager.provider.listProjects();
-        setProjects(availableProjects);
-        // Dismiss modal and proceed to project selection only after all async steps succeed
-        setNeedsProviderSelection(false);
-        setNeedsProjectSelection(true);
-    }, []);
+    }, [dispatch]);
 
     // ── Project management callbacks ─────────────────────────────────────
 
@@ -440,10 +441,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         <AppContext.Provider value={contextValue}>
             {needsProviderSelection && (
                 <StorageProviderModal
-                    hasOptionalProviders={hasOptionalProviders}
-                    providersReady={providersReady}
-                    onSelectLocal={handleSelectLocalProvider}
-                    onSelectGDrive={handleSelectGDriveProvider}
+                    availableProviders={availableProviders}
+                    onSelectProvider={handleSelectProvider}
                 />
             )}
             {!needsProviderSelection && needsProjectSelection && (

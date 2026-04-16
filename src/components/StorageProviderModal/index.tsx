@@ -1,38 +1,26 @@
 import type { KeyboardEvent } from 'react';
 import { useEffect, useId, useRef, useState } from 'react';
 
+import type { ProviderOption } from '../../storage';
 import { cn } from '../../utils/classnames';
 
 
 interface StorageProviderModalProps {
-    hasOptionalProviders: boolean;
-    providersReady?: boolean;
-    onSelectLocal: () => Promise<void>;
-    onSelectGDrive: () => Promise<void>;
+    availableProviders: ProviderOption[];
+    onSelectProvider: (providerId: string) => Promise<void>;
 }
 
 export default function StorageProviderModal({
-    hasOptionalProviders,
-    providersReady = true,
-    onSelectLocal,
-    onSelectGDrive
+    availableProviders,
+    onSelectProvider
 }: StorageProviderModalProps) {
     const titleId = useId();
     const dialogRef = useRef<HTMLDivElement>(null);
     const firstButtonRef = useRef<HTMLButtonElement>(null);
-    const [loadingProvider, setLoadingProvider] = useState<'local' | 'gdrive' | null>(null);
+    const [loadingProviderId, setLoadingProviderId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    const isLoading = loadingProvider !== null;
-    const gdriveButtonLabel = (() => {
-        if (loadingProvider === 'gdrive') {
-            return 'Connecting…';
-        }
-        if (!providersReady) {
-            return 'Loading…';
-        }
-        return 'Google Drive';
-    })();
+    const isLoading = loadingProviderId !== null;
 
     // Focus the first button when the modal mounts
     useEffect(() => {
@@ -65,28 +53,25 @@ export default function StorageProviderModal({
         }
     };
 
-    const handleLocal = async () => {
-        setLoadingProvider('local');
+    const handleSelect = async (providerId: string) => {
+        setLoadingProviderId(providerId);
         setError(null);
         try {
-            await onSelectLocal();
+            await onSelectProvider(providerId);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to initialize local storage.');
-            setLoadingProvider(null);
+            setError(err instanceof Error ? err.message : 'Failed to select storage provider. Please try again.');
+            setLoadingProviderId(null);
         }
     };
 
-    const handleGDrive = async () => {
-        setLoadingProvider('gdrive');
-        setError(null);
-        try {
-            await onSelectGDrive();
-        } catch (err: unknown) {
-            setError(
-                err instanceof Error ? err.message : 'Failed to connect to Google Drive. Please try again.'
-            );
-            setLoadingProvider(null);
+    const getButtonLabel = (provider: ProviderOption) => {
+        if (loadingProviderId === provider.providerId) {
+            return provider.inFlightLabel ?? 'Loading…';
         }
+        if (!provider.ready) {
+            return 'Loading…';
+        }
+        return provider.name;
     };
 
     return (
@@ -111,37 +96,14 @@ export default function StorageProviderModal({
                 </p>
 
                 <div className="space-y-3">
-                    <button
-                        ref={firstButtonRef}
-                        type="button"
-                        disabled={isLoading}
-                        onClick={() => {
-                            void handleLocal();
-                        }}
-                        className={cn(
-                            'w-full flex items-center gap-4 px-5 py-4 rounded-lg border-2 text-left transition',
-                            'border-gray-300 dark:border-gray-600',
-                            'hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20',
-                            'disabled:opacity-50 disabled:cursor-not-allowed'
-                        )}
-                    >
-                        <span className="text-2xl">💾</span>
-                        <div>
-                            <div className="font-semibold">
-                                {loadingProvider === 'local' ? 'Loading…' : 'Local Storage'}
-                            </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                                Store projects in your browser (OPFS / localStorage)
-                            </div>
-                        </div>
-                    </button>
-
-                    {hasOptionalProviders && (
+                    {availableProviders.map((provider, index) => (
                         <button
+                            key={provider.providerId}
+                            ref={index === 0 ? firstButtonRef : undefined}
                             type="button"
-                            disabled={isLoading || !providersReady}
+                            disabled={isLoading || !provider.ready}
                             onClick={() => {
-                                void handleGDrive();
+                                void handleSelect(provider.providerId);
                             }}
                             className={cn(
                                 'w-full flex items-center gap-4 px-5 py-4 rounded-lg border-2 text-left transition',
@@ -150,17 +112,17 @@ export default function StorageProviderModal({
                                 'disabled:opacity-50 disabled:cursor-not-allowed'
                             )}
                         >
-                            <span className="text-2xl">☁️</span>
+                            <span className="text-2xl">{provider.icon}</span>
                             <div>
                                 <div className="font-semibold">
-                                    {gdriveButtonLabel}
+                                    {getButtonLabel(provider)}
                                 </div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                                    Store projects in your Google Drive (app data only)
+                                    {provider.description}
                                 </div>
                             </div>
                         </button>
-                    )}
+                    ))}
                 </div>
 
                 {error && (
