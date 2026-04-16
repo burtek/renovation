@@ -257,6 +257,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const handleSelectGDriveProvider = useCallback(async () => {
         storageManager.setProvider('GDRIVE');
+        if (storageManager.provider.id !== 'GDRIVE') {
+            throw new Error('Google Drive provider failed to load. Please reload the page and try again.');
+        }
         // triggers OAuth popup; if it throws the error propagates to the modal
         await storageManager.provider.initialize();
         const availableProjects = await storageManager.provider.listProjects();

@@ -4,9 +4,10 @@ import { v4 as uuidv4 } from 'uuid';
 import type { AppData } from '../types';
 
 import type { ProjectMeta, StorageProvider } from './types';
+import { STORAGE_KEY_PREFIX } from './types';
 
 
-const GDRIVE_FILE_PREFIX = 'renovation-project-';
+const GDRIVE_FILE_PREFIX = STORAGE_KEY_PREFIX;
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';

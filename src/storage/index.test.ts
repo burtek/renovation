@@ -53,13 +53,20 @@ describe('StorageManager', () => {
         };
 
         storageManager.addProvider(fakeProvider);
-        expect(storageManager.providers).toContain(fakeProvider);
 
-        storageManager.setProvider('FAKE');
-        expect(storageManager.provider.id).toBe('FAKE');
+        try {
+            expect(storageManager.providers).toContain(fakeProvider);
 
-        // Reset back to local so other tests are not affected
-        storageManager.setProvider('LS_OPFS');
+            storageManager.setProvider('FAKE');
+            expect(storageManager.provider.id).toBe('FAKE');
+        } finally {
+            // Reset back to local and remove the fake provider so other tests are not affected
+            storageManager.setProvider('LS_OPFS');
+            const fakeProviderIndex = storageManager.providers.indexOf(fakeProvider);
+            if (fakeProviderIndex !== -1) {
+                storageManager.providers.splice(fakeProviderIndex, 1);
+            }
+        }
     });
 });
 
