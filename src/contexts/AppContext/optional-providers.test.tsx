@@ -23,8 +23,8 @@ const {
     mockSaveProject
 } = vi.hoisted(() => {
     const providerIdRef = { current: 'LS_OPFS' as string };
-    const initializeFn = vi.fn<[], Promise<void>>().mockResolvedValue(undefined);
-    const listProjectsFn = vi.fn<[], Promise<ProjectMeta[]>>().mockResolvedValue([]);
+    const initializeFn = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const listProjectsFn = vi.fn<() => Promise<ProjectMeta[]>>().mockResolvedValue([]);
     const loadProjectFn = vi.fn().mockResolvedValue(null);
     const saveProjectFn = vi.fn().mockResolvedValue(undefined);
     const setProviderFn = vi.fn().mockImplementation((id: string) => {
