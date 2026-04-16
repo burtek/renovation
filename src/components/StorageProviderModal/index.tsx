@@ -5,15 +5,15 @@ import { cn } from '../../utils/classnames';
 
 
 interface StorageProviderModalProps {
-    gdriveAvailable: boolean;
-    gdriveReady?: boolean;
+    hasOptionalProviders: boolean;
+    providersReady?: boolean;
     onSelectLocal: () => Promise<void>;
     onSelectGDrive: () => Promise<void>;
 }
 
 export default function StorageProviderModal({
-    gdriveAvailable,
-    gdriveReady = true,
+    hasOptionalProviders,
+    providersReady = true,
     onSelectLocal,
     onSelectGDrive
 }: StorageProviderModalProps) {
@@ -28,7 +28,7 @@ export default function StorageProviderModal({
         if (loadingProvider === 'gdrive') {
             return 'Connecting…';
         }
-        if (!gdriveReady) {
+        if (!providersReady) {
             return 'Loading…';
         }
         return 'Google Drive';
@@ -136,10 +136,10 @@ export default function StorageProviderModal({
                         </div>
                     </button>
 
-                    {gdriveAvailable && (
+                    {hasOptionalProviders && (
                         <button
                             type="button"
-                            disabled={isLoading || !gdriveReady}
+                            disabled={isLoading || !providersReady}
                             onClick={() => {
                                 void handleGDrive();
                             }}

@@ -13,7 +13,7 @@ describe('StorageProviderModal', () => {
     it('renders the dialog with correct role and aria attributes', () => {
         render(
             <StorageProviderModal
-                gdriveAvailable={false}
+                hasOptionalProviders={false}
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -26,7 +26,7 @@ describe('StorageProviderModal', () => {
     it('renders the "Choose Storage" heading', () => {
         render(
             <StorageProviderModal
-                gdriveAvailable={false}
+                hasOptionalProviders={false}
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -37,7 +37,7 @@ describe('StorageProviderModal', () => {
     it('always shows the Local Storage button', () => {
         render(
             <StorageProviderModal
-                gdriveAvailable={false}
+                hasOptionalProviders={false}
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -45,10 +45,10 @@ describe('StorageProviderModal', () => {
         expect(screen.getByRole('button', { name: /local storage/i })).toBeInTheDocument();
     });
 
-    it('shows the Google Drive button when gdriveAvailable is true', () => {
+    it('shows the Google Drive button when hasOptionalProviders is true', () => {
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -56,10 +56,10 @@ describe('StorageProviderModal', () => {
         expect(screen.getByRole('button', { name: /google drive/i })).toBeInTheDocument();
     });
 
-    it('hides the Google Drive button when gdriveAvailable is false', () => {
+    it('hides the Google Drive button when hasOptionalProviders is false', () => {
         render(
             <StorageProviderModal
-                gdriveAvailable={false}
+                hasOptionalProviders={false}
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -74,7 +74,7 @@ describe('StorageProviderModal', () => {
         const onSelectLocal = vi.fn().mockResolvedValue(undefined);
         render(
             <StorageProviderModal
-                gdriveAvailable={false}
+                hasOptionalProviders={false}
                 onSelectLocal={onSelectLocal}
                 onSelectGDrive={noop}
             />
@@ -99,7 +99,7 @@ describe('StorageProviderModal', () => {
 
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={onSelectLocal}
                 onSelectGDrive={noop}
             />
@@ -127,7 +127,7 @@ describe('StorageProviderModal', () => {
 
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={onSelectLocal}
                 onSelectGDrive={noop}
             />
@@ -149,7 +149,7 @@ describe('StorageProviderModal', () => {
         const onSelectGDrive = vi.fn().mockResolvedValue(undefined);
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={onSelectGDrive}
             />
@@ -174,7 +174,7 @@ describe('StorageProviderModal', () => {
 
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={onSelectGDrive}
             />
@@ -202,7 +202,7 @@ describe('StorageProviderModal', () => {
 
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={onSelectGDrive}
             />
@@ -223,7 +223,7 @@ describe('StorageProviderModal', () => {
         const onSelectGDrive = vi.fn().mockRejectedValue(new Error('OAuth cancelled'));
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={onSelectGDrive}
             />
@@ -241,7 +241,7 @@ describe('StorageProviderModal', () => {
         const onSelectLocal = vi.fn().mockRejectedValue(new Error('Storage unavailable'));
         render(
             <StorageProviderModal
-                gdriveAvailable={false}
+                hasOptionalProviders={false}
                 onSelectLocal={onSelectLocal}
                 onSelectGDrive={noop}
             />
@@ -259,7 +259,7 @@ describe('StorageProviderModal', () => {
         const onSelectGDrive = vi.fn().mockRejectedValue('raw string error');
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={onSelectGDrive}
             />
@@ -277,7 +277,7 @@ describe('StorageProviderModal', () => {
         const onSelectGDrive = vi.fn().mockRejectedValue(new Error('popup closed'));
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={onSelectGDrive}
             />
@@ -301,7 +301,7 @@ describe('StorageProviderModal', () => {
             .mockResolvedValueOnce(undefined);
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={onSelectGDrive}
             />
@@ -322,7 +322,7 @@ describe('StorageProviderModal', () => {
     it('moves focus to the Local Storage button on mount', () => {
         render(
             <StorageProviderModal
-                gdriveAvailable={false}
+                hasOptionalProviders={false}
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -338,7 +338,7 @@ describe('StorageProviderModal', () => {
         const user = userEvent.setup();
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -360,7 +360,7 @@ describe('StorageProviderModal', () => {
         const user = userEvent.setup();
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -382,7 +382,7 @@ describe('StorageProviderModal', () => {
         const user = userEvent.setup();
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -398,7 +398,7 @@ describe('StorageProviderModal', () => {
         const user = userEvent.setup();
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -421,7 +421,7 @@ describe('StorageProviderModal', () => {
         const user = userEvent.setup();
         render(
             <StorageProviderModal
-                gdriveAvailable
+                hasOptionalProviders
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -445,7 +445,7 @@ describe('StorageProviderModal', () => {
         const onSelectLocal = vi.fn().mockRejectedValue('storage unavailable string');
         render(
             <StorageProviderModal
-                gdriveAvailable={false}
+                hasOptionalProviders={false}
                 onSelectLocal={onSelectLocal}
                 onSelectGDrive={noop}
             />
@@ -458,13 +458,13 @@ describe('StorageProviderModal', () => {
         });
     });
 
-    // ── gdriveReady loading state ─────────────────────────────────────────
+    // ── providersReady loading state ─────────────────────────────────────────
 
-    it('disables the Google Drive button and shows "Loading…" when gdriveReady is false', () => {
+    it('disables the Google Drive button and shows "Loading…" when providersReady is false', () => {
         render(
             <StorageProviderModal
-                gdriveAvailable
-                gdriveReady={false}
+                hasOptionalProviders
+                providersReady={false}
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -473,11 +473,11 @@ describe('StorageProviderModal', () => {
         expect(gdriveBtn).toBeDisabled();
     });
 
-    it('enables the Google Drive button and shows "Google Drive" when gdriveReady is true', () => {
+    it('enables the Google Drive button and shows "Google Drive" when providersReady is true', () => {
         render(
             <StorageProviderModal
-                gdriveAvailable
-                gdriveReady
+                hasOptionalProviders
+                providersReady
                 onSelectLocal={noop}
                 onSelectGDrive={noop}
             />
@@ -486,13 +486,13 @@ describe('StorageProviderModal', () => {
         expect(gdriveBtn).not.toBeDisabled();
     });
 
-    it('does not call onSelectGDrive when gdriveReady is false and the button is clicked', async () => {
+    it('does not call onSelectGDrive when providersReady is false and the button is clicked', async () => {
         const user = userEvent.setup();
         const onSelectGDrive = vi.fn().mockResolvedValue(undefined);
         render(
             <StorageProviderModal
-                gdriveAvailable
-                gdriveReady={false}
+                hasOptionalProviders
+                providersReady={false}
                 onSelectLocal={noop}
                 onSelectGDrive={onSelectGDrive}
             />

@@ -437,8 +437,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         <AppContext.Provider value={contextValue}>
             {needsProviderSelection && (
                 <StorageProviderModal
-                    gdriveAvailable={hasOptionalProviders}
-                    gdriveReady={providersReady}
+                    hasOptionalProviders={hasOptionalProviders}
+                    providersReady={providersReady}
                     onSelectLocal={handleSelectLocalProvider}
                     onSelectGDrive={handleSelectGDriveProvider}
                 />
