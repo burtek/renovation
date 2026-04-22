@@ -14,7 +14,8 @@ import EventModal from './EventModal';
 
 
 const locales = { 'en-US': enUS };
-const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
+const startOfWeekMonday: typeof startOfWeek = (date, options) => startOfWeek(date, { ...options, weekStartsOn: 1 });
+const localizer = dateFnsLocalizer({ format, parse, startOfWeek: startOfWeekMonday, getDay, locales });
 
 // Vite 8 (Rolldown) production builds double-wrap CJS modules with __esModule:true,
 // leaving the module object (not the function) as the default export. Unwrap manually.
