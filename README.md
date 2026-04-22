@@ -1,10 +1,8 @@
 # Renovation
 
-<img src="./icon-renovation.png" alt="Renovation Manager" width="120" />
+<img src="./icon-renovation.png" alt="Renovation Manager" width="120" align="left" /> A web-based project management application for planning and tracking home renovation projects. It provides integrated tools for organizing tasks, managing finances, scheduling events, and maintaining notes — all in one place.
 
 > **Note:** This project was fully created by AI.
-
-A web-based project management application for planning and tracking home renovation projects. It provides integrated tools for organizing tasks, managing finances, scheduling events, and maintaining notes — all in one place.
 
 ## Features
 
