@@ -1,6 +1,6 @@
 # Renovation
 
-![Renovation Manager](./icon-renovation.png)
+<img src="./icon-renovation.png" alt="Renovation Manager" width="120" />
 
 > **Note:** This project was fully created by AI.
 
