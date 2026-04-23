@@ -87,14 +87,16 @@ const dynamicProviders: DynamicProviderEntry[] = [
 // True when at least one optional provider env var is set — drives the provider-selection UI.
 export const hasOptionalProviders = dynamicProviders.some(([key]) => Boolean(key));
 
-// Resolves once all configured optional providers have been loaded and registered.
+// Resolves with the set of optional provider IDs that successfully loaded and registered.
+// Providers that failed to import/register are NOT in the set, so callers can disable their buttons.
 const { promise: allProvidersReadyPromise, resolve: resolveAllProviders }
-    = Promise.withResolvers<undefined>();
-export const allProvidersReady: Promise<undefined> = allProvidersReadyPromise;
+    = Promise.withResolvers<ReadonlySet<string>>();
+export const allProvidersReady: Promise<ReadonlySet<string>> = allProvidersReadyPromise;
 
 void (async () => {
+    const registeredIds = new Set<string>();
     await Promise.allSettled(
-        dynamicProviders.map(async ([key, importer]) => {
+        dynamicProviders.map(async ([key, importer, meta]) => {
             if (!key) {
                 return;
             }
@@ -102,22 +104,27 @@ void (async () => {
                 const providerConstructor = await importer();
                 // eslint-disable-next-line new-cap
                 storageManager.addProvider(new providerConstructor(key));
+                registeredIds.add(meta.providerId);
             } catch (err) {
                 // eslint-disable-next-line no-console
                 console.error('Failed to load dynamic storage provider:', err);
             }
         })
     );
-    resolveAllProviders(undefined);
+    resolveAllProviders(registeredIds);
 })();
 
 /**
  * Builds the list of provider options to display in the storage-selection modal.
  * The local provider is always first and always ready.
- * Optional providers are included when their env key is set, with `ready` reflecting
- * whether the dynamic import has completed.
+ * Optional providers are included when their env key is set; `ready` is true only
+ * for providers whose ID is present in `registeredIds` — failed imports remain
+ * `ready: false` even after `allProvidersReady` resolves.
+ *
+ * Pass the result of `await allProvidersReady` (or an empty Set before it resolves)
+ * as `registeredIds`. This keeps the function pure and the React `useMemo` lint-clean.
  */
-export function getAvailableProviders(optionalProvidersReady: boolean): ProviderOption[] {
+export function getAvailableProviders(registeredIds: ReadonlySet<string>): ProviderOption[] {
     return [
         {
             providerId: localStorageProvider.id,
@@ -128,7 +135,7 @@ export function getAvailableProviders(optionalProvidersReady: boolean): Provider
         },
         ...dynamicProviders
             .filter(([key]) => Boolean(key))
-            .map(([, , meta]) => ({ ...meta, ready: optionalProvidersReady }))
+            .map(([, , meta]) => ({ ...meta, ready: registeredIds.has(meta.providerId) }))
     ];
 }
 

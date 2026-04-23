@@ -165,24 +165,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSaveError(null);
     }, []);
 
-    // Track whether all optional provider modules have finished loading.
-    // Starts as false when any optional provider is configured (modules load asynchronously), true otherwise.
-    const [providersReady, setProvidersReady] = useState(!hasOptionalProviders);
+    // Track which optional providers successfully registered (empty Set until allProvidersReady resolves).
+    // Using a Set instead of a boolean lets getAvailableProviders mark each provider individually ready/not-ready.
+    const [registeredProviderIds, setRegisteredProviderIds] = useState<ReadonlySet<string>>(() => new Set());
     useEffect(() => {
         if (!hasOptionalProviders) {
             return;
         }
         void (async () => {
-            await allProvidersReady;
-            setProvidersReady(true);
+            const ids = await allProvidersReady;
+            setRegisteredProviderIds(ids);
         })();
     }, []);
 
     // Build the list of provider options to show in the storage-selection modal.
-    // Recomputes when `providersReady` changes (optional providers flip from disabled→enabled).
+    // Recomputes when `registeredProviderIds` changes (optional providers flip from disabled→enabled).
     const availableProviders = useMemo(
-        () => getAvailableProviders(providersReady),
-        [providersReady]
+        () => getAvailableProviders(registeredProviderIds),
+        [registeredProviderIds]
     );
 
     // Load projects list on mount (for the project picker) – only when no optional providers are

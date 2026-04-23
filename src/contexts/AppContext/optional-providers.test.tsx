@@ -44,8 +44,8 @@ const {
 // The storageManager.provider getter always reads the latest mockProviderId.current.
 vi.mock('../../storage', () => ({
     hasOptionalProviders: true,
-    allProvidersReady: Promise.resolve(undefined),
-    getAvailableProviders: (ready: boolean) => [
+    allProvidersReady: Promise.resolve(new Set(['GDRIVE'])),
+    getAvailableProviders: (registeredIds: ReadonlySet<string>) => [
         {
             providerId: 'LS_OPFS',
             name: 'Local Storage',
@@ -58,7 +58,7 @@ vi.mock('../../storage', () => ({
             name: 'Google Drive',
             description: 'Store in Drive',
             icon: '☁️',
-            ready,
+            ready: registeredIds.has('GDRIVE'),
             inFlightLabel: 'Connecting…'
         }
     ],

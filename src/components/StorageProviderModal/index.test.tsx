@@ -123,14 +123,14 @@ describe('StorageProviderModal', () => {
         await user.click(screen.getByRole('button', { name: /local storage/i }));
 
         // Both buttons should be disabled while the operation is pending
-        expect(screen.getByRole('button', { name: /loading…/i })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /local storage.*loading/i })).toBeDisabled();
         expect(screen.getByRole('button', { name: /google drive/i })).toBeDisabled();
 
         // Cleanup: resolve the promise
         resolve();
     });
 
-    it('shows "Loading…" on the selected button (no inFlightLabel) while in-flight', async () => {
+    it('shows "{name} (loading)" on the selected button (no inFlightLabel) while in-flight', async () => {
         const user = userEvent.setup();
         let resolve: () => void = () => {
         };
@@ -149,7 +149,7 @@ describe('StorageProviderModal', () => {
 
         await user.click(screen.getByRole('button', { name: /local storage/i }));
 
-        expect(screen.getByText(/loading…/i)).toBeInTheDocument();
+        expect(screen.getByText(/local storage \(loading\)/i)).toBeInTheDocument();
         // GDrive button should still say "Google Drive", not "Connecting…"
         expect(screen.queryByText(/connecting/i)).not.toBeInTheDocument();
 
@@ -462,14 +462,14 @@ describe('StorageProviderModal', () => {
 
     // ── ready flag loading state ──────────────────────────────────────────
 
-    it('disables the Google Drive button and shows "Loading…" when ready is false', () => {
+    it('disables the Google Drive button and shows "Google Drive (loading)" when ready is false', () => {
         render(
             <StorageProviderModal
                 availableProviders={[localProvider, gdriveProviderNotReady]}
                 onSelectProvider={noop}
             />
         );
-        const gdriveBtn = screen.getByRole('button', { name: /loading…/i });
+        const gdriveBtn = screen.getByRole('button', { name: /google drive.*loading/i });
         expect(gdriveBtn).toBeDisabled();
     });
 
@@ -494,7 +494,7 @@ describe('StorageProviderModal', () => {
             />
         );
         // The button is disabled, so clicking it should not trigger the handler
-        const gdriveBtn = screen.getByRole('button', { name: /loading…/i });
+        const gdriveBtn = screen.getByRole('button', { name: /google drive.*loading/i });
         await user.click(gdriveBtn);
         expect(onSelectProvider).not.toHaveBeenCalled();
     });

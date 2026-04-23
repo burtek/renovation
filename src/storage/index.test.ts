@@ -95,7 +95,7 @@ describe('StorageManager with VITE_STORAGE_GDRIVE_CLIENT_ID set', () => {
 describe('getAvailableProviders', () => {
     it('always includes the local provider first with ready:true', async () => {
         const { getAvailableProviders } = await import('./index');
-        const options = getAvailableProviders(false);
+        const options = getAvailableProviders(new Set());
         expect(options[0].providerId).toBe('LS_OPFS');
         expect(options[0].ready).toBe(true);
     });
@@ -103,7 +103,7 @@ describe('getAvailableProviders', () => {
     it('returns only the local provider when no env keys are set', async () => {
         // VITE_STORAGE_GDRIVE_CLIENT_ID is not set in this test suite
         const { getAvailableProviders } = await import('./index');
-        const options = getAvailableProviders(false);
+        const options = getAvailableProviders(new Set());
         expect(options).toHaveLength(1);
         expect(options[0].providerId).toBe('LS_OPFS');
     });
@@ -120,20 +120,32 @@ describe('getAvailableProviders with VITE_STORAGE_GDRIVE_CLIENT_ID set', () => {
         vi.resetModules();
     });
 
-    it('includes the GDrive option with ready matching the argument', async () => {
+    it('includes the GDrive option with ready:false when registeredIds is empty', async () => {
         const { getAvailableProviders } = await import('./index');
-        const notReady = getAvailableProviders(false);
-        expect(notReady).toHaveLength(2);
-        expect(notReady[1].providerId).toBe('GDRIVE');
-        expect(notReady[1].ready).toBe(false);
+        const options = getAvailableProviders(new Set());
+        expect(options).toHaveLength(2);
+        expect(options[1].providerId).toBe('GDRIVE');
+        expect(options[1].ready).toBe(false);
+    });
 
-        const ready = getAvailableProviders(true);
-        expect(ready[1].ready).toBe(true);
+    it('includes the GDrive option with ready:true when GDRIVE is in registeredIds', async () => {
+        const { getAvailableProviders } = await import('./index');
+        const options = getAvailableProviders(new Set(['GDRIVE']));
+        expect(options[1].providerId).toBe('GDRIVE');
+        expect(options[1].ready).toBe(true);
+    });
+
+    it('includes the GDrive option with ready:true after successful registration', async () => {
+        const { getAvailableProviders, allProvidersReady } = await import('./index');
+        const registeredIds = await allProvidersReady;
+        const options = getAvailableProviders(registeredIds);
+        expect(options[1].providerId).toBe('GDRIVE');
+        expect(options[1].ready).toBe(true);
     });
 
     it('GDrive option has inFlightLabel "Connecting…"', async () => {
         const { getAvailableProviders } = await import('./index');
-        const [, gdriveOption] = getAvailableProviders(true);
+        const [, gdriveOption] = getAvailableProviders(new Set(['GDRIVE']));
         expect(gdriveOption.inFlightLabel).toBe('Connecting…');
     });
 });
