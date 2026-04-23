@@ -57,7 +57,7 @@ interface BigCalExpenseItem {
     start: Date;
     end: Date;
     allDay: boolean;
-    draggable: false;
+    draggable?: false;
     resource: Expense;
 }
 
@@ -65,6 +65,15 @@ type BigCalItem = BigCalEvent | BigCalExpenseItem;
 
 function isExpenseItem(item: BigCalItem): item is BigCalExpenseItem {
     return !('eventType' in item.resource);
+}
+
+function allDayEventDates(startDate: string, endDate?: string): { start: Date; end: Date } {
+    const start = new Date(`${startDate}T00:00:00`);
+    // end is exclusive in react-big-calendar for allDay events → add 1 day
+    const endDay = endDate && endDate > startDate ? endDate : startDate;
+    const end = new Date(`${endDay}T00:00:00`);
+    end.setDate(end.getDate() + 1);
+    return { start, end };
 }
 
 function formatExpenseTitle(expense: Expense): string {
@@ -96,18 +105,12 @@ export default function CalendarPage() {
     }, []);
 
     const calEvents: BigCalItem[] = state.calendarEvents.map(e => {
-        const start = new Date(`${e.date}T00:00:00`);
-        // end is exclusive in react-big-calendar for allDay events → add 1 day
-        const endDay = e.endDate && e.endDate > e.date ? e.endDate : e.date;
-        const end = new Date(`${endDay}T00:00:00`);
-        end.setDate(end.getDate() + 1);
+        const { start, end } = allDayEventDates(e.date, e.endDate);
         return { title: e.title, start, end, allDay: true, resource: e };
     });
 
     const expenseEvents: BigCalItem[] = state.expenses.map(e => {
-        const start = new Date(`${e.date}T00:00:00`);
-        const end = new Date(`${e.date}T00:00:00`);
-        end.setDate(end.getDate() + 1);
+        const { start, end } = allDayEventDates(e.date);
         return { title: formatExpenseTitle(e), start, end, allDay: true, draggable: false, resource: e };
     });
 
