@@ -6,7 +6,6 @@ import type { ProjectMeta } from '../../storage/types';
 import { ACTIVE_PROJECT_KEY } from '../../storage/types';
 
 
-// These imports must come AFTER vi.mock() so they pick up the mocked module.
 import { AppProvider, useApp } from '.';
 
 
