@@ -66,10 +66,10 @@ export default function StorageProviderModal({
 
     const getButtonLabel = (provider: ProviderOption) => {
         if (loadingProviderId === provider.providerId) {
-            return provider.inFlightLabel ?? 'Loading…';
+            return provider.inFlightLabel ?? `${provider.name} (loading)`;
         }
         if (!provider.ready) {
-            return 'Loading…';
+            return `${provider.name} (loading)`;
         }
         return provider.name;
     };
