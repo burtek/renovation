@@ -7,7 +7,8 @@ import type { EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAnd
 import withDragAndDropCjs from 'react-big-calendar/lib/addons/dragAndDrop';
 
 import { useApp } from '../../contexts/AppContext';
-import type { CalendarEvent, CalendarEventType } from '../../types';
+import type { CalendarEvent, CalendarEventType, Expense } from '../../types';
+import { formatPLN } from '../../utils/format';
 
 import type { EventFormData } from './EventModal';
 import EventModal from './EventModal';
@@ -32,6 +33,8 @@ const EVENT_TYPE_COLOR: Record<CalendarEventType, string> = {
     'contractor work': '#8B5CF6'
 };
 
+const EXPENSE_COLOR = '#EF4444';
+
 const emptyForm: EventFormData = {
     title: '',
     startDate: '',
@@ -49,17 +52,37 @@ interface BigCalEvent {
     resource: CalendarEvent;
 }
 
-function EventComponent({ event }: { event: BigCalEvent }) {
+interface BigCalExpenseItem {
+    title: string;
+    start: Date;
+    end: Date;
+    allDay: boolean;
+    draggable: false;
+    resource: Expense;
+}
+
+type BigCalItem = BigCalEvent | BigCalExpenseItem;
+
+function isExpenseItem(item: BigCalItem): item is BigCalExpenseItem {
+    return !('eventType' in item.resource);
+}
+
+function formatExpenseTitle(expense: Expense): string {
+    return `💶 ${formatPLN(expense.price)} - ${expense.description}`;
+}
+
+function EventComponent({ event }: { event: BigCalItem }) {
+    const isExpense = isExpenseItem(event);
     return (
-        <div>
-            <div>{event.title}</div>
-            {event.resource.contractor
-                && <div className="text-xs opacity-80">{event.resource.contractor}</div>}
+        <div className="overflow-hidden">
+            <div className="truncate">{event.title}</div>
+            {!isExpense && event.resource.contractor
+                && <div className="truncate text-xs opacity-80">{event.resource.contractor}</div>}
         </div>
     );
 }
 
-const DnDCalendar = withDragAndDrop<BigCalEvent>(Calendar);
+const DnDCalendar = withDragAndDrop<BigCalItem>(Calendar);
 
 export default function CalendarPage() {
     const { state, dispatch } = useApp();
@@ -72,7 +95,7 @@ export default function CalendarPage() {
         document.title = 'Calendar | Renovation';
     }, []);
 
-    const events: BigCalEvent[] = state.calendarEvents.map(e => {
+    const calEvents: BigCalItem[] = state.calendarEvents.map(e => {
         const start = new Date(`${e.date}T00:00:00`);
         // end is exclusive in react-big-calendar for allDay events → add 1 day
         const endDay = e.endDate && e.endDate > e.date ? e.endDate : e.date;
@@ -81,8 +104,17 @@ export default function CalendarPage() {
         return { title: e.title, start, end, allDay: true, resource: e };
     });
 
-    const eventPropGetter = (event: BigCalEvent) => {
-        const color = EVENT_TYPE_COLOR[event.resource.eventType];
+    const expenseEvents: BigCalItem[] = state.expenses.map(e => {
+        const start = new Date(`${e.date}T00:00:00`);
+        const end = new Date(`${e.date}T00:00:00`);
+        end.setDate(end.getDate() + 1);
+        return { title: formatExpenseTitle(e), start, end, allDay: true, draggable: false, resource: e };
+    });
+
+    const events: BigCalItem[] = [...calEvents, ...expenseEvents];
+
+    const eventPropGetter = (event: BigCalItem) => {
+        const color = isExpenseItem(event) ? EXPENSE_COLOR : EVENT_TYPE_COLOR[event.resource.eventType];
         return { style: { backgroundColor: color, borderColor: color } };
     };
 
@@ -96,7 +128,10 @@ export default function CalendarPage() {
         setModal({ open: true });
     };
 
-    const handleSelectEvent = (event: BigCalEvent) => {
+    const handleSelectEvent = (event: BigCalItem) => {
+        if (isExpenseItem(event)) {
+            return;
+        }
         const e = event.resource;
         setForm({
             title: e.title,
@@ -129,7 +164,10 @@ export default function CalendarPage() {
         setModal({ open: false });
     };
 
-    const updateEventDates = ({ event, start, end }: EventInteractionArgs<BigCalEvent>) => {
+    const updateEventDates = ({ event, start, end }: EventInteractionArgs<BigCalItem>) => {
+        if (isExpenseItem(event)) {
+            return;
+        }
         const newStart = format(new Date(start), 'yyyy-MM-dd');
         // end is exclusive in react-big-calendar for allDay events → subtract 1 day
         const endDate = new Date(end);
