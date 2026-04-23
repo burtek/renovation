@@ -14,6 +14,8 @@ export interface ProjectMeta {
 export interface StorageProvider {
     id: string;
     label: string;
+    icon: string;
+    description: string;
 
     initialize: () => Promise<void>; // perform any async setup if needed (e.g. OPFS permission request)
 

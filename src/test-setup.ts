@@ -1,3 +1,5 @@
+import './polyfills';
+
 import '@testing-library/jest-dom/vitest';
 
 
