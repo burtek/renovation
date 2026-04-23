@@ -5,19 +5,28 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { AppProvider } from '../../contexts/AppContext';
 import { ACTIVE_PROJECT_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
-import type { AppData, CalendarEvent, CalendarEventType } from '../../types';
+import type { AppData, CalendarEvent, CalendarEventType, Expense } from '../../types';
+import { formatPLN } from '../../utils/format';
 
 import CalendarPage from '.';
 
 
+type MockResource = CalendarEvent | Expense;
+interface MockBigCalItem {
+    title: string;
+    start: Date;
+    end: Date;
+    allDay: boolean;
+    resource: MockResource;
+}
+
 vi.mock('react-big-calendar', () => ({
     Calendar: ({ onSelectSlot, onSelectEvent, events, components, eventPropGetter }: {
         onSelectSlot?: (slot: { start: Date; end: Date; slots: Date[]; action: string }) => void;
-        onSelectEvent?: (event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }) => void;
-        events?: Array<{ title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }>;
-        components?: { event?: ComponentType<{ event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent } }> };
-        eventPropGetter?: (event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }) =>
-        { style?: Record<string, string> };
+        onSelectEvent?: (event: MockBigCalItem) => void;
+        events?: MockBigCalItem[];
+        components?: { event?: ComponentType<{ event: MockBigCalItem }> };
+        eventPropGetter?: (event: MockBigCalItem) => { style?: Record<string, string> };
     }) => (
         <div data-testid="rbc-calendar">
             <button
@@ -54,23 +63,23 @@ vi.mock('react-big-calendar/lib/css/react-big-calendar.css', () => ({}));
 vi.mock('react-big-calendar/lib/addons/dragAndDrop/styles.css', () => ({}));
 vi.mock('react-big-calendar/lib/addons/dragAndDrop', () => ({
     default: (Cal: ComponentType<{
-        events?: Array<{ title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }>;
+        events?: MockBigCalItem[];
         [key: string]: unknown;
     }>) =>
         function DnDCalendarMock({ onEventDrop, onEventResize, ...rest }: {
             onEventDrop?: (args: {
-                event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent };
+                event: MockBigCalItem;
                 start: Date;
                 end: Date;
                 isAllDay: boolean;
             }) => void;
             onEventResize?: (args: {
-                event: { title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent };
+                event: MockBigCalItem;
                 start: Date;
                 end: Date;
                 isAllDay: boolean;
             }) => void;
-            events?: Array<{ title: string; start: Date; end: Date; allDay: boolean; resource: CalendarEvent }>;
+            events?: MockBigCalItem[];
             [key: string]: unknown;
         }) {
             return (
@@ -139,6 +148,20 @@ function makeCalendarEvent(overrides: Partial<CalendarEvent> = {}): CalendarEven
         title: 'Test Event',
         date: '2024-03-01',
         eventType: 'event' as CalendarEventType,
+        ...overrides
+    };
+}
+
+function makeExpense(overrides: Partial<Expense> = {}): Expense {
+    return {
+        id: 'exp1',
+        description: 'Paint',
+        date: '2024-03-01',
+        price: 123,
+        shopName: 'Leroy',
+        invoiceNo: 'INV-1',
+        invoiceForm: 'paper',
+        loanApproved: false,
         ...overrides
     };
 }
@@ -507,5 +530,42 @@ describe('Calendar page', () => {
             const saved = stored.data.calendarEvents.find(e => e.title === 'Site Visit');
             expect(saved?.notes).toBe('Bring helmet');
         });
+    });
+
+    // ── Expense items in calendar ─────────────────────────────────────────
+
+    it('renders expense as a calendar item with emoji price and description', () => {
+        preloadState({ expenses: [makeExpense({ price: 123, description: 'Paint' })] });
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        expect(screen.getByRole('button', { name: `💶 ${formatPLN(123)} - Paint` })).toBeInTheDocument();
+    });
+
+    it('formats expense price with decimals when not a whole number', () => {
+        preloadState({ expenses: [makeExpense({ price: 99.5, description: 'Tiles' })] });
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        expect(screen.getByRole('button', { name: `💶 ${formatPLN(99.5)} - Tiles` })).toBeInTheDocument();
+    });
+
+    it('does not open any modal when clicking an expense item', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'exp1', price: 123, description: 'Paint' })] });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: `💶 ${formatPLN(123)} - Paint` }));
+
+        expect(screen.queryByRole('heading', { name: /event/i })).not.toBeInTheDocument();
+    });
+
+    it('does not update expense data when its calendar item is dropped', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'exp1', date: '2024-03-01' })] });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTestId('drop-exp1'));
+
+        const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+        expect(stored.data.expenses[0].date).toBe('2024-03-01');
     });
 });
