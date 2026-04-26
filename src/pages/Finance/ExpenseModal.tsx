@@ -11,6 +11,7 @@ export interface ExpenseFormData {
     invoiceNo: string;
     invoiceForm: 'paper' | 'gdrive';
     invoiceLink: string;
+    paymentConfirmationLink: string;
     loanApproved: boolean;
 }
 
@@ -110,6 +111,14 @@ export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSav
                                 className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                         )}
+                    <input
+                        placeholder="Payment confirmation GDrive link"
+                        value={form.paymentConfirmationLink}
+                        onChange={e => {
+                            onFormChange({ paymentConfirmationLink: e.target.value });
+                        }}
+                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+                    />
                     <label className="flex items-center gap-2 text-sm dark:text-gray-300">
                         <input
                             type="checkbox"
@@ -170,6 +179,7 @@ const EXPENSE_COLUMNS: Column[] = [
     { label: 'Shop', key: 'shopName' },
     { label: 'Invoice No', key: 'invoiceNo' },
     { label: 'Invoice' },
+    { label: 'Payment' },
     { label: 'Loan', key: 'loanApproved' },
     { label: 'Actions' }
 ];
@@ -232,6 +242,24 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                 })()
                                 : e.invoiceForm}
                             </span>
+                            {e.paymentConfirmationLink && (
+                                <span>
+                                    {(() => {
+                                        const url = safeUrl(e.paymentConfirmationLink);
+                                        return url
+                                            ? (
+                                                <a
+                                                    href={url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 underline"
+                                                >💳 Payment
+                                                </a>
+                                            )
+                                            : '💳 Payment (invalid link)';
+                                    })()}
+                                </span>
+                            )}
                             <span>{e.loanApproved ? <span className="text-green-600">✓ Loan</span> : <span className="text-gray-400 dark:text-gray-500">✗ Loan</span>}</span>
                         </div>
                         <div className="flex gap-2 pt-1">
@@ -297,7 +325,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             && (
                                 <tr>
                                     <td
-                                        colSpan={8}
+                                        colSpan={9}
                                         className="text-center text-gray-400 dark:text-gray-500 py-8"
                                     >No expenses yet.
                                     </td>
@@ -330,6 +358,24 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                                 : 'GDrive (invalid link)';
                                         })()
                                         : e.invoiceForm}
+                                </td>
+                                <td className="px-3 py-2">
+                                    {e.paymentConfirmationLink
+                                        ? (() => {
+                                            const url = safeUrl(e.paymentConfirmationLink);
+                                            return url
+                                                ? (
+                                                    <a
+                                                        href={url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-600 underline"
+                                                    >GDrive
+                                                    </a>
+                                                )
+                                                : 'GDrive (invalid link)';
+                                        })()
+                                        : null}
                                 </td>
                                 <td className="px-3 py-2">{e.loanApproved ? <span className="text-green-600">✓</span> : <span className="text-gray-400 dark:text-gray-500">✗</span>}</td>
                                 <td className="px-3 py-2">
