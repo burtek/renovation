@@ -28,6 +28,7 @@ const emptyForm: ExpenseFormData = {
     invoiceNo: '',
     invoiceForm: 'paper',
     invoiceLink: '',
+    paymentConfirmationLink: '',
     loanApproved: false
 };
 
@@ -99,6 +100,7 @@ export default function Finance() {
             invoiceNo: e.invoiceNo,
             invoiceForm: e.invoiceForm,
             invoiceLink: e.invoiceLink ?? '',
+            paymentConfirmationLink: e.paymentConfirmationLink ?? '',
             loanApproved: e.loanApproved
         });
         setModal({ open: true, editExpense: e });
@@ -109,7 +111,12 @@ export default function Finance() {
         if (!form.description.trim() || isNaN(price)) {
             return;
         }
-        const data = { ...form, price, invoiceLink: form.invoiceLink === '' ? undefined : form.invoiceLink };
+        const data = {
+            ...form,
+            price,
+            invoiceLink: form.invoiceLink === '' ? undefined : form.invoiceLink,
+            paymentConfirmationLink: form.paymentConfirmationLink === '' ? undefined : form.paymentConfirmationLink
+        };
         if (modal.editExpense) {
             dispatch({ type: 'UPDATE_EXPENSE', payload: { ...modal.editExpense, ...data } });
         } else {

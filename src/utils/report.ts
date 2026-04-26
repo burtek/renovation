@@ -95,13 +95,13 @@ export function generateReport(state: AppData): void {
     <thead>
       <tr>
         <th>Description</th><th>Date</th><th>Price</th><th>Shop</th>
-        <th>Invoice No</th><th>Invoice</th><th>Loan</th>
+        <th>Invoice No</th><th>Invoice</th><th>Payment</th><th>Loan</th>
       </tr>
     </thead>
     <tbody>
       ${
             expenses.length === 0
-                ? '<tr><td colspan="7" style="text-align:center;color:#999">No expenses.</td></tr>'
+                ? '<tr><td colspan="8" style="text-align:center;color:#999">No expenses.</td></tr>'
                 : expenses
                     .map(
                         e => `<tr>
@@ -116,6 +116,13 @@ export function generateReport(state: AppData): void {
                 return href ? `<a href="${href}" rel="noopener noreferrer">GDrive</a>` : 'GDrive (invalid link)';
             }
             return esc(e.invoiceForm);
+        })()}</td>
+        <td>${(() => {
+            if (e.paymentConfirmationLink) {
+                const href = safeHref(e.paymentConfirmationLink);
+                return href ? `<a href="${href}" rel="noopener noreferrer">GDrive</a>` : 'GDrive (invalid link)';
+            }
+            return '—';
         })()}</td>
         <td>${e.loanApproved ? '✓' : '✗'}</td>
       </tr>`
