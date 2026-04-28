@@ -336,12 +336,22 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                 <td className="px-3 py-2">{e.invoiceNo}</td>
                                 <td className="px-3 py-2">
                                     {e.invoiceForm === 'gdrive' && e.invoiceLink
-                                        ? <GDriveLink url={e.invoiceLink} />
+                                        ? (
+                                            <GDriveLink
+                                                url={e.invoiceLink}
+                                                label="Invoice"
+                                            />
+                                        )
                                         : e.invoiceForm}
                                 </td>
                                 <td className="px-3 py-2">
                                     {e.paymentConfirmationLink
-                                        ? <GDriveLink url={e.paymentConfirmationLink} />
+                                        ? (
+                                            <GDriveLink
+                                                url={e.paymentConfirmationLink}
+                                                label="Payment confirmation"
+                                            />
+                                        )
                                         : null}
                                 </td>
                                 <td className="px-3 py-2">{e.loanApproved ? <span className="text-green-600">✓</span> : <span className="text-gray-400 dark:text-gray-500">✗</span>}</td>
