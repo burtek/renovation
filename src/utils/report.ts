@@ -113,14 +113,14 @@ export function generateReport(state: AppData): void {
         <td>${(() => {
             if (e.invoiceForm === 'gdrive' && e.invoiceLink) {
                 const href = safeHref(e.invoiceLink);
-                return href ? `<a href="${href}" rel="noopener noreferrer">GDrive</a>` : 'GDrive (invalid link)';
+                return href ? `<a href="${href}" rel="noopener noreferrer">Invoice</a>` : 'Invoice (invalid link)';
             }
             return esc(e.invoiceForm);
         })()}</td>
         <td>${(() => {
             if (e.paymentConfirmationLink) {
                 const href = safeHref(e.paymentConfirmationLink);
-                return href ? `<a href="${href}" rel="noopener noreferrer">GDrive</a>` : 'GDrive (invalid link)';
+                return href ? `<a href="${href}" rel="noopener noreferrer">Payment confirmation</a>` : 'Payment confirmation (invalid link)';
             }
             return '—';
         })()}</td>
