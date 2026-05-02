@@ -359,6 +359,106 @@ describe('Finance page', () => {
         expect(screen.getByPlaceholderText(/google drive link/i)).toBeInTheDocument();
     });
 
+    // ── payment confirmation type ─────────────────────────────────────────
+
+    it('shows payment confirmation GDrive link input when gdrive is selected', async () => {
+        const user = userEvent.setup();
+        const { container } = render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        // Second select is the payment confirmation select
+        const selects = container.querySelectorAll('select');
+        await user.selectOptions(selects[1], 'gdrive');
+
+        expect(screen.getByPlaceholderText(/payment confirmation gdrive link/i)).toBeInTheDocument();
+    });
+
+    it('does not show payment confirmation link input when on-invoice is selected', async () => {
+        const user = userEvent.setup();
+        const { container } = render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        const selects = container.querySelectorAll('select');
+        await user.selectOptions(selects[1], 'on-invoice');
+
+        expect(screen.queryByPlaceholderText(/payment confirmation gdrive link/i)).not.toBeInTheDocument();
+    });
+
+    it('typing in the payment confirmation GDrive link input updates the form value', async () => {
+        const user = userEvent.setup();
+        const { container } = render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        const selects = container.querySelectorAll('select');
+        await user.selectOptions(selects[1], 'gdrive');
+
+        const paymentLinkInput = screen.getByPlaceholderText(/payment confirmation gdrive link/i);
+        await user.type(paymentLinkInput, 'https://drive.google.com/payment');
+
+        expect(paymentLinkInput).toHaveValue('https://drive.google.com/payment');
+    });
+
+    it('blocks save when payment confirmation type is gdrive but link is empty', async () => {
+        const user = userEvent.setup();
+        const { container } = render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'Payment Block Test');
+        await user.type(screen.getByPlaceholderText(/price \*/i), '99');
+
+        const selects = container.querySelectorAll('select');
+        await user.selectOptions(selects[1], 'gdrive');
+        // leave the link empty and attempt to save
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        // Modal should still be open (save was blocked)
+        expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+        const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data?: AppData };
+        expect(stored.data?.expenses?.find((e: { description: string }) => e.description === 'Payment Block Test')).toBeUndefined();
+    });
+
+    it('saves expense with on-invoice payment confirmation', async () => {
+        const user = userEvent.setup();
+        const { container } = render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'On Invoice Test');
+        await user.type(screen.getByPlaceholderText(/price \*/i), '120');
+
+        const selects = container.querySelectorAll('select');
+        await user.selectOptions(selects[1], 'on-invoice');
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.expenses.find((e: { description: string }) => e.description === 'On Invoice Test');
+            expect(saved?.paymentConfirmation).toEqual({ type: 'on-invoice' });
+        });
+    });
+
+    it('saves expense with gdrive payment confirmation link', async () => {
+        const user = userEvent.setup();
+        const { container } = render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'GDrive Payment Test');
+        await user.type(screen.getByPlaceholderText(/price \*/i), '150');
+
+        const selects = container.querySelectorAll('select');
+        await user.selectOptions(selects[1], 'gdrive');
+        await user.type(screen.getByPlaceholderText(/payment confirmation gdrive link/i), 'https://drive.google.com/pay/xyz');
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.expenses.find((e: { description: string }) => e.description === 'GDrive Payment Test');
+            expect(saved?.paymentConfirmation).toEqual({ type: 'gdrive', link: 'https://drive.google.com/pay/xyz' });
+        });
+    });
+
     // ── loanApproved checkbox ─────────────────────────────────────────────
 
     it('toggles loanApproved checkbox', async () => {
