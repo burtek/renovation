@@ -10,7 +10,6 @@ import { useApp } from '../../contexts/AppContext';
 import type { CalendarEvent, CalendarEventType, Expense } from '../../types';
 import { formatPLN } from '../../utils/format';
 
-import CustomMonthView from './CustomMonthView';
 import type { EventFormData } from './EventModal';
 import EventModal from './EventModal';
 
@@ -221,9 +220,10 @@ export default function CalendarPage() {
                     resizableAccessor={item => !isExpenseItem(item)}
                     selectable
                     resizable
-                    views={{ month: CustomMonthView, week: true, day: true }}
+                    views={['month', 'week', 'day']}
                     defaultView="month"
                     components={{ event: EventComponent }}
+                    showAllEvents
                 />
             </div>
 
