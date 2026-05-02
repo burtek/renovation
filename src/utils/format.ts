@@ -8,7 +8,11 @@ export function formatPLN(amount: number): string {
     );
 }
 
-/** Format a fraction (0–1) as a percentage string: `42.3%` */
+/** Format a fraction (0–1) as a percentage string: `42,3%` */
 export function formatPct(fraction: number): string {
-    return `${(fraction * 100).toFixed(1)}%`;
+    return new Intl.NumberFormat('pl-PL', {
+        style: 'percent',
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+    }).format(fraction);
 }
