@@ -184,6 +184,26 @@ describe('Finance page', () => {
 
     // ── Add expense ───────────────────────────────────────────────────────
 
+    it('autofocuses the description field when the "New Expense" modal opens', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        expect(document.activeElement).toBe(screen.getByPlaceholderText(/description \*/i));
+    });
+
+    it('autofocuses the description field when the "Edit Expense" modal opens', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1', description: 'Old Desc', price: 200 })] });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
+        await user.click(editButtons[0]);
+
+        expect(document.activeElement).toBe(screen.getByDisplayValue('Old Desc'));
+    });
+
     it('adds an expense and shows it in the list', async () => {
         const user = userEvent.setup();
         render(<Finance />, { wrapper: Wrapper });

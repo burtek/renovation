@@ -32,6 +32,7 @@ export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSav
                 <h2 className="text-lg font-bold mb-4 dark:text-gray-100">{editExpense ? 'Edit Expense' : 'New Expense'}</h2>
                 <div className="space-y-3">
                     <input
+                        autoFocus
                         placeholder="Description *"
                         value={form.description}
                         onChange={e => {
