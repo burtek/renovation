@@ -364,6 +364,52 @@ describe('Finance page', () => {
         expect(descriptions.length).toBeGreaterThan(0);
     });
 
+    // ── Summary card percentages ──────────────────────────────────────────
+
+    it('does not show percentages in summary cards when there are no expenses and no budget', () => {
+        render(<Finance />, { wrapper: Wrapper });
+        expect(screen.queryByText(/\d+\.\d+%/)).not.toBeInTheDocument();
+    });
+
+    it('shows percentages in summary cards when budget is set and no expenses are present', () => {
+        preloadState({ budget: 1000 });
+        render(<Finance />, { wrapper: Wrapper });
+        // pieTotal = 0 + 0 + 1000 = 1000; approved=0%, notApproved=0%, remaining=100%
+        const pcts = screen.getAllByText(/\d+\.\d+%/);
+        expect(pcts.length).toBeGreaterThanOrEqual(3);
+        expect(screen.getAllByText('0.0%').length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByText('100.0%').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('shows correct percentages for approved and not-approved expenses', () => {
+        preloadState({
+            budget: 1000,
+            expenses: [
+                makeExpense({ id: 'e1', price: 300, loanApproved: true }),
+                makeExpense({ id: 'e2', price: 100, loanApproved: false })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        // pieTotal = 300 + 100 + max(600, 0) = 1000
+        // approved: 300/1000 = 30.0%, notApproved: 100/1000 = 10.0%, remaining: 600/1000 = 60.0%
+        expect(screen.getByText('30.0%')).toBeInTheDocument();
+        expect(screen.getByText('10.0%')).toBeInTheDocument();
+        expect(screen.getByText('60.0%')).toBeInTheDocument();
+    });
+
+    it('shows 0.0% for remaining when expenses exceed budget', () => {
+        preloadState({
+            budget: 500,
+            expenses: [makeExpense({ id: 'e1', price: 700, loanApproved: false })]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        // remaining = 500 - 700 = -200 (over budget), so Math.max(remaining, 0) = 0
+        // pieTotal = 0 + 700 + 0 = 700; notApproved: 700/700 = 100.0%, approved: 0.0%, remaining: 0.0%
+        expect(screen.getByText('100.0%')).toBeInTheDocument();
+        // Both approved and remaining are 0%; there should be two of them
+        expect(screen.getAllByText('0.0%').length).toBeGreaterThanOrEqual(2);
+    });
+
     // ── gdrive invoice form ───────────────────────────────────────────────
 
     it('shows Google Drive link input when gdrive is selected in the form', async () => {

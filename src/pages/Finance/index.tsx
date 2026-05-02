@@ -4,7 +4,7 @@ import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recha
 import { useApp } from '../../contexts/AppContext';
 import type { Expense } from '../../types';
 import { cn } from '../../utils/classnames';
-import { formatPLN } from '../../utils/format';
+import { formatPct, formatPLN } from '../../utils/format';
 import { generateReport } from '../../utils/report';
 
 import type { ExpenseFormData } from './ExpenseModal';
@@ -61,6 +61,7 @@ export default function Finance() {
         { name: 'Remaining Budget', value: Math.max(remaining, 0) }
     ];
     const pieColors = ['#10B981', '#F59E0B', '#3B82F6'];
+    const pieTotal = pieData.reduce((s, d) => s + d.value, 0);
 
     // Unique shop names for autosuggest
     const shopNames = Array.from(new Set(state.expenses.map(e => e.shopName).filter(Boolean)));
@@ -182,14 +183,17 @@ export default function Finance() {
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
                     <div className="text-sm text-gray-500 dark:text-gray-400">Loan Approved</div>
                     <div className="text-2xl font-bold text-green-600">{formatPLN(totalApproved)}</div>
+                    {pieTotal > 0 && <div className="text-sm text-gray-500 dark:text-gray-400">{formatPct(totalApproved / pieTotal)}</div>}
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
                     <div className="text-sm text-gray-500 dark:text-gray-400">Not Approved</div>
                     <div className="text-2xl font-bold text-yellow-600">{formatPLN(totalNotApproved)}</div>
+                    {pieTotal > 0 && <div className="text-sm text-gray-500 dark:text-gray-400">{formatPct(totalNotApproved / pieTotal)}</div>}
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
                     <div className="text-sm text-gray-500 dark:text-gray-400">Remaining Budget</div>
                     <div className={cn('text-2xl font-bold', remaining >= 0 ? 'text-blue-600' : 'text-red-600')}>{formatPLN(remaining)}</div>
+                    {pieTotal > 0 && <div className="text-sm text-gray-500 dark:text-gray-400">{formatPct(Math.max(remaining, 0) / pieTotal)}</div>}
                 </div>
             </div>
 
@@ -206,7 +210,7 @@ export default function Finance() {
                                 cy="50%"
                                 outerRadius={80}
                                 dataKey="value"
-                                label={({ name, value }: { name: string; value: number }) => `${name}: ${formatPLN(value)}`}
+                                label={({ name, percent }: { name: string; percent: number }) => `${name}: ${formatPct(percent)}`}
                             >
                                 {pieData.map((entry, i) => (
                                     <Cell

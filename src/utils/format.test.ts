@@ -1,4 +1,4 @@
-import { formatPLN } from './format';
+import { formatPct, formatPLN } from './format';
 
 
 // Compute expected strings using the same Intl.NumberFormat the implementation uses,
@@ -26,5 +26,27 @@ describe('formatPLN', () => {
 
     it('includes a non-breaking space before zł', () => {
         expect(formatPLN(10)).toContain('\u00a0zł');
+    });
+});
+
+describe('formatPct', () => {
+    it('formats 0 as 0.0%', () => {
+        expect(formatPct(0)).toBe('0.0%');
+    });
+
+    it('formats 1 as 100.0%', () => {
+        expect(formatPct(1)).toBe('100.0%');
+    });
+
+    it('formats 0.5 as 50.0%', () => {
+        expect(formatPct(0.5)).toBe('50.0%');
+    });
+
+    it('rounds to one decimal place', () => {
+        expect(formatPct(1 / 3)).toBe('33.3%');
+    });
+
+    it('always includes the % sign', () => {
+        expect(formatPct(0.42)).toContain('%');
     });
 });

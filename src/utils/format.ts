@@ -7,3 +7,8 @@ export function formatPLN(amount: number): string {
         }).format(amount)}\u00a0zł`
     );
 }
+
+/** Format a fraction (0–1) as a percentage string: `42.3%` */
+export function formatPct(fraction: number): string {
+    return `${(fraction * 100).toFixed(1)}%`;
+}
