@@ -213,17 +213,19 @@ type SortDir = 'asc' | 'desc';
 interface SortableColumn {
     label: string;
     key: SortKey;
+    className?: string;
 }
 interface UnsortableColumn {
     label: string;
     key?: never;
+    className?: string;
 }
 type Column = SortableColumn | UnsortableColumn;
 
 const EXPENSE_COLUMNS: Column[] = [
     { label: 'Description', key: 'description' },
     { label: 'Date', key: 'date' },
-    { label: 'Price', key: 'price' },
+    { label: 'Price', key: 'price', className: 'text-right' },
     { label: 'Shop', key: 'shopName' },
     { label: 'Invoice No', key: 'invoiceNo' },
     { label: 'Invoice' },
@@ -323,25 +325,25 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                 <table className="w-full text-sm dark:text-gray-300">
                     <thead className="bg-gray-50 dark:bg-gray-700/50">
                         <tr>
-                            {EXPENSE_COLUMNS.map(({ label, key }) => (
+                            {EXPENSE_COLUMNS.map(col => (
                                 <th
-                                    key={label}
-                                    className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                                    aria-sort={key && sortKey === key
+                                    key={col.label}
+                                    className={cn('px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase', col.className ?? 'text-left')}
+                                    aria-sort={col.key && sortKey === col.key
                                         ? (sortDir === 'asc' ? 'ascending' : 'descending')
                                         : undefined}
                                 >
-                                    {key
+                                    {col.key
                                         ? (
                                             <button
                                                 type="button"
                                                 className={cn('cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200')}
                                                 onClick={() => {
-                                                    onToggleSort(key);
+                                                    onToggleSort(col.key);
                                                 }}
                                             >
-                                                {label}
-                                                {sortKey === key
+                                                {col.label}
+                                                {sortKey === col.key
                                                     && (
                                                         <span className="ml-1">
                                                             {sortDir === 'asc' ? '↑' : '↓'}
@@ -349,7 +351,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                                     )}
                                             </button>
                                         )
-                                        : label}
+                                        : col.label}
                                 </th>
                             ))}
                         </tr>
@@ -372,7 +374,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             >
                                 <td className="px-3 py-2">{e.description}</td>
                                 <td className="px-3 py-2">{e.date}</td>
-                                <td className="px-3 py-2 font-medium">{formatPLN(e.price)}</td>
+                                <td className="px-3 py-2 font-medium text-right">{formatPLN(e.price)}</td>
                                 <td className="px-3 py-2">{e.shopName}</td>
                                 <td className="px-3 py-2">{e.invoiceNo}</td>
                                 <td className="px-3 py-2">
@@ -388,11 +390,11 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                 <td className="px-3 py-2">
                                     {e.paymentConfirmation
                                         ? (e.paymentConfirmation.type === 'on-invoice'
-                                            ? 'Confirmed on invoice'
+                                            ? 'on invoice'
                                             : (
                                                 <GDriveLink
                                                     url={e.paymentConfirmation.link}
-                                                    label="Payment confirmation"
+                                                    label="payment"
                                                 />
                                             ))
                                         : null}

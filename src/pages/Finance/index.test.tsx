@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AppProvider } from '../../contexts/AppContext';
 import { ACTIVE_PROJECT_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { AppData, Expense } from '../../types';
+import { formatPct } from '../../utils/format';
 
 import Finance from '.';
 
@@ -368,17 +369,16 @@ describe('Finance page', () => {
 
     it('does not show percentages in summary cards when there are no expenses and no budget', () => {
         render(<Finance />, { wrapper: Wrapper });
-        expect(screen.queryByText(/\d+\.\d+%/)).not.toBeInTheDocument();
+        // When pieTotal is 0, no percentage rows should be rendered
+        expect(screen.queryByText(formatPct(0))).not.toBeInTheDocument();
     });
 
     it('shows percentages in summary cards when budget is set and no expenses are present', () => {
         preloadState({ budget: 1000 });
         render(<Finance />, { wrapper: Wrapper });
         // pieTotal = 0 + 0 + 1000 = 1000; approved=0%, notApproved=0%, remaining=100%
-        const pcts = screen.getAllByText(/\d+\.\d+%/);
-        expect(pcts.length).toBeGreaterThanOrEqual(3);
-        expect(screen.getAllByText('0.0%').length).toBeGreaterThanOrEqual(2);
-        expect(screen.getAllByText('100.0%').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText(formatPct(0)).length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByText(formatPct(1)).length).toBeGreaterThanOrEqual(1);
     });
 
     it('shows correct percentages for approved and not-approved expenses', () => {
@@ -391,23 +391,23 @@ describe('Finance page', () => {
         });
         render(<Finance />, { wrapper: Wrapper });
         // pieTotal = 300 + 100 + max(600, 0) = 1000
-        // approved: 300/1000 = 30.0%, notApproved: 100/1000 = 10.0%, remaining: 600/1000 = 60.0%
-        expect(screen.getByText('30.0%')).toBeInTheDocument();
-        expect(screen.getByText('10.0%')).toBeInTheDocument();
-        expect(screen.getByText('60.0%')).toBeInTheDocument();
+        // approved: 300/1000 = 30%, notApproved: 100/1000 = 10%, remaining: 600/1000 = 60%
+        expect(screen.getByText(formatPct(0.3))).toBeInTheDocument();
+        expect(screen.getByText(formatPct(0.1))).toBeInTheDocument();
+        expect(screen.getByText(formatPct(0.6))).toBeInTheDocument();
     });
 
-    it('shows 0.0% for remaining when expenses exceed budget', () => {
+    it('shows 0% for remaining when expenses exceed budget', () => {
         preloadState({
             budget: 500,
             expenses: [makeExpense({ id: 'e1', price: 700, loanApproved: false })]
         });
         render(<Finance />, { wrapper: Wrapper });
         // remaining = 500 - 700 = -200 (over budget), so Math.max(remaining, 0) = 0
-        // pieTotal = 0 + 700 + 0 = 700; notApproved: 700/700 = 100.0%, approved: 0.0%, remaining: 0.0%
-        expect(screen.getByText('100.0%')).toBeInTheDocument();
+        // pieTotal = 0 + 700 + 0 = 700; notApproved: 700/700 = 100%, approved: 0%, remaining: 0%
+        expect(screen.getByText(formatPct(1))).toBeInTheDocument();
         // Both approved and remaining are 0%; there should be two of them
-        expect(screen.getAllByText('0.0%').length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByText(formatPct(0)).length).toBeGreaterThanOrEqual(2);
     });
 
     // ── gdrive invoice form ───────────────────────────────────────────────

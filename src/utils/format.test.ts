@@ -12,6 +12,14 @@ function plFormat(amount: number): string {
     );
 }
 
+function pctFormat(fraction: number): string {
+    return new Intl.NumberFormat('pl-PL', {
+        style: 'percent',
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+    }).format(fraction);
+}
+
 describe('formatPLN', () => {
     it.each([0, 100, 12.5, -250, 1_000_000])(
         'delegates to pl-PL Intl.NumberFormat for %d',
@@ -30,21 +38,12 @@ describe('formatPLN', () => {
 });
 
 describe('formatPct', () => {
-    it('formats 0 as 0.0%', () => {
-        expect(formatPct(0)).toBe('0.0%');
-    });
-
-    it('formats 1 as 100.0%', () => {
-        expect(formatPct(1)).toBe('100.0%');
-    });
-
-    it('formats 0.5 as 50.0%', () => {
-        expect(formatPct(0.5)).toBe('50.0%');
-    });
-
-    it('rounds to one decimal place', () => {
-        expect(formatPct(1 / 3)).toBe('33.3%');
-    });
+    it.each([0, 0.5, 1, 1 / 3])(
+        'delegates to pl-PL Intl.NumberFormat percent style for %d',
+        fraction => {
+            expect(formatPct(fraction)).toBe(pctFormat(fraction));
+        }
+    );
 
     it('always includes the % sign', () => {
         expect(formatPct(0.42)).toContain('%');
