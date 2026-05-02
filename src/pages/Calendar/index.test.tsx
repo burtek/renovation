@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ComponentType, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
 import { AppProvider } from '../../contexts/AppContext';
@@ -11,151 +11,12 @@ import { formatPLN } from '../../utils/format';
 import CalendarPage from '.';
 
 
-type MockResource = CalendarEvent | Expense;
-interface MockBigCalItem {
-    title: string;
-    start: Date;
-    end: Date;
-    allDay: boolean;
-    resource: MockResource;
-}
-
-vi.mock('react-big-calendar', () => ({
-    Calendar: ({ onSelectSlot, onSelectEvent, events, components, eventPropGetter }: {
-        onSelectSlot?: (slot: { start: Date; end: Date; slots: Date[]; action: string }) => void;
-        onSelectEvent?: (event: MockBigCalItem) => void;
-        events?: MockBigCalItem[];
-        components?: { event?: ComponentType<{ event: MockBigCalItem }> };
-        eventPropGetter?: (event: MockBigCalItem) => { style?: Record<string, string> };
-    }) => (
-        <div data-testid="rbc-calendar">
-            <button
-                type="button"
-                data-testid="select-slot"
-                onClick={() => onSelectSlot?.({
-                    start: new Date('2024-03-15'),
-                    end: new Date('2024-03-16'),
-                    slots: [],
-                    action: 'click'
-                })}
-            >
-                Select slot
-            </button>
-            {events?.map(e => {
-                const EventComp = components?.event;
-                const eventProps = eventPropGetter?.(e);
-                return (
-                    <button
-                        type="button"
-                        key={e.resource.id}
-                        style={eventProps?.style}
-                        onClick={() => onSelectEvent?.(e)}
-                    >
-                        {EventComp ? <EventComp event={e} /> : e.title}
-                    </button>
-                );
-            })}
-        </div>
-    ),
-    dateFnsLocalizer: () => ({})
-}));
-vi.mock('react-big-calendar/lib/css/react-big-calendar.css', () => ({}));
-vi.mock('react-big-calendar/lib/addons/dragAndDrop/styles.css', () => ({}));
-vi.mock('react-big-calendar/lib/addons/dragAndDrop', () => ({
-    default: (Cal: ComponentType<{
-        events?: MockBigCalItem[];
-        [key: string]: unknown;
-    }>) =>
-        function DnDCalendarMock({ onEventDrop, onEventResize, draggableAccessor, resizableAccessor, ...rest }: {
-            onEventDrop?: (args: {
-                event: MockBigCalItem;
-                start: Date;
-                end: Date;
-                isAllDay: boolean;
-            }) => void;
-            onEventResize?: (args: {
-                event: MockBigCalItem;
-                start: Date;
-                end: Date;
-                isAllDay: boolean;
-            }) => void;
-            draggableAccessor?: (event: MockBigCalItem) => boolean;
-            resizableAccessor?: (event: MockBigCalItem) => boolean;
-            events?: MockBigCalItem[];
-            [key: string]: unknown;
-        }) {
-            return (
-                <>
-                    <Cal {...rest} />
-                    {rest.events?.map(e => {
-                        const isDraggable = draggableAccessor ? draggableAccessor(e) : true;
-                        const isResizable = resizableAccessor ? resizableAccessor(e) : true;
-                        return (
-                            <span key={e.resource.id}>
-                                {isDraggable && (
-                                    <button
-                                        type="button"
-                                        data-testid={`drop-${e.resource.id}`}
-                                        onClick={() => onEventDrop?.({
-                                            event: e,
-                                            start: new Date('2024-04-01T00:00:00'),
-                                            end: new Date('2024-04-02T00:00:00'),
-                                            isAllDay: true
-                                        })}
-                                    >
-                                        Drop {e.title}
-                                    </button>
-                                )}
-                                {isResizable && (
-                                    <button
-                                        type="button"
-                                        data-testid={`resize-${e.resource.id}`}
-                                        onClick={() => onEventResize?.({
-                                            event: e,
-                                            start: new Date('2024-04-01T00:00:00'),
-                                            end: new Date('2024-04-04T00:00:00'),
-                                            isAllDay: true
-                                        })}
-                                    >
-                                        Resize {e.title}
-                                    </button>
-                                )}
-                                {/* Force buttons bypass accessor — used to test handler guards */}
-                                <button
-                                    type="button"
-                                    data-testid={`force-drop-${e.resource.id}`}
-                                    onClick={() => onEventDrop?.({
-                                        event: e,
-                                        start: new Date('2024-04-01T00:00:00'),
-                                        end: new Date('2024-04-02T00:00:00'),
-                                        isAllDay: true
-                                    })}
-                                >
-                                    Force drop {e.title}
-                                </button>
-                                <button
-                                    type="button"
-                                    data-testid={`force-resize-${e.resource.id}`}
-                                    onClick={() => onEventResize?.({
-                                        event: e,
-                                        start: new Date('2024-04-01T00:00:00'),
-                                        end: new Date('2024-04-04T00:00:00'),
-                                        isAllDay: true
-                                    })}
-                                >
-                                    Force resize {e.title}
-                                </button>
-                            </span>
-                        );
-                    })}
-                </>
-            );
-        }
-}));
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Fixed date passed to CalendarPage so all tests see March 2024 regardless of wall-clock. */
+const DEFAULT_DATE = new Date('2024-03-15');
 
 function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -165,6 +26,10 @@ function Wrapper({ children }: { children: ReactNode }) {
             </MemoryRouter>
         </AppProvider>
     );
+}
+
+function renderCalendar() {
+    return render(<CalendarPage defaultDate={DEFAULT_DATE} />, { wrapper: Wrapper });
 }
 
 const TEST_PROJECT_ID = 'test-project-id';
@@ -226,34 +91,76 @@ describe('Calendar page', () => {
     // ── Basic rendering ───────────────────────────────────────────────────
 
     it('renders Calendar heading', () => {
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
         expect(screen.getByRole('heading', { name: /calendar/i })).toBeInTheDocument();
     });
 
-    it('renders the rbc-calendar mock', () => {
-        render(<CalendarPage />, { wrapper: Wrapper });
-        expect(screen.getByTestId('rbc-calendar')).toBeInTheDocument();
+    it('renders the month calendar with the correct month heading', () => {
+        renderCalendar();
+        expect(screen.getByText('March 2024')).toBeInTheDocument();
+    });
+
+    it('renders prev/next/today navigation buttons', () => {
+        renderCalendar();
+        expect(screen.getByRole('button', { name: /previous month/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /next month/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /today/i })).toBeInTheDocument();
+    });
+
+    it('navigates to the previous month', async () => {
+        const user = userEvent.setup();
+        renderCalendar();
+
+        await user.click(screen.getByRole('button', { name: /previous month/i }));
+
+        expect(screen.getByText('February 2024')).toBeInTheDocument();
+    });
+
+    it('navigates to the next month', async () => {
+        const user = userEvent.setup();
+        renderCalendar();
+
+        await user.click(screen.getByRole('button', { name: /next month/i }));
+
+        expect(screen.getByText('April 2024')).toBeInTheDocument();
+    });
+
+    it('renders Mon–Sun day-of-week labels', () => {
+        renderCalendar();
+        for (const label of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) {
+            expect(screen.getByText(label)).toBeInTheDocument();
+        }
     });
 
     // ── Slot selection ────────────────────────────────────────────────────
 
-    it('opens New Event modal when a slot is selected', async () => {
+    it('opens New Event modal when a day cell is clicked', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         expect(screen.getByRole('heading', { name: /new event/i })).toBeInTheDocument();
         expect(screen.getByPlaceholderText(/title \*/i)).toBeInTheDocument();
+    });
+
+    it('pre-fills start date from the clicked day', async () => {
+        const user = userEvent.setup();
+        renderCalendar();
+
+        await user.click(screen.getByTestId('calendar-day-2024-03-20'));
+
+        const dateInputs = document.querySelectorAll('input[type="date"]');
+        expect((dateInputs[0] as HTMLInputElement).value).toBe('2024-03-20');
     });
 
     // ── Autofocus ─────────────────────────────────────────────────────────
 
     it('autofocuses the title field when the "New Event" modal opens', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         expect(document.activeElement).toBe(screen.getByPlaceholderText(/title \*/i));
     });
@@ -261,7 +168,7 @@ describe('Calendar page', () => {
     it('autofocuses the title field when the "Edit Event" modal opens', async () => {
         preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Focus Event' })] });
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         await user.click(screen.getByRole('button', { name: 'Focus Event' }));
 
@@ -272,24 +179,23 @@ describe('Calendar page', () => {
 
     it('adds an event when title and start date are filled', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         await user.type(screen.getByPlaceholderText(/title \*/i), 'My New Event');
         await user.click(screen.getByRole('button', { name: /save/i }));
 
         await waitFor(() => {
-            // The mock Calendar renders the event as a button
             expect(screen.getByRole('button', { name: 'My New Event' })).toBeInTheDocument();
         });
     });
 
     it('does not add an event when title is empty', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
         // Don't type anything
         await user.click(screen.getByRole('button', { name: /save/i }));
 
@@ -299,9 +205,9 @@ describe('Calendar page', () => {
 
     it('does not add an event when start date is missing', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         await user.type(screen.getByPlaceholderText(/title \*/i), 'No Date Event');
 
@@ -319,9 +225,9 @@ describe('Calendar page', () => {
 
     it('Cancel closes the modal', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
         expect(screen.getByRole('heading', { name: /new event/i })).toBeInTheDocument();
 
         await user.click(screen.getByRole('button', { name: /cancel/i }));
@@ -333,7 +239,7 @@ describe('Calendar page', () => {
     it('opens Edit Event modal with pre-filled title when clicking an existing event', async () => {
         preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Existing Event' })] });
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         await user.click(screen.getByRole('button', { name: 'Existing Event' }));
 
@@ -344,7 +250,7 @@ describe('Calendar page', () => {
     it('updates event title after editing', async () => {
         preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Old Event' })] });
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         await user.click(screen.getByRole('button', { name: 'Old Event' }));
 
@@ -365,7 +271,7 @@ describe('Calendar page', () => {
         vi.stubGlobal('confirm', vi.fn(() => true));
         preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Delete Event' })] });
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         await user.click(screen.getByRole('button', { name: 'Delete Event' }));
         await user.click(screen.getByRole('button', { name: /^delete$/i }));
@@ -379,7 +285,7 @@ describe('Calendar page', () => {
         vi.stubGlobal('confirm', vi.fn(() => false));
         preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Keep Event' })] });
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         await user.click(screen.getByRole('button', { name: 'Keep Event' }));
         await user.click(screen.getByRole('button', { name: /^delete$/i }));
@@ -391,18 +297,18 @@ describe('Calendar page', () => {
 
     it('event type dropdown defaults to "event"', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         expect(screen.getByRole('combobox', { name: /event type/i })).toHaveValue('event');
     });
 
     it('selecting a different event type updates the dropdown', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         await user.selectOptions(screen.getByRole('combobox', { name: /event type/i }), 'contractor work');
 
@@ -412,84 +318,25 @@ describe('Calendar page', () => {
     it('opens Edit Event modal with pre-filled event type when clicking an existing event', async () => {
         preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', eventType: 'own work' })] });
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         await user.click(screen.getByRole('button', { name: 'Test Event' }));
 
         expect(screen.getByRole('combobox', { name: /event type/i })).toHaveValue('own work');
     });
 
-    // ── Drag and drop ─────────────────────────────────────────────────────
-
-    it('moves a single-day event to a new date when dropped', async () => {
-        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Draggable Event', date: '2024-03-01' })] });
-        const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
-
-        // Drop button simulates onEventDrop with start=2024-04-01, end=2024-04-02 (exclusive)
-        await user.click(screen.getByTestId('drop-ev1'));
-
-        await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
-            const updated = stored.data.calendarEvents.find(e => e.id === 'ev1');
-            expect(updated?.date).toBe('2024-04-01');
-            expect(updated?.endDate).toBeUndefined();
-        });
-    });
-
-    it('moves a multi-day event and preserves its span when dropped', async () => {
-        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev2', title: 'Multi-day Event', date: '2024-03-01', endDate: '2024-03-03' })] });
-        const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
-
-        // Resize button simulates onEventResize with start=2024-04-01, end=2024-04-04 (exclusive → 2024-04-03 inclusive)
-        await user.click(screen.getByTestId('resize-ev2'));
-
-        await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
-            const updated = stored.data.calendarEvents.find(e => e.id === 'ev2');
-            expect(updated?.date).toBe('2024-04-01');
-            expect(updated?.endDate).toBe('2024-04-03');
-        });
-    });
-
-    it('preserves other event properties (title, contractor, etc.) after drag', async () => {
-        preloadState({
-            calendarEvents: [
-                makeCalendarEvent({
-                    id: 'ev3',
-                    title: 'Colored Event',
-                    date: '2024-03-01',
-                    contractor: 'Bob'
-                })
-            ]
-        });
-        const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTestId('drop-ev3'));
-
-        await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
-            const updated = stored.data.calendarEvents.find(e => e.id === 'ev3');
-            expect(updated?.date).toBe('2024-04-01');
-            expect(updated?.contractor).toBe('Bob');
-            expect(updated?.title).toBe('Colored Event');
-        });
-    });
-
     // ── Contractor display in calendar ────────────────────────────────────
 
     it('shows contractor name in calendar event when contractor is set', async () => {
         preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Plumbing', contractor: 'Bob' })] });
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         expect(screen.getByText('Bob')).toBeInTheDocument();
     });
 
     it('does not show contractor text when contractor is not set', async () => {
         preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'My Event' })] });
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         // Only the title should be visible, no extra contractor element
         expect(screen.queryAllByText('My Event')).toHaveLength(1);
@@ -506,9 +353,9 @@ describe('Calendar page', () => {
             ]
         });
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         const datalist = document.getElementById('contractor-suggestions');
         expect(datalist).toBeInTheDocument();
@@ -524,9 +371,9 @@ describe('Calendar page', () => {
             ]
         });
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         const datalist = document.getElementById('contractor-suggestions');
         expect(datalist?.querySelectorAll('option[value="Alice"]')).toHaveLength(1);
@@ -536,9 +383,9 @@ describe('Calendar page', () => {
 
     it('typing in the contractor field in the modal updates the form', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         await user.type(screen.getByPlaceholderText(/contractor/i), 'Bob');
 
@@ -547,9 +394,9 @@ describe('Calendar page', () => {
 
     it('changing the end date input in the modal updates the form', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         // Both date inputs are type="date"; the second one is the end-date input
         const dateInputs = document.querySelectorAll('input[type="date"]');
@@ -562,9 +409,9 @@ describe('Calendar page', () => {
 
     it('typing in the notes textarea in the modal updates the form', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         await user.type(screen.getByPlaceholderText(/notes/i), 'Bring the plans');
 
@@ -573,9 +420,9 @@ describe('Calendar page', () => {
 
     it('an event saved with notes persists the notes value', async () => {
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
-        await user.click(screen.getByTestId('select-slot'));
+        await user.click(screen.getByTestId('calendar-day-2024-03-15'));
 
         await user.type(screen.getByPlaceholderText(/title \*/i), 'Site Visit');
         await user.type(screen.getByPlaceholderText(/notes/i), 'Bring helmet');
@@ -592,7 +439,7 @@ describe('Calendar page', () => {
 
     it('event wrapper has overflow-hidden and title has truncate class', () => {
         preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Long Event Title' })] });
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         const titleEl = screen.getByText('Long Event Title');
         expect(titleEl).toHaveClass('truncate');
@@ -601,7 +448,7 @@ describe('Calendar page', () => {
 
     it('contractor line has truncate class', () => {
         preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Event', contractor: 'Bob Builder' })] });
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         const contractorEl = screen.getByText('Bob Builder');
         expect(contractorEl).toHaveClass('truncate');
@@ -611,14 +458,14 @@ describe('Calendar page', () => {
 
     it('renders expense as a calendar item with emoji price and description', () => {
         preloadState({ expenses: [makeExpense({ price: 123, description: 'Paint' })] });
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         expect(screen.getByRole('button', { name: `💶 ${formatPLN(123)} - Paint` })).toBeInTheDocument();
     });
 
     it('formats expense price with decimals when not a whole number', () => {
         preloadState({ expenses: [makeExpense({ price: 99.5, description: 'Tiles' })] });
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         expect(screen.getByRole('button', { name: `💶 ${formatPLN(99.5)} - Tiles` })).toBeInTheDocument();
     });
@@ -626,62 +473,24 @@ describe('Calendar page', () => {
     it('does not open any modal when clicking an expense item', async () => {
         preloadState({ expenses: [makeExpense({ id: 'exp1', price: 123, description: 'Paint' })] });
         const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         await user.click(screen.getByRole('button', { name: `💶 ${formatPLN(123)} - Paint` }));
 
         expect(screen.queryByRole('heading', { name: /event/i })).not.toBeInTheDocument();
     });
 
-    it('does not render drag/drop controls for expense items', () => {
-        preloadState({ expenses: [makeExpense({ id: 'exp1', date: '2024-03-01' })] });
-        render(<CalendarPage />, { wrapper: Wrapper });
-
-        expect(screen.queryByTestId('drop-exp1')).not.toBeInTheDocument();
-        expect(screen.queryByTestId('resize-exp1')).not.toBeInTheDocument();
-    });
-
-    it('does render drag/drop controls for regular calendar events', () => {
-        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1' })] });
-        render(<CalendarPage />, { wrapper: Wrapper });
-
-        expect(screen.getByTestId('drop-ev1')).toBeInTheDocument();
-        expect(screen.getByTestId('resize-ev1')).toBeInTheDocument();
-    });
-
     it('does not render expense items without a date', () => {
         preloadState({ expenses: [makeExpense({ id: 'exp1', description: 'NoDated', date: '' })] });
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         expect(screen.queryByText(/NoDated/)).not.toBeInTheDocument();
     });
 
     it('does not render expense items with an invalid date string', () => {
         preloadState({ expenses: [makeExpense({ id: 'exp1', description: 'BadDate', date: '2024-13-99' })] });
-        render(<CalendarPage />, { wrapper: Wrapper });
+        renderCalendar();
 
         expect(screen.queryByText(/BadDate/)).not.toBeInTheDocument();
-    });
-
-    it('does not update expense data when the drop handler is invoked for an expense item', async () => {
-        preloadState({ expenses: [makeExpense({ id: 'exp1', date: '2024-03-01' })] });
-        const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTestId('force-drop-exp1'));
-
-        const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
-        expect(stored.data.expenses[0].date).toBe('2024-03-01');
-    });
-
-    it('does not update expense data when the resize handler is invoked for an expense item', async () => {
-        preloadState({ expenses: [makeExpense({ id: 'exp1', date: '2024-03-01' })] });
-        const user = userEvent.setup();
-        render(<CalendarPage />, { wrapper: Wrapper });
-
-        await user.click(screen.getByTestId('force-resize-exp1'));
-
-        const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
-        expect(stored.data.expenses[0].date).toBe('2024-03-01');
     });
 });

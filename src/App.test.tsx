@@ -29,12 +29,6 @@ vi.mock('recharts', () => {
     };
 });
 
-vi.mock('react-big-calendar', () => ({
-    Calendar: () => <div data-testid="rbc-calendar" />,
-    dateFnsLocalizer: () => ({})
-}));
-vi.mock('react-big-calendar/lib/css/react-big-calendar.css', () => ({}));
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
