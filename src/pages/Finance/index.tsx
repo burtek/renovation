@@ -114,10 +114,13 @@ export default function Finance() {
             return;
         }
         const { paymentConfirmationType, paymentConfirmationLink, ...formRest } = form;
+        if (paymentConfirmationType === 'gdrive' && !paymentConfirmationLink.trim()) {
+            return;
+        }
         const paymentConfirmation: Expense['paymentConfirmation']
             = paymentConfirmationType === 'on-invoice'
                 ? { type: 'on-invoice' }
-                : paymentConfirmationType === 'gdrive' && paymentConfirmationLink !== ''
+                : paymentConfirmationType === 'gdrive'
                     ? { type: 'gdrive', link: paymentConfirmationLink }
                     : undefined;
         const data = {

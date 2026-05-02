@@ -146,7 +146,7 @@ describe('Finance page', () => {
             ]
         });
         render(<Finance />, { wrapper: Wrapper });
-        const links = screen.getAllByRole('link', { name: /gdrive/i });
+        const links = screen.getAllByRole('link', { name: /invoice/i });
         expect(links.length).toBeGreaterThan(0);
         expect(links[0]).toHaveAttribute('href', 'https://drive.google.com/file/abc123');
     });
@@ -164,8 +164,8 @@ describe('Finance page', () => {
             ]
         });
         render(<Finance />, { wrapper: Wrapper });
-        expect(screen.getAllByText('GDrive (invalid link)').length).toBeGreaterThan(0);
-        expect(screen.queryByRole('link', { name: /gdrive/i })).not.toBeInTheDocument();
+        expect(screen.getAllByText('Invoice (invalid link)').length).toBeGreaterThan(0);
+        expect(screen.queryByRole('link', { name: /invoice/i })).not.toBeInTheDocument();
     });
 
     it('shows invoice form text (no anchor) when gdrive invoiceLink is absent', () => {
@@ -179,7 +179,7 @@ describe('Finance page', () => {
             ]
         });
         render(<Finance />, { wrapper: Wrapper });
-        expect(screen.queryByRole('link', { name: /gdrive/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /invoice/i })).not.toBeInTheDocument();
     });
 
     // ── Add expense ───────────────────────────────────────────────────────
@@ -528,7 +528,7 @@ describe('Finance page', () => {
             ]
         });
         render(<Finance />, { wrapper: Wrapper });
-        expect(screen.getAllByText('GDrive (invalid link)').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Invoice (invalid link)').length).toBeGreaterThan(0);
     });
 
     it('deletes an expense via the mobile card Delete button', async () => {

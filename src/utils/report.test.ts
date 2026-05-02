@@ -279,6 +279,50 @@ describe('generateReport', () => {
         expect(html).not.toContain('<a href=');
     });
 
+    // ── Payment confirmation column ───────────────────────────────────────
+
+    it('renders "Confirmed on invoice" for on-invoice paymentConfirmation', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            expenses: [makeExpense({ paymentConfirmation: { type: 'on-invoice' } })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('Confirmed on invoice');
+    });
+
+    it('renders a payment confirmation anchor for valid gdrive paymentConfirmation link', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            expenses: [makeExpense({ paymentConfirmation: { type: 'gdrive', link: 'https://drive.google.com/pay/abc' } })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('<a href="https://drive.google.com/pay/abc"');
+        expect(html).toContain('Payment confirmation</a>');
+    });
+
+    it('renders "Payment confirmation (invalid link)" for invalid gdrive paymentConfirmation link', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            expenses: [makeExpense({ paymentConfirmation: { type: 'gdrive', link: 'javascript:alert(1)' } })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('Payment confirmation (invalid link)');
+        expect(html).not.toContain('<a href="javascript:');
+    });
+
+    it('renders "—" in payment column when paymentConfirmation is absent', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            expenses: [makeExpense({ paymentConfirmation: undefined })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('—');
+    });
+
     it('HTML-escapes < > & " \' in description', () => {
         const state: AppData = {
             ...EMPTY_STATE,
