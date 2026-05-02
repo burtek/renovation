@@ -28,6 +28,8 @@ const emptyForm: ExpenseFormData = {
     invoiceNo: '',
     invoiceForm: 'paper',
     invoiceLink: '',
+    paymentConfirmationType: '',
+    paymentConfirmationLink: '',
     loanApproved: false
 };
 
@@ -99,6 +101,8 @@ export default function Finance() {
             invoiceNo: e.invoiceNo,
             invoiceForm: e.invoiceForm,
             invoiceLink: e.invoiceLink ?? '',
+            paymentConfirmationType: e.paymentConfirmation?.type ?? '',
+            paymentConfirmationLink: e.paymentConfirmation?.type === 'gdrive' ? e.paymentConfirmation.link : '',
             loanApproved: e.loanApproved
         });
         setModal({ open: true, editExpense: e });
@@ -109,7 +113,22 @@ export default function Finance() {
         if (!form.description.trim() || isNaN(price)) {
             return;
         }
-        const data = { ...form, price, invoiceLink: form.invoiceLink === '' ? undefined : form.invoiceLink };
+        const { paymentConfirmationType, paymentConfirmationLink, ...formRest } = form;
+        if (paymentConfirmationType === 'gdrive' && !paymentConfirmationLink.trim()) {
+            return;
+        }
+        const paymentConfirmation: Expense['paymentConfirmation']
+            = paymentConfirmationType === 'on-invoice'
+                ? { type: 'on-invoice' }
+                : paymentConfirmationType === 'gdrive'
+                    ? { type: 'gdrive', link: paymentConfirmationLink }
+                    : undefined;
+        const data = {
+            ...formRest,
+            price,
+            invoiceLink: form.invoiceLink === '' ? undefined : form.invoiceLink,
+            paymentConfirmation
+        };
         if (modal.editExpense) {
             dispatch({ type: 'UPDATE_EXPENSE', payload: { ...modal.editExpense, ...data } });
         } else {

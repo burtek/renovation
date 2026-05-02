@@ -11,6 +11,8 @@ export interface ExpenseFormData {
     invoiceNo: string;
     invoiceForm: 'paper' | 'gdrive';
     invoiceLink: string;
+    paymentConfirmationType: '' | 'on-invoice' | 'gdrive';
+    paymentConfirmationLink: string;
     loanApproved: boolean;
 }
 
@@ -84,8 +86,13 @@ export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSav
                         className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                     />
                     <div className="flex gap-2 items-center">
-                        <label className="text-sm text-gray-600 dark:text-gray-400">Invoice form:</label>
+                        <label
+                            htmlFor="invoice-form-select"
+                            className="text-sm text-gray-600 dark:text-gray-400"
+                        >Invoice form:
+                        </label>
                         <select
+                            id="invoice-form-select"
                             value={form.invoiceForm}
                             onChange={e => {
                                 const { value } = e.target;
@@ -106,6 +113,39 @@ export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSav
                                 value={form.invoiceLink}
                                 onChange={e => {
                                     onFormChange({ invoiceLink: e.target.value });
+                                }}
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+                            />
+                        )}
+                    <div className="flex gap-2 items-center">
+                        <label
+                            htmlFor="payment-confirmation-select"
+                            className="text-sm text-gray-600 dark:text-gray-400"
+                        >Payment confirmation:
+                        </label>
+                        <select
+                            id="payment-confirmation-select"
+                            value={form.paymentConfirmationType}
+                            onChange={e => {
+                                const { value } = e.target;
+                                if (value === '' || value === 'on-invoice' || value === 'gdrive') {
+                                    onFormChange({ paymentConfirmationType: value });
+                                }
+                            }}
+                            className="border dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+                        >
+                            <option value="">—</option>
+                            <option value="on-invoice">Confirmed on invoice</option>
+                            <option value="gdrive">Google Drive</option>
+                        </select>
+                    </div>
+                    {form.paymentConfirmationType === 'gdrive'
+                        && (
+                            <input
+                                placeholder="Payment confirmation GDrive link"
+                                value={form.paymentConfirmationLink}
+                                onChange={e => {
+                                    onFormChange({ paymentConfirmationLink: e.target.value });
                                 }}
                                 className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
@@ -150,6 +190,22 @@ export function safeUrl(url: string): string {
     }
 }
 
+function GDriveLink({ url, label = 'GDrive' }: { url: string; label?: string }) {
+    const safe = safeUrl(url);
+    if (!safe) {
+        return <>{label} (invalid link)</>;
+    }
+    return (
+        <a
+            href={safe}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+        >{label}
+        </a>
+    );
+}
+
 type SortKey = keyof Pick<Expense, 'description' | 'date' | 'price' | 'shopName' | 'invoiceNo' | 'loanApproved'>;
 type SortDir = 'asc' | 'desc';
 
@@ -170,6 +226,7 @@ const EXPENSE_COLUMNS: Column[] = [
     { label: 'Shop', key: 'shopName' },
     { label: 'Invoice No', key: 'invoiceNo' },
     { label: 'Invoice' },
+    { label: 'Payment' },
     { label: 'Loan', key: 'loanApproved' },
     { label: 'Actions' }
 ];
@@ -216,22 +273,26 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             {e.shopName && <span>🏪 {e.shopName}</span>}
                             {e.invoiceNo && <span>🧾 {e.invoiceNo}</span>}
                             <span>{e.invoiceForm === 'gdrive' && e.invoiceLink
-                                ? (() => {
-                                    const url = safeUrl(e.invoiceLink);
-                                    return url
-                                        ? (
-                                            <a
-                                                href={url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-blue-600 underline"
-                                            >GDrive
-                                            </a>
-                                        )
-                                        : 'GDrive (invalid link)';
-                                })()
+                                ? (
+                                    <GDriveLink
+                                        url={e.invoiceLink}
+                                        label="Invoice"
+                                    />
+                                )
                                 : e.invoiceForm}
                             </span>
+                            {e.paymentConfirmation && (
+                                <span>
+                                    {e.paymentConfirmation.type === 'on-invoice'
+                                        ? '💳 Confirmed on invoice'
+                                        : (
+                                            <GDriveLink
+                                                url={e.paymentConfirmation.link}
+                                                label="💳 Payment"
+                                            />
+                                        )}
+                                </span>
+                            )}
                             <span>{e.loanApproved ? <span className="text-green-600">✓ Loan</span> : <span className="text-gray-400 dark:text-gray-500">✗ Loan</span>}</span>
                         </div>
                         <div className="flex gap-2 pt-1">
@@ -297,7 +358,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             && (
                                 <tr>
                                     <td
-                                        colSpan={8}
+                                        colSpan={9}
                                         className="text-center text-gray-400 dark:text-gray-500 py-8"
                                     >No expenses yet.
                                     </td>
@@ -315,21 +376,25 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                 <td className="px-3 py-2">{e.invoiceNo}</td>
                                 <td className="px-3 py-2">
                                     {e.invoiceForm === 'gdrive' && e.invoiceLink
-                                        ? (() => {
-                                            const url = safeUrl(e.invoiceLink);
-                                            return url
-                                                ? (
-                                                    <a
-                                                        href={url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-blue-600 underline"
-                                                    >GDrive
-                                                    </a>
-                                                )
-                                                : 'GDrive (invalid link)';
-                                        })()
+                                        ? (
+                                            <GDriveLink
+                                                url={e.invoiceLink}
+                                                label="Invoice"
+                                            />
+                                        )
                                         : e.invoiceForm}
+                                </td>
+                                <td className="px-3 py-2">
+                                    {e.paymentConfirmation
+                                        ? (e.paymentConfirmation.type === 'on-invoice'
+                                            ? 'Confirmed on invoice'
+                                            : (
+                                                <GDriveLink
+                                                    url={e.paymentConfirmation.link}
+                                                    label="Payment confirmation"
+                                                />
+                                            ))
+                                        : null}
                                 </td>
                                 <td className="px-3 py-2">{e.loanApproved ? <span className="text-green-600">✓</span> : <span className="text-gray-400 dark:text-gray-500">✗</span>}</td>
                                 <td className="px-3 py-2">

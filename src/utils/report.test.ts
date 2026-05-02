@@ -233,7 +233,7 @@ describe('generateReport', () => {
         generateReport(state);
         const html = captureHtml(mockWin);
         expect(html).toContain('<a href="https://drive.google.com/file/abc"');
-        expect(html).toContain('GDrive</a>');
+        expect(html).toContain('Invoice</a>');
     });
 
     it('renders a gdrive anchor for valid http invoiceLink', () => {
@@ -246,25 +246,25 @@ describe('generateReport', () => {
         expect(html).toContain('<a href="http://drive.example.com/file"');
     });
 
-    it('renders "GDrive (invalid link)" for javascript: invoiceLink', () => {
+    it('renders "Invoice (invalid link)" for javascript: invoiceLink', () => {
         const state: AppData = {
             ...EMPTY_STATE,
             expenses: [makeExpense({ invoiceForm: 'gdrive', invoiceLink: 'javascript:alert(1)' })]
         };
         generateReport(state);
         const html = captureHtml(mockWin);
-        expect(html).toContain('GDrive (invalid link)');
+        expect(html).toContain('Invoice (invalid link)');
         expect(html).not.toContain('<a href="javascript:');
     });
 
-    it('renders "GDrive (invalid link)" for a completely malformed invoiceLink (safeHref catch)', () => {
+    it('renders "Invoice (invalid link)" for a completely malformed invoiceLink (safeHref catch)', () => {
         const state: AppData = {
             ...EMPTY_STATE,
             expenses: [makeExpense({ invoiceForm: 'gdrive', invoiceLink: 'not a url at all' })]
         };
         generateReport(state);
         const html = captureHtml(mockWin);
-        expect(html).toContain('GDrive (invalid link)');
+        expect(html).toContain('Invoice (invalid link)');
         expect(html).not.toContain('<a href=');
     });
 
@@ -277,6 +277,50 @@ describe('generateReport', () => {
         const html = captureHtml(mockWin);
         // Should show "gdrive" text but no anchor tag for it
         expect(html).not.toContain('<a href=');
+    });
+
+    // ── Payment confirmation column ───────────────────────────────────────
+
+    it('renders "Confirmed on invoice" for on-invoice paymentConfirmation', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            expenses: [makeExpense({ paymentConfirmation: { type: 'on-invoice' } })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('Confirmed on invoice');
+    });
+
+    it('renders a payment confirmation anchor for valid gdrive paymentConfirmation link', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            expenses: [makeExpense({ paymentConfirmation: { type: 'gdrive', link: 'https://drive.google.com/pay/abc' } })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('<a href="https://drive.google.com/pay/abc"');
+        expect(html).toContain('Payment confirmation</a>');
+    });
+
+    it('renders "Payment confirmation (invalid link)" for invalid gdrive paymentConfirmation link', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            expenses: [makeExpense({ paymentConfirmation: { type: 'gdrive', link: 'javascript:alert(1)' } })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('Payment confirmation (invalid link)');
+        expect(html).not.toContain('<a href="javascript:');
+    });
+
+    it('renders "—" in payment column when paymentConfirmation is absent', () => {
+        const state: AppData = {
+            ...EMPTY_STATE,
+            expenses: [makeExpense({ paymentConfirmation: undefined })]
+        };
+        generateReport(state);
+        const html = captureHtml(mockWin);
+        expect(html).toContain('—');
     });
 
     it('HTML-escapes < > & " \' in description', () => {
