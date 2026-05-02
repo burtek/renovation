@@ -11,6 +11,7 @@ export interface ExpenseFormData {
     invoiceNo: string;
     invoiceForm: 'paper' | 'gdrive';
     invoiceLink: string;
+    paymentConfirmationType: '' | 'on-invoice' | 'gdrive';
     paymentConfirmationLink: string;
     loanApproved: boolean;
 }
@@ -111,14 +112,34 @@ export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSav
                                 className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                         )}
-                    <input
-                        placeholder="Payment confirmation GDrive link"
-                        value={form.paymentConfirmationLink}
-                        onChange={e => {
-                            onFormChange({ paymentConfirmationLink: e.target.value });
-                        }}
-                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
-                    />
+                    <div className="flex gap-2 items-center">
+                        <label className="text-sm text-gray-600 dark:text-gray-400">Payment confirmation:</label>
+                        <select
+                            value={form.paymentConfirmationType}
+                            onChange={e => {
+                                const { value } = e.target;
+                                if (value === '' || value === 'on-invoice' || value === 'gdrive') {
+                                    onFormChange({ paymentConfirmationType: value });
+                                }
+                            }}
+                            className="border dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+                        >
+                            <option value="">—</option>
+                            <option value="on-invoice">Confirmed on invoice</option>
+                            <option value="gdrive">Google Drive</option>
+                        </select>
+                    </div>
+                    {form.paymentConfirmationType === 'gdrive'
+                        && (
+                            <input
+                                placeholder="Payment confirmation GDrive link"
+                                value={form.paymentConfirmationLink}
+                                onChange={e => {
+                                    onFormChange({ paymentConfirmationLink: e.target.value });
+                                }}
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+                            />
+                        )}
                     <label className="flex items-center gap-2 text-sm dark:text-gray-300">
                         <input
                             type="checkbox"
@@ -245,12 +266,16 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                 ? <GDriveLink url={e.invoiceLink} />
                                 : e.invoiceForm}
                             </span>
-                            {e.paymentConfirmationLink && (
+                            {e.paymentConfirmation && (
                                 <span>
-                                    <GDriveLink
-                                        url={e.paymentConfirmationLink}
-                                        label="💳 Payment"
-                                    />
+                                    {e.paymentConfirmation.type === 'on-invoice'
+                                        ? '💳 Confirmed on invoice'
+                                        : (
+                                            <GDriveLink
+                                                url={e.paymentConfirmation.link}
+                                                label="💳 Payment"
+                                            />
+                                        )}
                                 </span>
                             )}
                             <span>{e.loanApproved ? <span className="text-green-600">✓ Loan</span> : <span className="text-gray-400 dark:text-gray-500">✗ Loan</span>}</span>
@@ -345,13 +370,15 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                         : e.invoiceForm}
                                 </td>
                                 <td className="px-3 py-2">
-                                    {e.paymentConfirmationLink
-                                        ? (
-                                            <GDriveLink
-                                                url={e.paymentConfirmationLink}
-                                                label="Payment confirmation"
-                                            />
-                                        )
+                                    {e.paymentConfirmation
+                                        ? (e.paymentConfirmation.type === 'on-invoice'
+                                            ? 'Confirmed on invoice'
+                                            : (
+                                                <GDriveLink
+                                                    url={e.paymentConfirmation.link}
+                                                    label="Payment confirmation"
+                                                />
+                                            ))
                                         : null}
                                 </td>
                                 <td className="px-3 py-2">{e.loanApproved ? <span className="text-green-600">✓</span> : <span className="text-gray-400 dark:text-gray-500">✗</span>}</td>

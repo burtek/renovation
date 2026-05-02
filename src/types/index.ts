@@ -39,7 +39,7 @@ export interface Expense {
     invoiceNo: string;
     invoiceForm: 'paper' | 'gdrive';
     invoiceLink?: string;
-    paymentConfirmationLink?: string;
+    paymentConfirmation?: { type: 'on-invoice' } | { type: 'gdrive'; link: string };
     loanApproved: boolean;
 }
 

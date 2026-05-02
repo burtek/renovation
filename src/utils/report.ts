@@ -118,8 +118,11 @@ export function generateReport(state: AppData): void {
             return esc(e.invoiceForm);
         })()}</td>
         <td>${(() => {
-            if (e.paymentConfirmationLink) {
-                const href = safeHref(e.paymentConfirmationLink);
+            if (e.paymentConfirmation?.type === 'on-invoice') {
+                return 'Confirmed on invoice';
+            }
+            if (e.paymentConfirmation?.type === 'gdrive') {
+                const href = safeHref(e.paymentConfirmation.link);
                 return href ? `<a href="${href}" rel="noopener noreferrer">Payment confirmation</a>` : 'Payment confirmation (invalid link)';
             }
             return '—';
