@@ -14,7 +14,7 @@
     width: 4px;
 }
 .rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-thumb {
-    background-color: #9ca3af;
+    background-color: theme('colors.gray.400');
     border-radius: 2px;
 }
 
