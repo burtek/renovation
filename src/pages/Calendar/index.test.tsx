@@ -120,6 +120,31 @@ vi.mock('react-big-calendar/lib/addons/dragAndDrop', () => ({
                                         Resize {e.title}
                                     </button>
                                 )}
+                                {/* Force buttons bypass accessor — used to test handler guards */}
+                                <button
+                                    type="button"
+                                    data-testid={`force-drop-${e.resource.id}`}
+                                    onClick={() => onEventDrop?.({
+                                        event: e,
+                                        start: new Date('2024-04-01T00:00:00'),
+                                        end: new Date('2024-04-02T00:00:00'),
+                                        isAllDay: true
+                                    })}
+                                >
+                                    Force drop {e.title}
+                                </button>
+                                <button
+                                    type="button"
+                                    data-testid={`force-resize-${e.resource.id}`}
+                                    onClick={() => onEventResize?.({
+                                        event: e,
+                                        start: new Date('2024-04-01T00:00:00'),
+                                        end: new Date('2024-04-04T00:00:00'),
+                                        isAllDay: true
+                                    })}
+                                >
+                                    Force resize {e.title}
+                                </button>
                             </span>
                         );
                     })}
@@ -608,5 +633,34 @@ describe('Calendar page', () => {
         render(<CalendarPage />, { wrapper: Wrapper });
 
         expect(screen.queryByText(/NoDated/)).not.toBeInTheDocument();
+    });
+
+    it('does not render expense items with an invalid date string', () => {
+        preloadState({ expenses: [makeExpense({ id: 'exp1', description: 'BadDate', date: '2024-13-99' })] });
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        expect(screen.queryByText(/BadDate/)).not.toBeInTheDocument();
+    });
+
+    it('does not update expense data when the drop handler is invoked for an expense item', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'exp1', date: '2024-03-01' })] });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTestId('force-drop-exp1'));
+
+        const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+        expect(stored.data.expenses[0].date).toBe('2024-03-01');
+    });
+
+    it('does not update expense data when the resize handler is invoked for an expense item', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'exp1', date: '2024-03-01' })] });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTestId('force-resize-exp1'));
+
+        const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+        expect(stored.data.expenses[0].date).toBe('2024-03-01');
     });
 });

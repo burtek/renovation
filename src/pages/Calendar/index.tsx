@@ -109,7 +109,13 @@ export default function CalendarPage() {
     });
 
     const expenseEvents: BigCalItem[] = state.expenses
-        .filter(e => Boolean(e.date))
+        .filter(e => {
+            if (!e.date) {
+                return false;
+            }
+            const d = new Date(`${e.date}T00:00:00`);
+            return !isNaN(d.getTime());
+        })
         .map(e => {
             const { start, end } = buildAllDayRange(e.date);
             return { title: formatExpenseTitle(e), start, end, allDay: true, resource: e };
