@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AppProvider } from '../../contexts/AppContext';
 import { ACTIVE_PROJECT_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { AppData, Expense } from '../../types';
+import { formatPct } from '../../utils/format';
 
 import Finance from '.';
 
@@ -17,7 +18,25 @@ vi.mock('recharts', () => {
 
         PieChart: Mock,
 
-        Pie: Mock,
+        Pie: ({ children, label, data }: {
+            children?: ReactNode;
+            label?: (entry: { name: string; percent: number }) => string;
+            data?: Array<{ name: string; value: number }>;
+        }) => {
+            const total = (data ?? []).reduce((s, d) => s + d.value, 0);
+            return (
+                <div>
+                    {children}
+                    {label && (data ?? []).map(d => (
+                        <span
+                            key={d.name}
+                            data-testid="pie-label"
+                        >{label({ name: d.name, percent: total > 0 ? d.value / total : 0 })}
+                        </span>
+                    ))}
+                </div>
+            );
+        },
 
         Cell: Mock,
 
@@ -362,6 +381,68 @@ describe('Finance page', () => {
         // The expense description appears in the list (mobile + desktop views).
         const descriptions = screen.getAllByText('Test Expense');
         expect(descriptions.length).toBeGreaterThan(0);
+    });
+
+    it('pie chart labels use formatPct to display the percentage', () => {
+        preloadState({
+            budget: 1000,
+            expenses: [
+                makeExpense({ id: 'e1', price: 300, loanApproved: true }),
+                makeExpense({ id: 'e2', price: 100, loanApproved: false })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        // pieData = [{value:300}, {value:100}, {value:600}], total=1000
+        // Each label is rendered as "Name: XX%" via the mock
+        const labels = screen.getAllByTestId('pie-label');
+        expect(labels.some(l => l.textContent?.includes(formatPct(0.3)))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes(formatPct(0.1)))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes(formatPct(0.6)))).toBe(true);
+    });
+
+    // ── Summary card percentages ──────────────────────────────────────────
+
+    it('does not show percentages in summary cards when there are no expenses and no budget', () => {
+        render(<Finance />, { wrapper: Wrapper });
+        // When pieTotal is 0, no percentage rows should be rendered
+        expect(screen.queryByText(formatPct(0))).not.toBeInTheDocument();
+    });
+
+    it('shows percentages in summary cards when budget is set and no expenses are present', () => {
+        preloadState({ budget: 1000 });
+        render(<Finance />, { wrapper: Wrapper });
+        // pieTotal = 0 + 0 + 1000 = 1000; approved=0%, notApproved=0%, remaining=100%
+        expect(screen.getAllByText(formatPct(0)).length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByText(formatPct(1)).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('shows correct percentages for approved and not-approved expenses', () => {
+        preloadState({
+            budget: 1000,
+            expenses: [
+                makeExpense({ id: 'e1', price: 300, loanApproved: true }),
+                makeExpense({ id: 'e2', price: 100, loanApproved: false })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        // pieTotal = 300 + 100 + max(600, 0) = 1000
+        // approved: 300/1000 = 30%, notApproved: 100/1000 = 10%, remaining: 600/1000 = 60%
+        expect(screen.getByText(formatPct(0.3))).toBeInTheDocument();
+        expect(screen.getByText(formatPct(0.1))).toBeInTheDocument();
+        expect(screen.getByText(formatPct(0.6))).toBeInTheDocument();
+    });
+
+    it('shows 0% for remaining when expenses exceed budget', () => {
+        preloadState({
+            budget: 500,
+            expenses: [makeExpense({ id: 'e1', price: 700, loanApproved: false })]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        // remaining = 500 - 700 = -200 (over budget), so Math.max(remaining, 0) = 0
+        // pieTotal = 0 + 700 + 0 = 700; notApproved: 700/700 = 100%, approved: 0%, remaining: 0%
+        expect(screen.getByText(formatPct(1))).toBeInTheDocument();
+        // Both approved and remaining are 0%; there should be two of them
+        expect(screen.getAllByText(formatPct(0)).length).toBeGreaterThanOrEqual(2);
     });
 
     // ── gdrive invoice form ───────────────────────────────────────────────

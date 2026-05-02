@@ -7,3 +7,12 @@ export function formatPLN(amount: number): string {
         }).format(amount)}\u00a0zł`
     );
 }
+
+/** Format a fraction (0–1) as a percentage string: `42,3%` */
+export function formatPct(fraction: number): string {
+    return new Intl.NumberFormat('pl-PL', {
+        style: 'percent',
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+    }).format(fraction);
+}

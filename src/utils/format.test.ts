@@ -1,4 +1,4 @@
-import { formatPLN } from './format';
+import { formatPct, formatPLN } from './format';
 
 
 // Compute expected strings using the same Intl.NumberFormat the implementation uses,
@@ -10,6 +10,14 @@ function plFormat(amount: number): string {
             maximumFractionDigits: 2
         }).format(amount)}\u00a0zł`
     );
+}
+
+function pctFormat(fraction: number): string {
+    return new Intl.NumberFormat('pl-PL', {
+        style: 'percent',
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+    }).format(fraction);
 }
 
 describe('formatPLN', () => {
@@ -26,5 +34,18 @@ describe('formatPLN', () => {
 
     it('includes a non-breaking space before zł', () => {
         expect(formatPLN(10)).toContain('\u00a0zł');
+    });
+});
+
+describe('formatPct', () => {
+    it.each([0, 0.5, 1, 1 / 3])(
+        'delegates to pl-PL Intl.NumberFormat percent style for %d',
+        fraction => {
+            expect(formatPct(fraction)).toBe(pctFormat(fraction));
+        }
+    );
+
+    it('always includes the % sign', () => {
+        expect(formatPct(0.42)).toContain('%');
     });
 });
