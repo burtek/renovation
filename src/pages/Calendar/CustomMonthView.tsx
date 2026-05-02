@@ -1,6 +1,7 @@
 import { addDays } from 'date-fns';
 import { format } from 'date-fns/format';
 import type { CSSProperties, ComponentType, MouseEvent } from 'react';
+import { createElement } from 'react';
 
 
 // Minimal event shape needed by this view
@@ -13,11 +14,11 @@ interface RbcEvent {
 
 // Minimal localizer interface (date-fns localizer from react-big-calendar)
 interface RbcLocalizer {
-    firstVisibleDay(date: Date, localizer: RbcLocalizer): Date;
-    lastVisibleDay(date: Date, localizer: RbcLocalizer): Date;
-    add(date: Date, amount: number, unit: string): Date;
-    isSameDate(a: Date, b: Date): boolean;
-    format(date: Date, formatStr: string, culture?: string): string;
+    firstVisibleDay: (date: Date, localizer: RbcLocalizer) => Date;
+    lastVisibleDay: (date: Date, localizer: RbcLocalizer) => Date;
+    add: (date: Date, amount: number, unit: string) => Date;
+    isSameDate: (a: Date, b: Date) => boolean;
+    format: (date: Date, formatStr: string, culture?: string) => string;
 }
 
 interface SlotInfo {
@@ -31,10 +32,10 @@ interface CustomMonthViewProps<T extends RbcEvent = RbcEvent> {
     date: Date;
     events: T[];
     localizer: RbcLocalizer;
-    getNow(): Date;
-    onSelectEvent(event: T, e: MouseEvent): void;
-    onSelectSlot(slotInfo: SlotInfo): void;
-    eventPropGetter?(event: T): { style?: CSSProperties; className?: string };
+    getNow: () => Date;
+    onSelectEvent: (event: T, e: MouseEvent) => void;
+    onSelectSlot: (slotInfo: SlotInfo) => void;
+    eventPropGetter?: (event: T) => { style?: CSSProperties; className?: string };
     components?: { event?: ComponentType<{ event: T }> };
 }
 
@@ -70,28 +71,37 @@ function CustomMonthView<T extends RbcEvent = RbcEvent>({
 }: CustomMonthViewProps<T>) {
     const today = getNow();
     const weeks = buildWeeks(localizer, date);
-    const headerDays = weeks[0];
-    const EventComp = components?.event;
+    const [headerDays] = weeks;
+    const eventComp = components?.event;
 
     return (
-        <div className="rbc-month-view" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div
+            className="rbc-month-view"
+            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+        >
             {/* Day-name header row */}
-            <div className="rbc-month-header" style={{ display: 'flex' }}>
+            <div
+                className="rbc-month-header"
+                style={{ display: 'flex' }}
+            >
                 {headerDays.map(day => (
-                    <div key={day.toISOString()} className="rbc-header">
+                    <div
+                        key={day.toISOString()}
+                        className="rbc-header"
+                    >
                         {format(day, 'EEE')}
                     </div>
                 ))}
             </div>
 
             {/* Week rows */}
-            {weeks.map((week, wi) => (
+            {weeks.map(week => (
                 <div
-                    key={wi}
+                    key={week[0].toISOString()}
                     className="rbc-month-row"
                     style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'visible', height: 'auto' }}
                 >
-                    {week.map((day, di) => {
+                    {week.map(day => {
                         const dayEvents = getEventsForDay(events, day);
                         const isToday = localizer.isSameDate(day, today);
                         const isOffRange = !localizer.isSameDate(
@@ -101,7 +111,7 @@ function CustomMonthView<T extends RbcEvent = RbcEvent>({
 
                         return (
                             <div
-                                key={di}
+                                key={day.toISOString()}
                                 className={[
                                     'rbc-day-bg',
                                     isToday ? 'rbc-today' : '',
@@ -114,12 +124,14 @@ function CustomMonthView<T extends RbcEvent = RbcEvent>({
                                     overflow: 'hidden',
                                     position: 'relative'
                                 }}
-                                onClick={() => onSelectSlot({
-                                    start: day,
-                                    end: addDays(day, 1),
-                                    slots: [day],
-                                    action: 'click'
-                                })}
+                                onClick={() => {
+                                    onSelectSlot({
+                                        start: day,
+                                        end: addDays(day, 1),
+                                        slots: [day],
+                                        action: 'click'
+                                    });
+                                }}
                             >
                                 {/* Date number */}
                                 <div
@@ -148,14 +160,14 @@ function CustomMonthView<T extends RbcEvent = RbcEvent>({
                                                     cursor: 'pointer',
                                                     ...eventProps.style
                                                 }}
-                                                onClick={(e) => {
+                                                onClick={e => {
                                                     e.stopPropagation();
                                                     onSelectEvent(event, e);
                                                 }}
                                             >
                                                 <div className="rbc-event-content">
-                                                    {EventComp
-                                                        ? <EventComp event={event} />
+                                                    {eventComp
+                                                        ? createElement(eventComp, { event })
                                                         : event.title}
                                                 </div>
                                             </div>
@@ -185,7 +197,6 @@ CustomMonthView.navigate = (date: Date, action: string, { localizer }: { localiz
     }
 };
 
-CustomMonthView.title = (date: Date, { localizer }: { localizer: RbcLocalizer }) =>
-    localizer.format(date, 'monthHeaderFormat');
+CustomMonthView.title = (date: Date) => format(date, 'MMMM yyyy');
 
 export default CustomMonthView;
