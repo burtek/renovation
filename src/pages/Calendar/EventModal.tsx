@@ -34,6 +34,7 @@ export default function EventModal({ editEvent, form, contractorNames, onFormCha
                 <h2 className="text-lg font-bold mb-4 dark:text-gray-100">{editEvent ? 'Edit Event' : 'New Event'}</h2>
                 <div className="space-y-3">
                     <input
+                        autoFocus
                         placeholder="Title *"
                         value={form.title}
                         onChange={e => {

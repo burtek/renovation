@@ -247,6 +247,27 @@ describe('Calendar page', () => {
         expect(screen.getByPlaceholderText(/title \*/i)).toBeInTheDocument();
     });
 
+    // ── Autofocus ─────────────────────────────────────────────────────────
+
+    it('autofocuses the title field when the "New Event" modal opens', async () => {
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByTestId('select-slot'));
+
+        expect(document.activeElement).toBe(screen.getByPlaceholderText(/title \*/i));
+    });
+
+    it('autofocuses the title field when the "Edit Event" modal opens', async () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Focus Event' })] });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: 'Focus Event' }));
+
+        expect(document.activeElement).toBe(screen.getByDisplayValue('Focus Event'));
+    });
+
     // ── Add event ─────────────────────────────────────────────────────────
 
     it('adds an event when title and start date are filled', async () => {

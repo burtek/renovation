@@ -99,6 +99,55 @@ describe('Tasks page', () => {
         expect(screen.getByText(/no tasks yet/i)).toBeInTheDocument();
     });
 
+    // ── Autofocus ─────────────────────────────────────────────────────────
+
+    it('autofocuses the title field when the "New Task" modal opens', async () => {
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add task/i }));
+
+        expect(document.activeElement).toBe(screen.getByPlaceholderText(/title \*/i));
+    });
+
+    it('autofocuses the title field when the "Edit Task" modal opens', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Focus Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /^edit$/i }));
+
+        expect(document.activeElement).toBe(screen.getByDisplayValue('Focus Task'));
+    });
+
+    it('autofocuses the title field when the "New Subtask" modal opens', async () => {
+        preloadTasks([makeTask({ id: 't1', title: 'Parent Task' })]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ subtask/i }));
+
+        expect(document.activeElement).toBe(screen.getByPlaceholderText(/title \*/i));
+    });
+
+    it('autofocuses the title field when the "Edit Subtask" modal opens', async () => {
+        preloadTasks([
+            makeTask({
+                id: 't1',
+                title: 'Parent Task',
+                subtasks: [makeSubtask({ id: 's1', parentId: 't1', title: 'Focus Sub' })]
+            })
+        ]);
+        const user = userEvent.setup();
+        render(<Tasks />, { wrapper: Wrapper });
+
+        await user.click(screen.getByText('▼'));
+        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
+        await user.click(editButtons[editButtons.length - 1]);
+
+        expect(document.activeElement).toBe(screen.getByDisplayValue('Focus Sub'));
+    });
+
     // ── Add task ──────────────────────────────────────────────────────────
 
     it('adds a task when title is filled and Save is clicked', async () => {
