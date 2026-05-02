@@ -263,7 +263,12 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             {e.shopName && <span>🏪 {e.shopName}</span>}
                             {e.invoiceNo && <span>🧾 {e.invoiceNo}</span>}
                             <span>{e.invoiceForm === 'gdrive' && e.invoiceLink
-                                ? <GDriveLink url={e.invoiceLink} label="Invoice" />
+                                ? (
+                                    <GDriveLink
+                                        url={e.invoiceLink}
+                                        label="Invoice"
+                                    />
+                                )
                                 : e.invoiceForm}
                             </span>
                             {e.paymentConfirmation && (
