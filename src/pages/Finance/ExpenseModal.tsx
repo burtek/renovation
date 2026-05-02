@@ -1,5 +1,3 @@
-import { useEffect, useRef } from 'react';
-
 import type { Expense } from '../../types';
 import { cn } from '../../utils/classnames';
 import { formatPLN } from '../../utils/format';
@@ -28,19 +26,13 @@ interface Props {
 }
 
 export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSave, onClose }: Props) {
-    const descriptionRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        descriptionRef.current?.focus();
-    }, []);
-
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-lg mx-4 shadow-xl">
                 <h2 className="text-lg font-bold mb-4 dark:text-gray-100">{editExpense ? 'Edit Expense' : 'New Expense'}</h2>
                 <div className="space-y-3">
                     <input
-                        ref={descriptionRef}
+                        autoFocus
                         placeholder="Description *"
                         value={form.description}
                         onChange={e => {
