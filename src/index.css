@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* react-big-calendar: allow month cells to scroll when events overflow */
+.rbc-month-row {
+    overflow-y: auto;
+}
+.rbc-row-content-scrollable .rbc-row-content-scroll-container {
+    scrollbar-width: thin;
+}
+.rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar {
+    display: block;
+    width: 4px;
+}
+.rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-thumb {
+    background-color: #9ca3af;
+    border-radius: 2px;
+}
+
 @media (prefers-color-scheme: dark) {
     /* react-big-calendar dark mode */
     .rbc-calendar {

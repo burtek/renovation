@@ -223,6 +223,7 @@ export default function CalendarPage() {
                     views={['month', 'week', 'day']}
                     defaultView="month"
                     components={{ event: EventComponent }}
+                    showAllEvents
                 />
             </div>
 
