@@ -136,7 +136,7 @@ export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSav
                             className="border dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                         >
                             <option value="">—</option>
-                            <option value="on-invoice">Confirmed on invoice</option>
+                            <option value="on-invoice">on invoice</option>
                             <option value="gdrive">Google Drive</option>
                         </select>
                     </div>
@@ -287,11 +287,11 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             {e.paymentConfirmation && (
                                 <span>
                                     {e.paymentConfirmation.type === 'on-invoice'
-                                        ? '💳 Confirmed on invoice'
+                                        ? '💳 on invoice'
                                         : (
                                             <GDriveLink
                                                 url={e.paymentConfirmation.link}
-                                                label="💳 Payment"
+                                                label="💳 payment"
                                             />
                                         )}
                                 </span>
@@ -328,7 +328,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             {EXPENSE_COLUMNS.map(col => (
                                 <th
                                     key={col.label}
-                                    className={cn('px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase', col.className ?? 'text-left')}
+                                    className={cn('px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase', col.className)}
                                     aria-sort={col.key && sortKey === col.key
                                         ? (sortDir === 'asc' ? 'ascending' : 'descending')
                                         : undefined}

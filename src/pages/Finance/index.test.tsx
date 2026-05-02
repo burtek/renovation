@@ -18,7 +18,25 @@ vi.mock('recharts', () => {
 
         PieChart: Mock,
 
-        Pie: Mock,
+        Pie: ({ children, label, data }: {
+            children?: ReactNode;
+            label?: (entry: { name: string; percent: number }) => string;
+            data?: Array<{ name: string; value: number }>;
+        }) => {
+            const total = (data ?? []).reduce((s, d) => s + d.value, 0);
+            return (
+                <div>
+                    {children}
+                    {label && (data ?? []).map(d => (
+                        <span
+                            key={d.name}
+                            data-testid="pie-label"
+                        >{label({ name: d.name, percent: total > 0 ? d.value / total : 0 })}
+                        </span>
+                    ))}
+                </div>
+            );
+        },
 
         Cell: Mock,
 
@@ -363,6 +381,23 @@ describe('Finance page', () => {
         // The expense description appears in the list (mobile + desktop views).
         const descriptions = screen.getAllByText('Test Expense');
         expect(descriptions.length).toBeGreaterThan(0);
+    });
+
+    it('pie chart labels use formatPct to display the percentage', () => {
+        preloadState({
+            budget: 1000,
+            expenses: [
+                makeExpense({ id: 'e1', price: 300, loanApproved: true }),
+                makeExpense({ id: 'e2', price: 100, loanApproved: false })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        // pieData = [{value:300}, {value:100}, {value:600}], total=1000
+        // Each label is rendered as "Name: XX%" via the mock
+        const labels = screen.getAllByTestId('pie-label');
+        expect(labels.some(l => l.textContent?.includes(formatPct(0.3)))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes(formatPct(0.1)))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes(formatPct(0.6)))).toBe(true);
     });
 
     // ── Summary card percentages ──────────────────────────────────────────
