@@ -66,7 +66,7 @@ vi.mock('react-big-calendar/lib/addons/dragAndDrop', () => ({
         events?: MockBigCalItem[];
         [key: string]: unknown;
     }>) =>
-        function DnDCalendarMock({ onEventDrop, onEventResize, ...rest }: {
+        function DnDCalendarMock({ onEventDrop, onEventResize, draggableAccessor, resizableAccessor, ...rest }: {
             onEventDrop?: (args: {
                 event: MockBigCalItem;
                 start: Date;
@@ -79,40 +79,50 @@ vi.mock('react-big-calendar/lib/addons/dragAndDrop', () => ({
                 end: Date;
                 isAllDay: boolean;
             }) => void;
+            draggableAccessor?: (event: MockBigCalItem) => boolean;
+            resizableAccessor?: (event: MockBigCalItem) => boolean;
             events?: MockBigCalItem[];
             [key: string]: unknown;
         }) {
             return (
                 <>
                     <Cal {...rest} />
-                    {rest.events?.map(e => (
-                        <span key={e.resource.id}>
-                            <button
-                                type="button"
-                                data-testid={`drop-${e.resource.id}`}
-                                onClick={() => onEventDrop?.({
-                                    event: e,
-                                    start: new Date('2024-04-01T00:00:00'),
-                                    end: new Date('2024-04-02T00:00:00'),
-                                    isAllDay: true
-                                })}
-                            >
-                                Drop {e.title}
-                            </button>
-                            <button
-                                type="button"
-                                data-testid={`resize-${e.resource.id}`}
-                                onClick={() => onEventResize?.({
-                                    event: e,
-                                    start: new Date('2024-04-01T00:00:00'),
-                                    end: new Date('2024-04-04T00:00:00'),
-                                    isAllDay: true
-                                })}
-                            >
-                                Resize {e.title}
-                            </button>
-                        </span>
-                    ))}
+                    {rest.events?.map(e => {
+                        const isDraggable = draggableAccessor ? draggableAccessor(e) : true;
+                        const isResizable = resizableAccessor ? resizableAccessor(e) : true;
+                        return (
+                            <span key={e.resource.id}>
+                                {isDraggable && (
+                                    <button
+                                        type="button"
+                                        data-testid={`drop-${e.resource.id}`}
+                                        onClick={() => onEventDrop?.({
+                                            event: e,
+                                            start: new Date('2024-04-01T00:00:00'),
+                                            end: new Date('2024-04-02T00:00:00'),
+                                            isAllDay: true
+                                        })}
+                                    >
+                                        Drop {e.title}
+                                    </button>
+                                )}
+                                {isResizable && (
+                                    <button
+                                        type="button"
+                                        data-testid={`resize-${e.resource.id}`}
+                                        onClick={() => onEventResize?.({
+                                            event: e,
+                                            start: new Date('2024-04-01T00:00:00'),
+                                            end: new Date('2024-04-04T00:00:00'),
+                                            isAllDay: true
+                                        })}
+                                    >
+                                        Resize {e.title}
+                                    </button>
+                                )}
+                            </span>
+                        );
+                    })}
                 </>
             );
         }
@@ -532,6 +542,25 @@ describe('Calendar page', () => {
         });
     });
 
+    // ── Event component truncation ────────────────────────────────────────
+
+    it('event wrapper has overflow-hidden and title has truncate class', () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Long Event Title' })] });
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        const titleEl = screen.getByText('Long Event Title');
+        expect(titleEl).toHaveClass('truncate');
+        expect(titleEl.parentElement).toHaveClass('overflow-hidden');
+    });
+
+    it('contractor line has truncate class', () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Event', contractor: 'Bob Builder' })] });
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        const contractorEl = screen.getByText('Bob Builder');
+        expect(contractorEl).toHaveClass('truncate');
+    });
+
     // ── Expense items in calendar ─────────────────────────────────────────
 
     it('renders expense as a calendar item with emoji price and description', () => {
@@ -558,14 +587,26 @@ describe('Calendar page', () => {
         expect(screen.queryByRole('heading', { name: /event/i })).not.toBeInTheDocument();
     });
 
-    it('does not update expense data when its calendar item is dropped', async () => {
+    it('does not render drag/drop controls for expense items', () => {
         preloadState({ expenses: [makeExpense({ id: 'exp1', date: '2024-03-01' })] });
-        const user = userEvent.setup();
         render(<CalendarPage />, { wrapper: Wrapper });
 
-        await user.click(screen.getByTestId('drop-exp1'));
+        expect(screen.queryByTestId('drop-exp1')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('resize-exp1')).not.toBeInTheDocument();
+    });
 
-        const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
-        expect(stored.data.expenses[0].date).toBe('2024-03-01');
+    it('does render drag/drop controls for regular calendar events', () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1' })] });
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        expect(screen.getByTestId('drop-ev1')).toBeInTheDocument();
+        expect(screen.getByTestId('resize-ev1')).toBeInTheDocument();
+    });
+
+    it('does not render expense items without a date', () => {
+        preloadState({ expenses: [makeExpense({ id: 'exp1', description: 'NoDated', date: '' })] });
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        expect(screen.queryByText(/NoDated/)).not.toBeInTheDocument();
     });
 });
