@@ -50,7 +50,8 @@ function isExpenseItem(item: CalItem): item is CalExpenseItem {
 
 function buildAllDayRange(startDate: string, endDate?: string): { start: Date; end: Date } {
     const start = new Date(`${startDate}T00:00:00`);
-    const end = new Date(`${endDate && endDate > startDate ? endDate : startDate}T00:00:00`);
+    const endDay = endDate && endDate > startDate ? endDate : startDate;
+    const end = new Date(`${endDay}T00:00:00`);
     return { start, end };
 }
 
