@@ -348,13 +348,11 @@ describe('Finance page', () => {
 
     it('shows Google Drive link input when gdrive is selected in the form', async () => {
         const user = userEvent.setup();
-        const { container } = render(<Finance />, { wrapper: Wrapper });
+        render(<Finance />, { wrapper: Wrapper });
 
         await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
 
-        // Use the actual <select> element (not the shop name datalist input which also has combobox role)
-        const select = container.querySelector('select') as HTMLSelectElement;
-        await user.selectOptions(select, 'gdrive');
+        await user.selectOptions(screen.getByLabelText(/invoice form/i), 'gdrive');
 
         expect(screen.getByPlaceholderText(/google drive link/i)).toBeInTheDocument();
     });
@@ -363,37 +361,33 @@ describe('Finance page', () => {
 
     it('shows payment confirmation GDrive link input when gdrive is selected', async () => {
         const user = userEvent.setup();
-        const { container } = render(<Finance />, { wrapper: Wrapper });
+        render(<Finance />, { wrapper: Wrapper });
 
         await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
 
-        // Second select is the payment confirmation select
-        const selects = container.querySelectorAll('select');
-        await user.selectOptions(selects[1], 'gdrive');
+        await user.selectOptions(screen.getByLabelText(/payment confirmation/i), 'gdrive');
 
         expect(screen.getByPlaceholderText(/payment confirmation gdrive link/i)).toBeInTheDocument();
     });
 
     it('does not show payment confirmation link input when on-invoice is selected', async () => {
         const user = userEvent.setup();
-        const { container } = render(<Finance />, { wrapper: Wrapper });
+        render(<Finance />, { wrapper: Wrapper });
 
         await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
 
-        const selects = container.querySelectorAll('select');
-        await user.selectOptions(selects[1], 'on-invoice');
+        await user.selectOptions(screen.getByLabelText(/payment confirmation/i), 'on-invoice');
 
         expect(screen.queryByPlaceholderText(/payment confirmation gdrive link/i)).not.toBeInTheDocument();
     });
 
     it('typing in the payment confirmation GDrive link input updates the form value', async () => {
         const user = userEvent.setup();
-        const { container } = render(<Finance />, { wrapper: Wrapper });
+        render(<Finance />, { wrapper: Wrapper });
 
         await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
 
-        const selects = container.querySelectorAll('select');
-        await user.selectOptions(selects[1], 'gdrive');
+        await user.selectOptions(screen.getByLabelText(/payment confirmation/i), 'gdrive');
 
         const paymentLinkInput = screen.getByPlaceholderText(/payment confirmation gdrive link/i);
         await user.type(paymentLinkInput, 'https://drive.google.com/payment');
@@ -403,14 +397,13 @@ describe('Finance page', () => {
 
     it('blocks save when payment confirmation type is gdrive but link is empty', async () => {
         const user = userEvent.setup();
-        const { container } = render(<Finance />, { wrapper: Wrapper });
+        render(<Finance />, { wrapper: Wrapper });
 
         await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
         await user.type(screen.getByPlaceholderText(/description \*/i), 'Payment Block Test');
         await user.type(screen.getByPlaceholderText(/price \*/i), '99');
 
-        const selects = container.querySelectorAll('select');
-        await user.selectOptions(selects[1], 'gdrive');
+        await user.selectOptions(screen.getByLabelText(/payment confirmation/i), 'gdrive');
         // leave the link empty and attempt to save
         await user.click(screen.getByRole('button', { name: /save/i }));
 
@@ -422,14 +415,13 @@ describe('Finance page', () => {
 
     it('saves expense with on-invoice payment confirmation', async () => {
         const user = userEvent.setup();
-        const { container } = render(<Finance />, { wrapper: Wrapper });
+        render(<Finance />, { wrapper: Wrapper });
 
         await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
         await user.type(screen.getByPlaceholderText(/description \*/i), 'On Invoice Test');
         await user.type(screen.getByPlaceholderText(/price \*/i), '120');
 
-        const selects = container.querySelectorAll('select');
-        await user.selectOptions(selects[1], 'on-invoice');
+        await user.selectOptions(screen.getByLabelText(/payment confirmation/i), 'on-invoice');
         await user.click(screen.getByRole('button', { name: /save/i }));
 
         await waitFor(() => {
@@ -441,14 +433,13 @@ describe('Finance page', () => {
 
     it('saves expense with gdrive payment confirmation link', async () => {
         const user = userEvent.setup();
-        const { container } = render(<Finance />, { wrapper: Wrapper });
+        render(<Finance />, { wrapper: Wrapper });
 
         await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
         await user.type(screen.getByPlaceholderText(/description \*/i), 'GDrive Payment Test');
         await user.type(screen.getByPlaceholderText(/price \*/i), '150');
 
-        const selects = container.querySelectorAll('select');
-        await user.selectOptions(selects[1], 'gdrive');
+        await user.selectOptions(screen.getByLabelText(/payment confirmation/i), 'gdrive');
         await user.type(screen.getByPlaceholderText(/payment confirmation gdrive link/i), 'https://drive.google.com/pay/xyz');
         await user.click(screen.getByRole('button', { name: /save/i }));
 
@@ -652,9 +643,7 @@ describe('Finance page', () => {
 
         await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
 
-        // Switch to gdrive
-        const select = document.body.querySelector('select') as HTMLSelectElement;
-        await user.selectOptions(select, 'gdrive');
+        await user.selectOptions(screen.getByLabelText(/invoice form/i), 'gdrive');
 
         const gdriveLinkInput = screen.getByPlaceholderText(/google drive link/i);
         await user.type(gdriveLinkInput, 'https://drive.google.com/test');

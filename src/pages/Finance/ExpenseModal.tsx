@@ -86,8 +86,13 @@ export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSav
                         className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                     />
                     <div className="flex gap-2 items-center">
-                        <label className="text-sm text-gray-600 dark:text-gray-400">Invoice form:</label>
+                        <label
+                            htmlFor="invoice-form-select"
+                            className="text-sm text-gray-600 dark:text-gray-400"
+                        >Invoice form:
+                        </label>
                         <select
+                            id="invoice-form-select"
                             value={form.invoiceForm}
                             onChange={e => {
                                 const { value } = e.target;
@@ -113,8 +118,13 @@ export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSav
                             />
                         )}
                     <div className="flex gap-2 items-center">
-                        <label className="text-sm text-gray-600 dark:text-gray-400">Payment confirmation:</label>
+                        <label
+                            htmlFor="payment-confirmation-select"
+                            className="text-sm text-gray-600 dark:text-gray-400"
+                        >Payment confirmation:
+                        </label>
                         <select
+                            id="payment-confirmation-select"
                             value={form.paymentConfirmationType}
                             onChange={e => {
                                 const { value } = e.target;
