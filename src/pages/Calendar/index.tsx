@@ -57,7 +57,6 @@ interface BigCalExpenseItem {
     start: Date;
     end: Date;
     allDay: boolean;
-    draggable?: false;
     resource: Expense;
 }
 
@@ -111,7 +110,7 @@ export default function CalendarPage() {
 
     const expenseEvents: BigCalItem[] = state.expenses.map(e => {
         const { start, end } = allDayEventDates(e.date);
-        return { title: formatExpenseTitle(e), start, end, allDay: true, draggable: false, resource: e };
+        return { title: formatExpenseTitle(e), start, end, allDay: true, resource: e };
     });
 
     const events: BigCalItem[] = [...calEvents, ...expenseEvents];
@@ -209,6 +208,8 @@ export default function CalendarPage() {
                     onEventDrop={updateEventDates}
                     onEventResize={updateEventDates}
                     eventPropGetter={eventPropGetter}
+                    draggableAccessor={item => !isExpenseItem(item)}
+                    resizableAccessor={item => !isExpenseItem(item)}
                     selectable
                     resizable
                     views={['month', 'week', 'day']}
