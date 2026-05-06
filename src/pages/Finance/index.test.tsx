@@ -924,8 +924,7 @@ describe('Finance page', () => {
     });
 
     it('shows "KSeF (invalid link)" and no anchor for a javascript: ksefLink', () => {
-        const unsafeUrl = ['javascript', ':', 'alert(1)'].join('');
-        preloadState({ expenses: [makeExpense({ id: 'e1', ksefLink: unsafeUrl })] });
+        preloadState({ expenses: [makeExpense({ id: 'e1', ksefLink: 'javascript:alert(1)' })] });
         render(<Finance />, { wrapper: Wrapper });
 
         expect(screen.getAllByText('KSeF (invalid link)').length).toBeGreaterThan(0);
