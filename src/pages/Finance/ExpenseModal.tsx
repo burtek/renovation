@@ -11,6 +11,7 @@ export interface ExpenseFormData {
     invoiceNo: string;
     invoiceForm: 'paper' | 'gdrive';
     invoiceLink: string;
+    ksefLink: string;
     paymentConfirmationType: '' | 'on-invoice' | 'gdrive';
     paymentConfirmationLink: string;
     loanApproved: boolean;
@@ -118,6 +119,14 @@ export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSav
                                 className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                         )}
+                    <input
+                        placeholder="KSeF link"
+                        value={form.ksefLink}
+                        onChange={e => {
+                            onFormChange({ ksefLink: e.target.value });
+                        }}
+                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+                    />
                     <div className="flex gap-2 items-center">
                         <label
                             htmlFor="payment-confirmation-select"
@@ -229,6 +238,7 @@ const EXPENSE_COLUMNS: Column[] = [
     { label: 'Shop', key: 'shopName' },
     { label: 'Invoice No', key: 'invoiceNo' },
     { label: 'Invoice' },
+    { label: 'KSeF' },
     { label: 'Payment' },
     { label: 'Loan', key: 'loanApproved' },
     { label: 'Actions' }
@@ -275,6 +285,14 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             <span>📅 {e.date}</span>
                             {e.shopName && <span>🏪 {e.shopName}</span>}
                             {e.invoiceNo && <span>🧾 {e.invoiceNo}</span>}
+                            {e.ksefLink && (
+                                <span>
+                                    <GDriveLink
+                                        url={e.ksefLink}
+                                        label="KSeF"
+                                    />
+                                </span>
+                            )}
                             <span>{e.invoiceForm === 'gdrive' && e.invoiceLink
                                 ? (
                                     <GDriveLink
@@ -361,7 +379,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             && (
                                 <tr>
                                     <td
-                                        colSpan={9}
+                                        colSpan={10}
                                         className="text-center text-gray-400 dark:text-gray-500 py-8"
                                     >No expenses yet.
                                     </td>
@@ -386,6 +404,16 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                             />
                                         )
                                         : e.invoiceForm}
+                                </td>
+                                <td className="px-3 py-2">
+                                    {e.ksefLink
+                                        ? (
+                                            <GDriveLink
+                                                url={e.ksefLink}
+                                                label="KSeF"
+                                            />
+                                        )
+                                        : null}
                                 </td>
                                 <td className="px-3 py-2">
                                     {e.paymentConfirmation
