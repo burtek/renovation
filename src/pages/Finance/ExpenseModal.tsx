@@ -200,7 +200,7 @@ export function safeUrl(url: string): string {
     }
 }
 
-function GDriveLink({ url, label = 'GDrive' }: { url: string; label?: string }) {
+function ExternalLink({ url, label = 'Link' }: { url: string; label?: string }) {
     const safe = safeUrl(url);
     if (!safe) {
         return <>{label} (invalid link)</>;
@@ -287,7 +287,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             {e.invoiceNo && <span>🧾 {e.invoiceNo}</span>}
                             {e.ksefLink && (
                                 <span>
-                                    <GDriveLink
+                                    <ExternalLink
                                         url={e.ksefLink}
                                         label="KSeF"
                                     />
@@ -295,7 +295,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             )}
                             <span>{e.invoiceForm === 'gdrive' && e.invoiceLink
                                 ? (
-                                    <GDriveLink
+                                    <ExternalLink
                                         url={e.invoiceLink}
                                         label="Invoice"
                                     />
@@ -307,7 +307,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                     {e.paymentConfirmation.type === 'on-invoice'
                                         ? '💳 on invoice'
                                         : (
-                                            <GDriveLink
+                                            <ExternalLink
                                                 url={e.paymentConfirmation.link}
                                                 label="💳 payment"
                                             />
@@ -398,7 +398,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                 <td className="px-3 py-2">
                                     {e.invoiceForm === 'gdrive' && e.invoiceLink
                                         ? (
-                                            <GDriveLink
+                                            <ExternalLink
                                                 url={e.invoiceLink}
                                                 label="Invoice"
                                             />
@@ -408,7 +408,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                 <td className="px-3 py-2">
                                     {e.ksefLink
                                         ? (
-                                            <GDriveLink
+                                            <ExternalLink
                                                 url={e.ksefLink}
                                                 label="KSeF"
                                             />
@@ -420,7 +420,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                         ? (e.paymentConfirmation.type === 'on-invoice'
                                             ? 'on invoice'
                                             : (
-                                                <GDriveLink
+                                                <ExternalLink
                                                     url={e.paymentConfirmation.link}
                                                     label="payment"
                                                 />
