@@ -28,6 +28,7 @@ const emptyForm: ExpenseFormData = {
     invoiceNo: '',
     invoiceForm: 'paper',
     invoiceLink: '',
+    ksefLink: '',
     paymentConfirmationType: '',
     paymentConfirmationLink: '',
     loanApproved: false
@@ -102,6 +103,7 @@ export default function Finance() {
             invoiceNo: e.invoiceNo,
             invoiceForm: e.invoiceForm,
             invoiceLink: e.invoiceLink ?? '',
+            ksefLink: e.ksefLink ?? '',
             paymentConfirmationType: e.paymentConfirmation?.type ?? '',
             paymentConfirmationLink: e.paymentConfirmation?.type === 'gdrive' ? e.paymentConfirmation.link : '',
             loanApproved: e.loanApproved
@@ -128,6 +130,7 @@ export default function Finance() {
             ...formRest,
             price,
             invoiceLink: form.invoiceLink === '' ? undefined : form.invoiceLink,
+            ksefLink: form.ksefLink === '' ? undefined : form.ksefLink,
             paymentConfirmation
         };
         if (modal.editExpense) {
