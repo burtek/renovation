@@ -856,4 +856,97 @@ describe('Finance page', () => {
         const approvedIndex = items.findIndex(el => el.textContent === 'Approved');
         expect(notApprovedIndex).toBeLessThan(approvedIndex);
     });
+
+    // ── KSeF link ─────────────────────────────────────────────────────────
+
+    it('shows KSeF link input in the Add Expense modal', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        expect(screen.getByPlaceholderText(/ksef link/i)).toBeInTheDocument();
+    });
+
+    it('typing in the KSeF link input updates the form value', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        const ksefInput = screen.getByPlaceholderText(/ksef link/i);
+        await user.type(ksefInput, 'https://ksef.mf.gov.pl/invoice/abc');
+
+        expect(ksefInput).toHaveValue('https://ksef.mf.gov.pl/invoice/abc');
+    });
+
+    it('saves expense with ksefLink stored in localStorage', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'KSeF Test');
+        await user.type(screen.getByPlaceholderText(/price \*/i), '300');
+        await user.type(screen.getByPlaceholderText(/ksef link/i), 'https://ksef.mf.gov.pl/invoice/xyz');
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.expenses.find((e: { description: string }) => e.description === 'KSeF Test');
+            expect(saved?.ksefLink).toBe('https://ksef.mf.gov.pl/invoice/xyz');
+        });
+    });
+
+    it('coerces empty ksefLink to undefined on save', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'No KSeF');
+        await user.type(screen.getByPlaceholderText(/price \*/i), '50');
+        // leave ksefLink empty
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.expenses.find((e: { description: string }) => e.description === 'No KSeF');
+            expect(saved?.ksefLink).toBeUndefined();
+        });
+    });
+
+    it('renders a clickable KSeF link for an expense with a valid https ksefLink', () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1', ksefLink: 'https://ksef.mf.gov.pl/invoice/abc' })] });
+        render(<Finance />, { wrapper: Wrapper });
+
+        const links = screen.getAllByRole('link', { name: /ksef/i });
+        expect(links.length).toBeGreaterThan(0);
+        expect(links[0]).toHaveAttribute('href', 'https://ksef.mf.gov.pl/invoice/abc');
+    });
+
+    it('shows "KSeF (invalid link)" and no anchor for a javascript: ksefLink', () => {
+        const unsafeUrl = ['javascript', ':', 'alert(1)'].join('');
+        preloadState({ expenses: [makeExpense({ id: 'e1', ksefLink: unsafeUrl })] });
+        render(<Finance />, { wrapper: Wrapper });
+
+        expect(screen.getAllByText('KSeF (invalid link)').length).toBeGreaterThan(0);
+        expect(screen.queryByRole('link', { name: /ksef/i })).not.toBeInTheDocument();
+    });
+
+    it('renders no KSeF link when ksefLink is absent', () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1', ksefLink: undefined })] });
+        render(<Finance />, { wrapper: Wrapper });
+
+        expect(screen.queryByRole('link', { name: /ksef/i })).not.toBeInTheDocument();
+    });
+
+    it('pre-fills ksefLink in the Edit Expense modal', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1', ksefLink: 'https://ksef.mf.gov.pl/invoice/edit-test' })] });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
+        await user.click(editButtons[0]);
+
+        expect(screen.getByDisplayValue('https://ksef.mf.gov.pl/invoice/edit-test')).toBeInTheDocument();
+    });
 });
