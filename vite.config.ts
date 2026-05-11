@@ -18,6 +18,7 @@ export default defineConfig(({ command }) => ({
             include: ['src/**/*.{ts,tsx}'],
             exclude: [
                 'src/main.tsx',
+                'src/polyfills.ts',
                 'src/index.css',
                 'src/test-setup.ts',
                 'src/**/*.test.{ts,tsx}',

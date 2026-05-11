@@ -3,8 +3,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { v4 as uuidv4 } from 'uuid';
 
 import ProjectModal from '../../components/ProjectModal';
+import StorageProviderModal from '../../components/StorageProviderModal';
 import type { ProjectMeta } from '../../storage';
-import { storageManager } from '../../storage';
+import { allProvidersReady, getAvailableProviders, hasOptionalProviders, storageManager } from '../../storage';
 import { ACTIVE_PROJECT_KEY, LEGACY_DATA_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
 import type { AppData, CalendarEvent, CalendarEventType } from '../../types';
 import { compressToGzip, decompressFromGzip, isCompressionSupported } from '../../utils/compression';
@@ -143,18 +144,53 @@ AppContext.displayName = 'AppContext';
 
 
 export function AppProvider({ children }: { children: ReactNode }) {
-    const [{ state: initState, meta: initMeta, needsPicker }] = useState(loadInitialState);
+    // When any optional provider is configured, always start with provider selection;
+    // otherwise skip straight to the existing local-storage flow (backward-compatible).
+
+    const [{ state: initState, meta: initMeta, needsPicker }] = useState(() => {
+        if (hasOptionalProviders) {
+            return { state: initialState, meta: null as ProjectMeta | null, needsPicker: false };
+        }
+        return loadInitialState();
+    });
     const [state, dispatch] = useReducer(reducer, initState);
     const [projectMeta, setProjectMeta] = useState(initMeta);
-    const [needsProjectSelection, setNeedsProjectSelection] = useState(needsPicker);
+    const [needsProjectSelection, setNeedsProjectSelection] = useState(
+        hasOptionalProviders ? false : needsPicker
+    );
+    const [needsProviderSelection, setNeedsProviderSelection] = useState(hasOptionalProviders);
     const [projects, setProjects] = useState<ProjectMeta[]>([]);
     const [saveError, setSaveError] = useState<string | null>(null);
     const clearSaveError = useCallback(() => {
         setSaveError(null);
     }, []);
 
-    // Load projects list on mount (for the project picker)
+    // Track which optional providers successfully registered (empty Set until allProvidersReady resolves).
+    // Using a Set instead of a boolean lets getAvailableProviders mark each provider individually ready/not-ready.
+    const [registeredProviderIds, setRegisteredProviderIds] = useState<ReadonlySet<string>>(() => new Set());
     useEffect(() => {
+        if (!hasOptionalProviders) {
+            return;
+        }
+        void (async () => {
+            const ids = await allProvidersReady;
+            setRegisteredProviderIds(ids);
+        })();
+    }, []);
+
+    // Build the list of provider options to show in the storage-selection modal.
+    // Recomputes when `registeredProviderIds` changes (optional providers flip from disabled→enabled).
+    const availableProviders = useMemo(
+        () => getAvailableProviders(registeredProviderIds),
+        [registeredProviderIds]
+    );
+
+    // Load projects list on mount (for the project picker) – only when no optional providers are
+    // configured so that the existing auto-load / project-picker flow continues to work unchanged.
+    useEffect(() => {
+        if (hasOptionalProviders) {
+            return;
+        }
         void (async () => {
             try {
                 await storageManager.provider.initialize();
@@ -201,6 +237,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
             });
     }, [state]);
 
+    // ── Storage provider selection callbacks ─────────────────────────────
+
+    const handleSelectProvider = useCallback(async (id: string) => {
+        // Always call setProvider so the manager records the choice explicitly
+        storageManager.setProvider(id);
+        if (storageManager.provider.id !== id) {
+            throw new Error(`${id} provider failed to load. Please reload the page and try again.`);
+        }
+
+        // Initialize storage and list projects; if this throws the error propagates to the modal
+        // so the user sees an error message and can retry.
+        await storageManager.provider.initialize();
+        const availableProjects = await storageManager.provider.listProjects();
+        setProjects(availableProjects);
+
+        if (id === 'LS_OPFS') {
+            // Load initial state from localStorage synchronously (cannot fail)
+            const { state: localState, meta: localMeta, needsPicker: localNeedsPicker } = loadInitialState();
+            if (localState !== initialState) {
+                skipNextSaveRef.current = true;
+                dispatch({ type: 'SET_ALL', payload: localState });
+            }
+            setProjectMeta(localMeta);
+            setNeedsProjectSelection(localNeedsPicker);
+        } else {
+            // Non-local providers always show the project picker after auth
+            setNeedsProjectSelection(true);
+        }
+
+        // Dismiss the provider-selection modal only after everything succeeds
+        setNeedsProviderSelection(false);
+    }, [dispatch]);
+
+    // ── Project management callbacks ─────────────────────────────────────
+
     const openProjectSelector = useCallback(async () => {
         setProjects(await storageManager.provider.listProjects());
         setNeedsProjectSelection(true);
@@ -217,7 +288,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_ALL', payload: appData });
         setProjectMeta(loaded.meta);
         setNeedsProjectSelection(false);
-        localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+        // Only persist the active project pointer for the local provider
+        if (storageManager.provider.id === 'LS_OPFS') {
+            localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+        }
     }, []);
 
     const createNewProject = useCallback(async (name: string) => {
@@ -229,7 +303,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_ALL', payload: initialState });
         setProjectMeta(meta);
         setNeedsProjectSelection(false);
-        localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+        // Only persist the active project pointer for the local provider
+        if (storageManager.provider.id === 'LS_OPFS') {
+            localStorage.setItem(ACTIVE_PROJECT_KEY, id);
+        }
     }, []);
 
     const renameProject = useCallback((newName: string) => {
@@ -362,7 +439,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return (
         <AppContext.Provider value={contextValue}>
-            {needsProjectSelection && (
+            {needsProviderSelection && (
+                <StorageProviderModal
+                    availableProviders={availableProviders}
+                    onSelectProvider={handleSelectProvider}
+                />
+            )}
+            {!needsProviderSelection && needsProjectSelection && (
                 <ProjectModal
                     projects={projects}
                     onSelect={selectProject}
