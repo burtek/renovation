@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -547,5 +547,156 @@ describe('Calendar page', () => {
         renderCalendar();
 
         expect(screen.queryByText(/\+\d+ more/u)).not.toBeInTheDocument();
+    });
+
+    // ── Drag-and-drop: move event ─────────────────────────────────────────
+
+    it('moves a calendar event when dropped on a new day', async () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'My Event', date: '2024-03-04' })] });
+        renderCalendar();
+
+        const chip = screen.getByRole('button', { name: 'My Event' });
+        const targetDay = screen.getByTestId('calendar-day-2024-03-15');
+
+        fireEvent.dragStart(chip);
+        fireEvent.dragOver(targetDay);
+        fireEvent.drop(targetDay);
+        fireEvent.dragEnd(chip);
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const event = stored.data.calendarEvents.find(e => e.id === 'ev1');
+            expect(event?.date).toBe('2024-03-15');
+        });
+    });
+
+    it('preserves event duration when moving a multi-day event', async () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'Multi Day', date: '2024-03-04', endDate: '2024-03-06' })] });
+        renderCalendar();
+
+        const chip = screen.getByRole('button', { name: 'Multi Day' });
+        const targetDay = screen.getByTestId('calendar-day-2024-03-18');
+
+        fireEvent.dragStart(chip);
+        fireEvent.dragOver(targetDay);
+        fireEvent.drop(targetDay);
+        fireEvent.dragEnd(chip);
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const event = stored.data.calendarEvents.find(e => e.id === 'ev1');
+            // Duration was 2 days (March 4–6), so new event should be March 18–20
+            expect(event?.date).toBe('2024-03-18');
+            expect(event?.endDate).toBe('2024-03-20');
+        });
+    });
+
+    it('does not move an expense when dragged to a new day', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'exp1', description: 'Paint', date: '2024-03-04', price: 10 })] });
+        renderCalendar();
+
+        const chip = screen.getByRole('button', { name: `💶 ${formatPLN(10)} - Paint` });
+        const targetDay = screen.getByTestId('calendar-day-2024-03-15');
+
+        fireEvent.dragStart(chip);
+        fireEvent.dragOver(targetDay);
+        fireEvent.drop(targetDay);
+        fireEvent.dragEnd(chip);
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const expense = stored.data.expenses.find(e => e.id === 'exp1');
+            expect(expense?.date).toBe('2024-03-04'); // unchanged
+        });
+    });
+
+    // ── Drag-and-drop: resize event ───────────────────────────────────────
+
+    it('resizes a calendar event when the resize handle is dragged to a later day', async () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'My Event', date: '2024-03-04' })] });
+        renderCalendar();
+
+        const chip = screen.getByRole('button', { name: 'My Event' });
+        const resizeHandle = within(chip).getByTestId('event-resize-handle');
+        const targetDay = screen.getByTestId('calendar-day-2024-03-08');
+
+        fireEvent.dragStart(resizeHandle);
+        fireEvent.dragOver(targetDay);
+        fireEvent.drop(targetDay);
+        fireEvent.dragEnd(resizeHandle);
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const event = stored.data.calendarEvents.find(e => e.id === 'ev1');
+            expect(event?.date).toBe('2024-03-04'); // start unchanged
+            expect(event?.endDate).toBe('2024-03-08'); // new end
+        });
+    });
+
+    it('removes endDate when resize handle is dropped back onto the start day', async () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'My Event', date: '2024-03-04', endDate: '2024-03-08' })] });
+        renderCalendar();
+
+        const chip = screen.getByRole('button', { name: 'My Event' });
+        const resizeHandle = within(chip).getByTestId('event-resize-handle');
+        const sameDay = screen.getByTestId('calendar-day-2024-03-04');
+
+        fireEvent.dragStart(resizeHandle);
+        fireEvent.dragOver(sameDay);
+        fireEvent.drop(sameDay);
+        fireEvent.dragEnd(resizeHandle);
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const event = stored.data.calendarEvents.find(e => e.id === 'ev1');
+            expect(event?.date).toBe('2024-03-04');
+            expect(event?.endDate).toBeUndefined(); // single-day event again
+        });
+    });
+
+    it('does not resize an expense', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'exp1', description: 'Paint', date: '2024-03-04', price: 10 })] });
+        renderCalendar();
+
+        const chip = screen.getByRole('button', { name: `💶 ${formatPLN(10)} - Paint` });
+        // onEventResize ignores expenses, but the handle is still rendered since MonthCalendar
+        // doesn't know which events are expenses — the guard lives in CalendarPage.
+        const resizeHandle = within(chip).getByTestId('event-resize-handle');
+        const targetDay = screen.getByTestId('calendar-day-2024-03-08');
+
+        fireEvent.dragStart(resizeHandle);
+        fireEvent.dragOver(targetDay);
+        fireEvent.drop(targetDay);
+        fireEvent.dragEnd(resizeHandle);
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const expense = stored.data.expenses.find(e => e.id === 'exp1');
+            expect(expense?.date).toBe('2024-03-04'); // unchanged
+        });
+    });
+
+    // ── Drag-and-drop: visual feedback ────────────────────────────────────
+
+    it('adds pointer-events-none to all chip wrappers while dragging', () => {
+        preloadState({
+            calendarEvents: [
+                makeCalendarEvent({ id: 'ev1', title: 'Event A', date: '2024-03-04' }),
+                makeCalendarEvent({ id: 'ev2', title: 'Event B', date: '2024-03-11' })
+            ]
+        });
+        renderCalendar();
+
+        const chip = screen.getByRole('button', { name: 'Event A' });
+
+        // Before drag: no pointer-events-none on chip wrappers
+        expect(chip.parentElement?.className).not.toContain('pointer-events-none');
+
+        fireEvent.dragStart(chip);
+
+        // After dragStart: all chip wrappers become pointer-events-none
+        expect(chip.parentElement?.className).toContain('pointer-events-none');
+
+        fireEvent.dragEnd(chip);
     });
 });

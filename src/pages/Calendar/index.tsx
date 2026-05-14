@@ -135,6 +135,34 @@ export default function CalendarPage({ defaultDate }: Props) {
         setModal({ open: true, editEvent: e });
     };
 
+    const handleEventDrop = (event: CalItem, newStart: Date, newEnd: Date) => {
+        if (isExpenseItem(event)) {
+            return; // expenses are read-only; don't move them
+        }
+        dispatch({
+            type: 'UPDATE_CALENDAR_EVENT',
+            payload: {
+                ...event.resource,
+                date: format(newStart, 'yyyy-MM-dd'),
+                endDate: newEnd > newStart ? format(newEnd, 'yyyy-MM-dd') : undefined
+            }
+        });
+    };
+
+    const handleEventResize = (event: CalItem, newStart: Date, newEnd: Date) => {
+        if (isExpenseItem(event)) {
+            return; // expenses are read-only; don't resize them
+        }
+        dispatch({
+            type: 'UPDATE_CALENDAR_EVENT',
+            payload: {
+                ...event.resource,
+                date: format(newStart, 'yyyy-MM-dd'),
+                endDate: newEnd > newStart ? format(newEnd, 'yyyy-MM-dd') : undefined
+            }
+        });
+    };
+
     const save = () => {
         if (!form.title.trim() || !form.startDate) {
             return;
@@ -172,6 +200,8 @@ export default function CalendarPage({ defaultDate }: Props) {
                     style={{ height: '100%' }}
                     onSelectSlot={handleSelectSlot}
                     onSelectEvent={handleSelectEvent}
+                    onEventDrop={handleEventDrop}
+                    onEventResize={handleEventResize}
                     eventPropGetter={eventPropGetter}
                     components={{ event: EventComponent }}
                     defaultDate={defaultDate}
