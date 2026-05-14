@@ -1,10 +1,5 @@
-import { format, parse, startOfWeek, getDay } from 'date-fns';
-import { enUS } from 'date-fns/locale/en-US';
+import { format } from 'date-fns';
 import { useEffect, useState } from 'react';
-import type { SlotInfo } from 'react-big-calendar';
-import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import type { EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAndDrop';
-import withDragAndDropCjs from 'react-big-calendar/lib/addons/dragAndDrop';
 
 import { useApp } from '../../contexts/AppContext';
 import type { CalendarEvent, CalendarEventType, Expense } from '../../types';
@@ -12,19 +7,8 @@ import { formatPLN } from '../../utils/format';
 
 import type { EventFormData } from './EventModal';
 import EventModal from './EventModal';
+import MonthCalendar from './MonthCalendar';
 
-
-const locales = { 'en-US': enUS };
-const startOfWeekMonday: typeof startOfWeek = (date, options) => startOfWeek(date, { ...options, weekStartsOn: 1 });
-const localizer = dateFnsLocalizer({ format, parse, startOfWeek: startOfWeekMonday, getDay, locales });
-
-// Vite 8 (Rolldown) production builds double-wrap CJS modules with __esModule:true,
-// leaving the module object (not the function) as the default export. Unwrap manually.
-type WithDragAndDropFn = typeof withDragAndDropCjs;
-const withDragAndDropMod = withDragAndDropCjs as WithDragAndDropFn | { default: WithDragAndDropFn };
-const withDragAndDrop: WithDragAndDropFn = typeof withDragAndDropMod === 'function'
-    ? withDragAndDropMod
-    : withDragAndDropMod.default;
 
 const EVENT_TYPE_COLOR: Record<CalendarEventType, string> = {
     event: '#3B82F6',
@@ -44,34 +28,30 @@ const emptyForm: EventFormData = {
     notes: ''
 };
 
-interface BigCalEvent {
+interface CalEventItem {
     title: string;
     start: Date;
     end: Date;
-    allDay: boolean;
     resource: CalendarEvent;
 }
 
-interface BigCalExpenseItem {
+interface CalExpenseItem {
     title: string;
     start: Date;
     end: Date;
-    allDay: boolean;
     resource: Expense;
 }
 
-type BigCalItem = BigCalEvent | BigCalExpenseItem;
+type CalItem = CalEventItem | CalExpenseItem;
 
-function isExpenseItem(item: BigCalItem): item is BigCalExpenseItem {
+function isExpenseItem(item: CalItem): item is CalExpenseItem {
     return !('eventType' in item.resource);
 }
 
 function buildAllDayRange(startDate: string, endDate?: string): { start: Date; end: Date } {
     const start = new Date(`${startDate}T00:00:00`);
-    // end is exclusive in react-big-calendar for allDay items → add 1 day
     const endDay = endDate && endDate > startDate ? endDate : startDate;
     const end = new Date(`${endDay}T00:00:00`);
-    end.setDate(end.getDate() + 1);
     return { start, end };
 }
 
@@ -79,7 +59,7 @@ function formatExpenseTitle(expense: Expense): string {
     return `💶 ${formatPLN(expense.price)} - ${expense.description}`;
 }
 
-function EventComponent({ event }: { event: BigCalItem }) {
+function EventComponent({ event }: { event: CalItem }) {
     const isExpense = isExpenseItem(event);
     return (
         <div className="overflow-hidden">
@@ -90,25 +70,30 @@ function EventComponent({ event }: { event: BigCalItem }) {
     );
 }
 
-const DnDCalendar = withDragAndDrop<BigCalItem>(Calendar);
+interface Props {
+    /** Override the initial displayed month — useful in tests. Defaults to today. */
+    defaultDate?: Date;
+}
 
-export default function CalendarPage() {
+export default function CalendarPage({ defaultDate }: Props) {
     const { state, dispatch } = useApp();
     const [modal, setModal] = useState<{ open: boolean; editEvent?: CalendarEvent }>({ open: false });
     const [form, setForm] = useState(emptyForm);
 
-    const contractorNames = Array.from(new Set(state.calendarEvents.map(e => e.contractor).filter((c): c is string => Boolean(c))));
+    const contractorNames = Array.from(new Set(
+        state.calendarEvents.map(e => e.contractor).filter((c): c is string => Boolean(c))
+    ));
 
     useEffect(() => {
         document.title = 'Calendar | Renovation';
     }, []);
 
-    const calEvents: BigCalItem[] = state.calendarEvents.map(e => {
+    const calItems: CalItem[] = state.calendarEvents.map(e => {
         const { start, end } = buildAllDayRange(e.date, e.endDate);
-        return { title: e.title, start, end, allDay: true, resource: e };
+        return { title: e.title, start, end, resource: e };
     });
 
-    const expenseEvents: BigCalItem[] = state.expenses
+    const expenseItems: CalItem[] = state.expenses
         .filter(e => {
             if (!e.date) {
                 return false;
@@ -118,27 +103,23 @@ export default function CalendarPage() {
         })
         .map(e => {
             const { start, end } = buildAllDayRange(e.date);
-            return { title: formatExpenseTitle(e), start, end, allDay: true, resource: e };
+            return { title: formatExpenseTitle(e), start, end, resource: e };
         });
 
-    const events: BigCalItem[] = [...calEvents, ...expenseEvents];
+    const events: CalItem[] = [...calItems, ...expenseItems];
 
-    const eventPropGetter = (event: BigCalItem) => {
+    const eventPropGetter = (event: CalItem) => {
         const color = isExpenseItem(event) ? EXPENSE_COLOR : EVENT_TYPE_COLOR[event.resource.eventType];
         return { style: { backgroundColor: color, borderColor: color } };
     };
 
-    const handleSelectSlot = (slot: SlotInfo) => {
-        const startDate = format(slot.start, 'yyyy-MM-dd');
-        // slot.end is exclusive – subtract 1 day to get the inclusive end date
-        const slotEnd = new Date(slot.end);
-        slotEnd.setDate(slotEnd.getDate() - 1);
-        const slotEndDate = format(slotEnd, 'yyyy-MM-dd');
-        setForm({ ...emptyForm, startDate, endDate: slotEndDate > startDate ? slotEndDate : '' });
+    const handleSelectSlot = ({ start }: { start: Date; end: Date }) => {
+        const startDate = format(start, 'yyyy-MM-dd');
+        setForm({ ...emptyForm, startDate });
         setModal({ open: true });
     };
 
-    const handleSelectEvent = (event: BigCalItem) => {
+    const handleSelectEvent = (event: CalItem) => {
         if (isExpenseItem(event)) {
             return;
         }
@@ -152,6 +133,34 @@ export default function CalendarPage() {
             notes: e.notes ?? ''
         });
         setModal({ open: true, editEvent: e });
+    };
+
+    const handleEventDrop = (event: CalItem, newStart: Date, newEnd: Date) => {
+        if (isExpenseItem(event)) {
+            return; // expenses are read-only; don't move them
+        }
+        dispatch({
+            type: 'UPDATE_CALENDAR_EVENT',
+            payload: {
+                ...event.resource,
+                date: format(newStart, 'yyyy-MM-dd'),
+                endDate: newEnd > newStart ? format(newEnd, 'yyyy-MM-dd') : undefined
+            }
+        });
+    };
+
+    const handleEventResize = (event: CalItem, newStart: Date, newEnd: Date) => {
+        if (isExpenseItem(event)) {
+            return; // expenses are read-only; don't resize them
+        }
+        dispatch({
+            type: 'UPDATE_CALENDAR_EVENT',
+            payload: {
+                ...event.resource,
+                date: format(newStart, 'yyyy-MM-dd'),
+                endDate: newEnd > newStart ? format(newEnd, 'yyyy-MM-dd') : undefined
+            }
+        });
     };
 
     const save = () => {
@@ -174,25 +183,6 @@ export default function CalendarPage() {
         setModal({ open: false });
     };
 
-    const updateEventDates = ({ event, start, end }: EventInteractionArgs<BigCalItem>) => {
-        if (isExpenseItem(event)) {
-            return;
-        }
-        const newStart = format(new Date(start), 'yyyy-MM-dd');
-        // end is exclusive in react-big-calendar for allDay events → subtract 1 day
-        const endDate = new Date(end);
-        endDate.setDate(endDate.getDate() - 1);
-        const newEnd = format(endDate, 'yyyy-MM-dd');
-        dispatch({
-            type: 'UPDATE_CALENDAR_EVENT',
-            payload: {
-                ...event.resource,
-                date: newStart,
-                endDate: newEnd > newStart ? newEnd : undefined
-            }
-        });
-    };
-
     const del = () => {
         // eslint-disable-next-line no-alert
         if (modal.editEvent && confirm('Delete event?')) {
@@ -202,27 +192,18 @@ export default function CalendarPage() {
     };
 
     return (
-        <div className="h-full flex flex-col p-4">
+        <div className="h-full flex flex-col p-4 overflow-hidden">
             <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Calendar</h1>
-            <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 min-h-0">
-                <DnDCalendar
-                    localizer={localizer}
+            <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 min-h-0">
+                <MonthCalendar
                     events={events}
-                    startAccessor="start"
-                    endAccessor="end"
-                    style={{ height: '100%' }}
                     onSelectSlot={handleSelectSlot}
                     onSelectEvent={handleSelectEvent}
-                    onEventDrop={updateEventDates}
-                    onEventResize={updateEventDates}
+                    onEventDrop={handleEventDrop}
+                    onEventResize={handleEventResize}
                     eventPropGetter={eventPropGetter}
-                    draggableAccessor={item => !isExpenseItem(item)}
-                    resizableAccessor={item => !isExpenseItem(item)}
-                    selectable
-                    resizable
-                    views={['month', 'week', 'day']}
-                    defaultView="month"
                     components={{ event: EventComponent }}
+                    defaultDate={defaultDate}
                 />
             </div>
 
