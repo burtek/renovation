@@ -516,4 +516,36 @@ describe('Calendar page', () => {
         expect(anyCell.className).toContain('dark:hover:bg-gray-700');
         expect(anyCell.className).not.toContain('gray-750');
     });
+
+    // ── Scrollable rows — all events visible, no "+N more" cutoff ─────────
+
+    it('renders all events in a week even when they exceed the old 3-track limit', () => {
+        // 5 single-day events on the same day — previously only 3 would show
+        preloadState({
+            calendarEvents: [
+                makeCalendarEvent({ id: 'a', title: 'Event A', date: '2024-03-04' }),
+                makeCalendarEvent({ id: 'b', title: 'Event B', date: '2024-03-04' }),
+                makeCalendarEvent({ id: 'c', title: 'Event C', date: '2024-03-04' }),
+                makeCalendarEvent({ id: 'd', title: 'Event D', date: '2024-03-04' }),
+                makeCalendarEvent({ id: 'e', title: 'Event E', date: '2024-03-04' })
+            ]
+        });
+        renderCalendar();
+
+        expect(screen.getByRole('button', { name: 'Event A' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Event B' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Event C' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Event D' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Event E' })).toBeInTheDocument();
+    });
+
+    it('does not render a "+N more" overflow indicator regardless of event count', () => {
+        preloadState({
+            calendarEvents: Array.from({ length: 8 }, (_, i) =>
+                makeCalendarEvent({ id: `ev${i}`, title: `Event ${i}`, date: '2024-03-04' }))
+        });
+        renderCalendar();
+
+        expect(screen.queryByText(/\+\d+ more/u)).not.toBeInTheDocument();
+    });
 });

@@ -26,10 +26,7 @@ const HEADER_HEIGHT = 28; // px — space for day number
 const TRACK_HEIGHT = 22; // px — height of one event track
 const TRACK_GAP = 2; // px — gap between tracks
 const PER_TRACK_HEIGHT = TRACK_HEIGHT + TRACK_GAP;
-const MAX_VISIBLE_TRACKS = 3;
-const OVERFLOW_ROW_HEIGHT = 18; // px — "+N more" row at the bottom
-
-const ROW_HEIGHT = HEADER_HEIGHT + (MAX_VISIBLE_TRACKS * PER_TRACK_HEIGHT) + OVERFLOW_ROW_HEIGHT;
+const MIN_TRACK_COUNT = 1; // at least one empty track slot per row
 
 /** Percentage width of one calendar column out of 100%. */
 const CELL_PCT = 100 / DAYS_PER_WEEK;
@@ -236,25 +233,22 @@ export default function MonthCalendar<T extends CalendarEventBase>({
             </div>
 
             {/* ── Week rows ── */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto">
                 {weeks.map(week => {
                     const positionedEvents = layoutWeekEvents(events, week);
 
-                    // Count hidden (overflow) events per column
-                    const overflowCounts = new Array<number>(DAYS_PER_WEEK).fill(0);
-                    for (const pe of positionedEvents) {
-                        if (pe.track >= MAX_VISIBLE_TRACKS) {
-                            for (let c = pe.startCol; c < pe.startCol + pe.colSpan; c++) {
-                                overflowCounts[c]++;
-                            }
-                        }
-                    }
+                    // Dynamic height: grow to fit all event tracks — no overflow cutoff
+                    const trackCount = positionedEvents.reduce(
+                        (max, pe) => Math.max(max, pe.track + MIN_TRACK_COUNT),
+                        MIN_TRACK_COUNT
+                    );
+                    const rowHeight = HEADER_HEIGHT + (trackCount * PER_TRACK_HEIGHT);
 
                     return (
                         <div
                             key={week[0].toISOString()}
                             className="relative border-b border-gray-200 dark:border-gray-700"
-                            style={{ height: `${ROW_HEIGHT}px` }}
+                            style={{ height: `${rowHeight}px` }}
                         >
                             {/* Clickable day-cell backgrounds */}
                             <div className="absolute inset-0 grid grid-cols-7">
@@ -299,55 +293,37 @@ export default function MonthCalendar<T extends CalendarEventBase>({
                                 ))}
                             </div>
 
-                            {/* Event chips */}
-                            {positionedEvents
-                                .filter(pe => pe.track < MAX_VISIBLE_TRACKS)
-                                .map(pe => {
-                                    const eventStyle = eventPropGetter ? eventPropGetter(pe.event).style ?? {} : {};
-                                    return (
-                                        <div
-                                            key={`${pe.event.start.toISOString()}-${pe.event.end.toISOString()}-${pe.track}`}
-                                            className="absolute px-0.5 z-10"
-                                            style={{
-                                                top: HEADER_HEIGHT + (pe.track * PER_TRACK_HEIGHT),
-                                                left: `${pe.startCol * CELL_PCT}%`,
-                                                width: `${pe.colSpan * CELL_PCT}%`
-                                            }}
-                                        >
-                                            <button
-                                                type="button"
-                                                onClick={e => {
-                                                    e.stopPropagation();
-                                                    onSelectEvent?.(pe.event);
-                                                }}
-                                                className={cn(
-                                                    'w-full text-left text-xs rounded px-1 py-0.5 text-white truncate block leading-4',
-                                                    pe.continuedFrom && 'rounded-l-none pl-0',
-                                                    pe.continuesAfter && 'rounded-r-none'
-                                                )}
-                                                style={{ height: `${TRACK_HEIGHT}px`, ...eventStyle }}
-                                            >
-                                                {eventComp ? createElement(eventComp, { event: pe.event }) : null}
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-
-                            {/* "+N more" overflow indicators */}
-                            {week.map((day, col) =>
-                                overflowCounts[col] > 0 && (
+                            {/* Event chips — all tracks rendered, no overflow cutoff */}
+                            {positionedEvents.map(pe => {
+                                const eventStyle = eventPropGetter ? eventPropGetter(pe.event).style ?? {} : {};
+                                return (
                                     <div
-                                        key={day.toISOString()}
-                                        className="absolute text-xs text-blue-500 dark:text-blue-400 px-1 z-10 pointer-events-none"
+                                        key={`${pe.event.start.toISOString()}-${pe.event.end.toISOString()}-${pe.track}`}
+                                        className="absolute px-0.5 z-10"
                                         style={{
-                                            bottom: 2,
-                                            left: `${col * CELL_PCT}%`,
-                                            width: `${CELL_PCT}%`
+                                            top: HEADER_HEIGHT + (pe.track * PER_TRACK_HEIGHT),
+                                            left: `${pe.startCol * CELL_PCT}%`,
+                                            width: `${pe.colSpan * CELL_PCT}%`
                                         }}
                                     >
-                                        {`+${overflowCounts[col]} more`}
+                                        <button
+                                            type="button"
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                onSelectEvent?.(pe.event);
+                                            }}
+                                            className={cn(
+                                                'w-full text-left text-xs rounded px-1 py-0.5 text-white truncate block leading-4',
+                                                pe.continuedFrom && 'rounded-l-none pl-0',
+                                                pe.continuesAfter && 'rounded-r-none'
+                                            )}
+                                            style={{ height: `${TRACK_HEIGHT}px`, ...eventStyle }}
+                                        >
+                                            {eventComp ? createElement(eventComp, { event: pe.event }) : null}
+                                        </button>
                                     </div>
-                                ))}
+                                );
+                            })}
                         </div>
                     );
                 })}
