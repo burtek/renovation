@@ -114,32 +114,29 @@ function layoutWeekEvents<T extends CalendarEventBase>(
         const startCol = Math.max(0, differenceInCalendarDays(startOfDay(event.start), weekStart));
         const endCol = Math.min(maxCol, differenceInCalendarDays(startOfDay(event.end), weekStart));
 
-        // Greedy track assignment: find first track where all required columns are free
+        // Greedy track assignment: find the first track where all required columns are free.
         let track = 0;
         for (;;) {
-            let trackRow = tracks.get(track);
-            if (trackRow === undefined) {
-                trackRow = new Array<boolean>(DAYS_PER_WEEK).fill(false);
-                tracks.set(track, trackRow);
+            let row = tracks.get(track);
+            if (row === undefined) {
+                row = new Array<boolean>(DAYS_PER_WEEK).fill(false);
+                tracks.set(track, row);
             }
             let free = true;
             for (let c = startCol; c <= endCol; c++) {
-                if (trackRow[c]) {
+                if (row[c]) {
                     free = false;
                     break;
                 }
             }
             if (free) {
+                // Mark all columns occupied, then stop searching.
+                for (let c = startCol; c <= endCol; c++) {
+                    row[c] = true;
+                }
                 break;
             }
             track++;
-        }
-
-        const row = tracks.get(track);
-        if (row !== undefined) {
-            for (let c = startCol; c <= endCol; c++) {
-                row[c] = true;
-            }
         }
 
         result.push({
