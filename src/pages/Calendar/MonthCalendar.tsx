@@ -114,7 +114,7 @@ function layoutWeekEvents<T extends CalendarEventBase>(
         const startCol = Math.max(0, differenceInCalendarDays(startOfDay(event.start), weekStart));
         const endCol = Math.min(maxCol, differenceInCalendarDays(startOfDay(event.end), weekStart));
 
-        // Greedy track assignment: find the first track where all required columns are free.
+        // greedy track assignment: find the first track where all required columns are free.
         let track = 0;
         for (;;) {
             let row = tracks.get(track);

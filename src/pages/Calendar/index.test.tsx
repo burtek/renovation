@@ -859,7 +859,7 @@ describe('Calendar page', () => {
         expect(within(chips[1]).getByTestId('event-resize-handle')).toBeInTheDocument();
     });
 
-    it('today\'s date cell has the blue "today" highlight', () => {
+    it("today's date cell has the blue \"today\" highlight", () => {
         const today = new Date();
         render(<CalendarPage defaultDate={today} />, { wrapper: Wrapper });
 
@@ -870,7 +870,7 @@ describe('Calendar page', () => {
         expect(todayCell.className).toContain('dark:bg-blue-900/20');
     });
 
-    it('today\'s date number shows a blue circle', () => {
+    it("today's date number shows a blue circle", () => {
         const today = new Date();
         render(<CalendarPage defaultDate={today} />, { wrapper: Wrapper });
 
