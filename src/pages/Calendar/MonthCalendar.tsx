@@ -26,7 +26,6 @@ const HEADER_HEIGHT = 28; // px — space for day number
 const TRACK_HEIGHT = 22; // px — height of one event track
 const TRACK_GAP = 2; // px — gap between tracks
 const PER_TRACK_HEIGHT = TRACK_HEIGHT + TRACK_GAP;
-const MIN_TRACK_COUNT = 1; // at least one empty track slot per row
 
 /** Percentage width of one calendar column out of 100%. */
 const CELL_PCT = 100 / DAYS_PER_WEEK;
@@ -60,7 +59,6 @@ interface MonthCalendarProps<T extends CalendarEventBase> {
     onEventResize?: (event: T, newStart: Date, newEnd: Date) => void;
     eventPropGetter?: (event: T) => { style?: React.CSSProperties };
     components?: { event?: ComponentType<{ event: T }> };
-    style?: React.CSSProperties;
     /** Override the initial displayed month, useful for testing. Defaults to today. */
     defaultDate?: Date;
 }
@@ -169,7 +167,6 @@ export default function MonthCalendar<T extends CalendarEventBase>({
     onEventResize,
     eventPropGetter,
     components,
-    style,
     defaultDate
 }: MonthCalendarProps<T>) {
     const [currentDate, setCurrentDate] = useState(() => defaultDate ?? new Date());
@@ -254,10 +251,7 @@ export default function MonthCalendar<T extends CalendarEventBase>({
     };
 
     return (
-        <div
-            className="flex flex-col h-full select-none"
-            style={style}
-        >
+        <div className="flex flex-col h-full select-none">
             {/* ── Header ── */}
             <div className="flex items-center gap-1 mb-3 shrink-0">
                 <button
@@ -300,25 +294,26 @@ export default function MonthCalendar<T extends CalendarEventBase>({
                 ))}
             </div>
 
-            {/* ── Week rows ── */}
-            <div className="flex-1 overflow-y-auto">
+            {/* ── Week rows — CSS grid: 6 equal-height rows that always fill the available space ── */}
+            <div
+                className="flex-1 grid overflow-hidden"
+                style={{ gridTemplateRows: `repeat(${WEEKS_PER_GRID}, 1fr)` }}
+            >
                 {weeks.map(week => {
                     const positionedEvents = layoutWeekEvents(events, week);
 
-                    // Dynamic height: grow to fit all event tracks — no overflow cutoff
-                    const trackCount = positionedEvents.reduce(
-                        (max, pe) => Math.max(max, pe.track + MIN_TRACK_COUNT),
-                        MIN_TRACK_COUNT
+                    // Number of tracks needed; at least 1 so the inner div has some height.
+                    const trackCount = Math.max(
+                        1,
+                        positionedEvents.reduce((max, pe) => Math.max(max, pe.track + 1), 0)
                     );
-                    const rowHeight = HEADER_HEIGHT + (trackCount * PER_TRACK_HEIGHT);
 
                     return (
                         <div
                             key={week[0].toISOString()}
-                            className="relative border-b border-gray-200 dark:border-gray-700"
-                            style={{ height: `${rowHeight}px` }}
+                            className="relative flex flex-col border-b border-gray-200 dark:border-gray-700 min-h-0"
                         >
-                            {/* Clickable day-cell backgrounds — also act as DnD drop targets */}
+                            {/* Clickable day-cell backgrounds — DnD drop targets + click-to-create */}
                             <div className="absolute inset-0 grid grid-cols-7">
                                 {week.map(day => {
                                     const dateStr = format(day, 'yyyy-MM-dd');
@@ -351,7 +346,7 @@ export default function MonthCalendar<T extends CalendarEventBase>({
 
                             {/* Day numbers (pointer-events-none so clicks fall through to backgrounds) */}
                             <div
-                                className="relative grid grid-cols-7 pointer-events-none"
+                                className="relative grid grid-cols-7 pointer-events-none shrink-0"
                                 style={{ height: `${HEADER_HEIGHT}px` }}
                             >
                                 {week.map(day => (
@@ -372,68 +367,82 @@ export default function MonthCalendar<T extends CalendarEventBase>({
                                 ))}
                             </div>
 
-                            {/* Event chips — all tracks rendered, no overflow cutoff */}
-                            {positionedEvents.map(pe => {
-                                const eventStyle = eventPropGetter ? eventPropGetter(pe.event).style ?? {} : {};
-                                const isDraggingThis = draggingEvent === pe.event;
-                                return (
-                                    <div
-                                        key={`${pe.event.start.toISOString()}-${pe.event.end.toISOString()}-${pe.track}`}
-                                        className={cn(
-                                            'absolute px-0.5 z-10',
-                                            // Pass pointer events through to day-cell backgrounds while ANY drag is active
-                                            // so dragover/drop fire on the correct day cell, not on event chips.
-                                            draggingEvent !== null && 'pointer-events-none'
-                                        )}
-                                        style={{
-                                            top: HEADER_HEIGHT + (pe.track * PER_TRACK_HEIGHT),
-                                            left: `${pe.startCol * CELL_PCT}%`,
-                                            width: `${pe.colSpan * CELL_PCT}%`
-                                        }}
-                                    >
-                                        <button
-                                            type="button"
-                                            draggable={onEventDrop !== undefined}
-                                            onClick={e => {
-                                                e.stopPropagation();
-                                                onSelectEvent?.(pe.event);
-                                            }}
-                                            onDragStart={e => {
-                                                handleEventDragStart(e, pe.event);
-                                            }}
-                                            onDragEnd={handleDragEnd}
-                                            className={cn(
-                                                'relative w-full text-left text-xs rounded px-1 py-0.5 text-white truncate block leading-4',
-                                                'cursor-grab active:cursor-grabbing',
-                                                pe.continuedFrom && 'rounded-l-none pl-0',
-                                                pe.continuesAfter && 'rounded-r-none',
-                                                isDraggingThis && 'opacity-40'
-                                            )}
-                                            style={{ height: `${TRACK_HEIGHT}px`, ...eventStyle }}
-                                        >
-                                            {eventComp ? createElement(eventComp, { event: pe.event }) : null}
-                                            {/* Resize handle — only on the trailing edge of the event */}
-                                            {onEventResize !== undefined && !pe.continuesAfter && (
-                                                <div
-                                                    data-testid="event-resize-handle"
-                                                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-black/20 rounded-r"
-                                                    draggable
-                                                    onDragStart={e => {
-                                                        handleResizeDragStart(e, pe.event);
-                                                    }}
-                                                    onDragEnd={e => {
-                                                        e.stopPropagation();
-                                                        handleDragEnd();
-                                                    }}
+                            {/* Events scroll area — fills remaining row height, scrolls when tracks overflow */}
+                            <div
+                                data-testid="week-events-scroll"
+                                className={cn(
+                                    'flex-1 overflow-y-auto relative min-h-0',
+                                    // During drag, pass pointer events to the day-cell backgrounds so
+                                    // dragover/drop fire on the correct day cell rather than this div.
+                                    draggingEvent !== null && 'pointer-events-none'
+                                )}
+                            >
+                                {/* Inner div sized to fit all event tracks */}
+                                <div
+                                    className="relative"
+                                    style={{ height: `${trackCount * PER_TRACK_HEIGHT}px` }}
+                                >
+                                    {positionedEvents.map(pe => {
+                                        const eventStyle = eventPropGetter ? eventPropGetter(pe.event).style ?? {} : {};
+                                        const isDraggingThis = draggingEvent === pe.event;
+                                        return (
+                                            <div
+                                                key={`${pe.event.start.toISOString()}-${pe.event.end.toISOString()}-${pe.track}`}
+                                                className={cn(
+                                                    'absolute px-0.5 z-10',
+                                                    draggingEvent !== null && 'pointer-events-none'
+                                                )}
+                                                style={{
+                                                    top: pe.track * PER_TRACK_HEIGHT,
+                                                    left: `${pe.startCol * CELL_PCT}%`,
+                                                    width: `${pe.colSpan * CELL_PCT}%`
+                                                }}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    draggable={onEventDrop !== undefined}
                                                     onClick={e => {
                                                         e.stopPropagation();
+                                                        onSelectEvent?.(pe.event);
                                                     }}
-                                                />
-                                            )}
-                                        </button>
-                                    </div>
-                                );
-                            })}
+                                                    onDragStart={e => {
+                                                        handleEventDragStart(e, pe.event);
+                                                    }}
+                                                    onDragEnd={handleDragEnd}
+                                                    className={cn(
+                                                        'relative w-full text-left text-xs rounded px-1 py-0.5 text-white truncate block leading-4',
+                                                        'cursor-grab active:cursor-grabbing',
+                                                        pe.continuedFrom && 'rounded-l-none pl-0',
+                                                        pe.continuesAfter && 'rounded-r-none',
+                                                        isDraggingThis && 'opacity-40'
+                                                    )}
+                                                    style={{ height: `${TRACK_HEIGHT}px`, ...eventStyle }}
+                                                >
+                                                    {eventComp ? createElement(eventComp, { event: pe.event }) : null}
+                                                    {/* Resize handle — only on the trailing edge of the event */}
+                                                    {onEventResize !== undefined && !pe.continuesAfter && (
+                                                        <div
+                                                            data-testid="event-resize-handle"
+                                                            className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-black/20 rounded-r"
+                                                            draggable
+                                                            onDragStart={e => {
+                                                                handleResizeDragStart(e, pe.event);
+                                                            }}
+                                                            onDragEnd={e => {
+                                                                e.stopPropagation();
+                                                                handleDragEnd();
+                                                            }}
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                            }}
+                                                        />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
                     );
                 })}

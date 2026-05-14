@@ -517,10 +517,44 @@ describe('Calendar page', () => {
         expect(anyCell.className).not.toContain('gray-750');
     });
 
-    // ── Scrollable rows — all events visible, no "+N more" cutoff ─────────
+    // ── Equal-height rows that fill available page height ─────────────────
 
-    it('renders all events in a week even when they exceed the old 3-track limit', () => {
-        // 5 single-day events on the same day — previously only 3 would show
+    it('week rows container uses CSS grid so all 6 rows equally divide the available height', () => {
+        renderCalendar();
+
+        // DOM: calendar-day-cell → day-cells-grid → week-row → rows-container
+        const cell = screen.getByTestId('calendar-day-2024-03-01');
+        const rowsContainer = cell.parentElement?.parentElement?.parentElement;
+
+        expect(rowsContainer?.style.gridTemplateRows).toBe('repeat(6, 1fr)');
+    });
+
+    it('no week row carries an inline height style (height is controlled by CSS grid)', () => {
+        renderCalendar();
+
+        const cell = screen.getByTestId('calendar-day-2024-03-01');
+        // cell → day-cells-grid → week-row
+        const weekRow = cell.parentElement?.parentElement;
+
+        expect(weekRow?.style.height).toBeFalsy();
+    });
+
+    it('each week row contains a scrollable events area', () => {
+        renderCalendar();
+
+        const scrollAreas = screen.getAllByTestId('week-events-scroll');
+
+        // 6 weeks in the grid
+        expect(scrollAreas).toHaveLength(6);
+        for (const area of scrollAreas) {
+            expect(area.className).toContain('overflow-y-auto');
+        }
+    });
+
+    // ── Events visible without cutoff — per-row scroll handles overflow ────
+
+    it('renders all events in a week even when they exceed the fixed row height', () => {
+        // 5 single-day events on the same day — all should render (scroll to see them)
         preloadState({
             calendarEvents: [
                 makeCalendarEvent({ id: 'a', title: 'Event A', date: '2024-03-04' }),

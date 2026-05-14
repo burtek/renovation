@@ -192,12 +192,11 @@ export default function CalendarPage({ defaultDate }: Props) {
     };
 
     return (
-        <div className="h-full flex flex-col p-4">
+        <div className="h-full flex flex-col p-4 overflow-hidden">
             <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Calendar</h1>
-            <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 min-h-0">
+            <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 min-h-0">
                 <MonthCalendar
                     events={events}
-                    style={{ height: '100%' }}
                     onSelectSlot={handleSelectSlot}
                     onSelectEvent={handleSelectEvent}
                     onEventDrop={handleEventDrop}
