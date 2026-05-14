@@ -265,8 +265,8 @@ export default function MonthCalendar<T extends CalendarEventBase>({
                                         className={cn(
                                             'border-r border-gray-200 dark:border-gray-700',
                                             'cursor-pointer transition-colors',
-                                            'hover:bg-gray-50 dark:hover:bg-gray-750',
-                                            !isSameMonth(day, currentDate) && 'bg-gray-50 dark:bg-gray-850',
+                                            'hover:bg-gray-100 dark:hover:bg-gray-700',
+                                            !isSameMonth(day, currentDate) && 'bg-gray-50 dark:bg-gray-900',
                                             isToday(day) && 'bg-blue-50/40 dark:bg-blue-900/20'
                                         )}
                                         onClick={() => {

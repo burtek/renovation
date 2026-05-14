@@ -493,4 +493,27 @@ describe('Calendar page', () => {
 
         expect(screen.queryByText(/BadDate/)).not.toBeInTheDocument();
     });
+
+    // ── Dark-mode classes ──────────────────────────────────────────────────
+
+    it('off-month day cells carry the correct dark-mode background class', () => {
+        // Feb 29 2024 falls in the grid when March 2024 is displayed
+        renderCalendar();
+
+        const offMonthCell = screen.getByTestId('calendar-day-2024-02-29');
+
+        // Must use a real Tailwind dark-mode colour (not the non-existent gray-850)
+        expect(offMonthCell.className).toContain('dark:bg-gray-900');
+        expect(offMonthCell.className).not.toContain('gray-850');
+    });
+
+    it('day cells carry the correct dark-mode hover class', () => {
+        renderCalendar();
+
+        const anyCell = screen.getByTestId('calendar-day-2024-03-15');
+
+        // Must use a real Tailwind dark-mode colour (not the non-existent gray-750)
+        expect(anyCell.className).toContain('dark:hover:bg-gray-700');
+        expect(anyCell.className).not.toContain('gray-750');
+    });
 });
