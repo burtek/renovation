@@ -9,6 +9,7 @@ import withDragAndDropCjs from 'react-big-calendar/lib/addons/dragAndDrop';
 import { useApp } from '../../contexts/AppContext';
 import type { CalendarEvent, CalendarEventType, Expense } from '../../types';
 import { formatPLN } from '../../utils/format';
+import { normalize } from '../../utils/string';
 
 import type { EventFormData } from './EventModal';
 import EventModal from './EventModal';
@@ -97,7 +98,7 @@ export default function CalendarPage() {
     const [modal, setModal] = useState<{ open: boolean; editEvent?: CalendarEvent }>({ open: false });
     const [form, setForm] = useState(emptyForm);
 
-    const contractorNames = Array.from(new Set(state.calendarEvents.map(e => e.contractor).filter((c): c is string => Boolean(c))));
+    const contractorNames = Array.from(new Set(state.calendarEvents.map(e => normalize(e.contractor)).filter((c): c is string => Boolean(c))));
 
     useEffect(() => {
         document.title = 'Calendar | Renovation';
@@ -146,10 +147,10 @@ export default function CalendarPage() {
         setForm({
             title: e.title,
             startDate: e.date,
-            endDate: e.endDate ?? '',
-            contractor: e.contractor ?? '',
+            endDate: normalize(e.endDate, ''),
+            contractor: normalize(e.contractor, ''),
             eventType: e.eventType,
-            notes: e.notes ?? ''
+            notes: normalize(e.notes, '')
         });
         setModal({ open: true, editEvent: e });
     };
@@ -162,9 +163,9 @@ export default function CalendarPage() {
             title: form.title,
             date: form.startDate,
             endDate: form.endDate && form.endDate > form.startDate ? form.endDate : undefined,
-            contractor: form.contractor || undefined,
+            contractor: normalize(form.contractor),
             eventType: form.eventType,
-            notes: form.notes || undefined
+            notes: normalize(form.notes)
         };
         if (modal.editEvent) {
             dispatch({ type: 'UPDATE_CALENDAR_EVENT', payload: { ...modal.editEvent, ...data } });

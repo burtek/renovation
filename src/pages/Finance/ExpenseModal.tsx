@@ -1,6 +1,7 @@
 import type { Expense } from '../../types';
 import { cn } from '../../utils/classnames';
 import { formatPLN } from '../../utils/format';
+import { normalize } from '../../utils/string';
 
 
 export interface ExpenseFormData {
@@ -414,7 +415,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                 className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                             >
                                 <td className="px-3 py-2">{e.description}</td>
-                                <td className="px-3 py-2">{e.category ?? ''}</td>
+                                <td className="px-3 py-2">{normalize(e.category, '')}</td>
                                 <td className="px-3 py-2">{e.date}</td>
                                 <td className="px-3 py-2 font-medium text-right">{formatPLN(e.price)}</td>
                                 <td className="px-3 py-2">{e.shopName}</td>
