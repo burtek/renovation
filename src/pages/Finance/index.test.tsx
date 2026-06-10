@@ -994,6 +994,23 @@ describe('Finance page', () => {
         });
     });
 
+    it('coerces whitespace-only category to undefined on save', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'Whitespace Category');
+        await user.type(screen.getByPlaceholderText(/price \*/i), '50');
+        await user.type(screen.getByPlaceholderText(/^category$/i), '   ');
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.expenses.find((e: { description: string }) => e.description === 'Whitespace Category');
+            expect(saved?.category).toBeUndefined();
+        });
+    });
+
     it('renders category-suggestions datalist in the Add Expense modal', async () => {
         const user = userEvent.setup();
         render(<Finance />, { wrapper: Wrapper });

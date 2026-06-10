@@ -106,7 +106,7 @@ export function generateReport(state: AppData): void {
                     .map(
                         e => `<tr>
         <td>${esc(e.description)}</td>
-        <td>${esc(e.category ?? '—')}</td>
+        <td>${e.category ? esc(e.category) : '—'}</td>
         <td>${esc(e.date)}</td>
         <td>${formatPLN(e.price)}</td>
         <td>${esc(e.shopName === '' ? '—' : e.shopName)}</td>

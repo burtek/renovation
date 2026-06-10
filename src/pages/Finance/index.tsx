@@ -134,7 +134,7 @@ export default function Finance() {
         const data = {
             ...formRest,
             price,
-            category: form.category === '' ? undefined : form.category,
+            category: form.category.trim() === '' ? undefined : form.category.trim(),
             invoiceLink: form.invoiceLink === '' ? undefined : form.invoiceLink,
             ksefLink: form.ksefLink === '' ? undefined : form.ksefLink,
             paymentConfirmation
