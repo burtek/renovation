@@ -400,6 +400,58 @@ describe('Finance page', () => {
         expect(labels.some(l => l.textContent?.includes(formatPct(0.6)))).toBe(true);
     });
 
+    // ── Category pie chart ────────────────────────────────────────────────
+
+    it('category chart shows label for each unique category', () => {
+        preloadState({
+            expenses: [
+                makeExpense({ id: 'e1', price: 300, category: 'Materials' }),
+                makeExpense({ id: 'e2', price: 100, category: 'Labor' })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        const labels = screen.getAllByTestId('pie-label');
+        expect(labels.some(l => l.textContent?.includes('Materials'))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes('Labor'))).toBe(true);
+    });
+
+    it('category chart groups expenses without a category as Uncategorized', () => {
+        preloadState({
+            expenses: [
+                makeExpense({ id: 'e1', price: 200, category: undefined }),
+                makeExpense({ id: 'e2', price: 300, category: '' })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        const labels = screen.getAllByTestId('pie-label');
+        expect(labels.some(l => l.textContent?.includes('Uncategorized'))).toBe(true);
+    });
+
+    it('category chart does not include Remaining Budget', () => {
+        preloadState({
+            budget: 1000,
+            expenses: [makeExpense({ id: 'e1', price: 300, category: 'Materials' })]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        const categoryChart = screen.getByTestId('category-chart');
+        const labels = [...categoryChart.querySelectorAll('[data-testid="pie-label"]')];
+        expect(labels.some(l => l.textContent?.includes('Remaining Budget'))).toBe(false);
+    });
+
+    it('category chart shows correct percentages per category', () => {
+        preloadState({
+            expenses: [
+                makeExpense({ id: 'e1', price: 300, category: 'Materials' }),
+                makeExpense({ id: 'e2', price: 100, category: 'Labor' })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        // total = 400; Materials: 300/400 = 75%, Labor: 100/400 = 25%
+        const labels = screen.getAllByTestId('pie-label');
+        expect(labels.some(l => l.textContent?.includes(`Materials: ${formatPct(0.75)}`))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes(`Labor: ${formatPct(0.25)}`))).toBe(true);
+    });
+
     // ── Summary card percentages ──────────────────────────────────────────
 
     it('does not show percentages in summary cards when there are no expenses and no budget', () => {
