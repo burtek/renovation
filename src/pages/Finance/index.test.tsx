@@ -1126,7 +1126,7 @@ describe('Finance page', () => {
         preloadState({ expenses: [makeExpense({ id: 'e1', category: 'Plumbing' })] });
         render(<Finance />, { wrapper: Wrapper });
 
-        // The desktop table renders `e.category ?? ''`
+        // The desktop table renders `normalize(e.category, '')`
         expect(screen.getAllByText('Plumbing').length).toBeGreaterThan(0);
     });
 });

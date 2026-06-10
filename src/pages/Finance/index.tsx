@@ -6,6 +6,7 @@ import type { Expense } from '../../types';
 import { cn } from '../../utils/classnames';
 import { formatPct, formatPLN } from '../../utils/format';
 import { generateReport } from '../../utils/report';
+import { normalize } from '../../utils/string';
 
 import type { ExpenseFormData } from './ExpenseModal';
 import { ExpenseList, ExpenseModal } from './ExpenseModal';
@@ -68,8 +69,7 @@ export default function Finance() {
     const categoryColors = ['#6366F1', '#EC4899', '#F97316', '#14B8A6', '#8B5CF6', '#EAB308', '#06B6D4', '#F43F5E', '#22C55E', '#A855F7'];
     const categoryMap = new Map<string, number>();
     for (const e of state.expenses) {
-        const rawCat = e.category?.trim() ?? 'Uncategorized';
-        const cat = rawCat === '' ? 'Uncategorized' : rawCat;
+        const cat = normalize(e.category, 'Uncategorized');
         categoryMap.set(cat, (categoryMap.get(cat) ?? 0) + e.price);
     }
     const categoryPieData = Array.from(categoryMap.entries())
@@ -112,14 +112,14 @@ export default function Finance() {
     const openEdit = (e: Expense) => {
         setForm({
             description: e.description,
-            category: e.category ?? '',
+            category: normalize(e.category, ''),
             date: e.date,
             price: String(e.price),
             shopName: e.shopName,
             invoiceNo: e.invoiceNo,
             invoiceForm: e.invoiceForm,
-            invoiceLink: e.invoiceLink ?? '',
-            ksefLink: e.ksefLink ?? '',
+            invoiceLink: normalize(e.invoiceLink, ''),
+            ksefLink: normalize(e.ksefLink, ''),
             paymentConfirmationType: e.paymentConfirmation?.type ?? '',
             paymentConfirmationLink: e.paymentConfirmation?.type === 'gdrive' ? e.paymentConfirmation.link : '',
             loanApproved: e.loanApproved
@@ -133,21 +133,22 @@ export default function Finance() {
             return;
         }
         const { paymentConfirmationType, paymentConfirmationLink, ...formRest } = form;
-        if (paymentConfirmationType === 'gdrive' && !paymentConfirmationLink.trim()) {
-            return;
+        let paymentConfirmation: Expense['paymentConfirmation'];
+        if (paymentConfirmationType === 'on-invoice') {
+            paymentConfirmation = { type: 'on-invoice' };
+        } else if (paymentConfirmationType === 'gdrive') {
+            const link = normalize(paymentConfirmationLink);
+            if (!link) {
+                return;
+            }
+            paymentConfirmation = { type: 'gdrive', link };
         }
-        const paymentConfirmation: Expense['paymentConfirmation']
-            = paymentConfirmationType === 'on-invoice'
-                ? { type: 'on-invoice' }
-                : paymentConfirmationType === 'gdrive'
-                    ? { type: 'gdrive', link: paymentConfirmationLink }
-                    : undefined;
         const data = {
             ...formRest,
             price,
-            category: form.category.trim() === '' ? undefined : form.category.trim(),
-            invoiceLink: form.invoiceLink === '' ? undefined : form.invoiceLink,
-            ksefLink: form.ksefLink === '' ? undefined : form.ksefLink,
+            category: normalize(form.category),
+            invoiceLink: normalize(form.invoiceLink),
+            ksefLink: normalize(form.ksefLink),
             paymentConfirmation
         };
         if (modal.editExpense) {

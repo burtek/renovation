@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import type { Subtask, Task } from '../../types';
 import { cn } from '../../utils/classnames';
+import { normalize } from '../../utils/string';
 
 import GanttChart from './GanttChart';
 import SubtaskModal from './SubtaskModal';
@@ -51,9 +52,9 @@ export default function Tasks() {
         setTaskForm({
             title: task.title,
             notes: task.notes,
-            startDate: task.startDate ?? '',
-            endDate: task.endDate ?? '',
-            assignee: task.assignee ?? '',
+            startDate: normalize(task.startDate, ''),
+            endDate: normalize(task.endDate, ''),
+            assignee: normalize(task.assignee, ''),
             completed: task.completed,
             dependsOn: task.dependsOn ?? []
         });
@@ -119,10 +120,10 @@ export default function Tasks() {
 
     const openNewSubtask = (taskId: string) => {
         const parentTask = state.tasks.find(t => t.id === taskId);
-        const startDate = parentTask?.startDate ?? getToday();
-        const parentEndDate = parentTask?.endDate ?? '';
+        const startDate = normalize(parentTask?.startDate, getToday());
+        const parentEndDate = normalize(parentTask?.endDate, '');
         const endDate = parentEndDate || startDate;
-        setSubtaskForm({ ...emptySubtaskForm, startDate, endDate, assignee: parentTask?.assignee ?? '' });
+        setSubtaskForm({ ...emptySubtaskForm, startDate, endDate, assignee: normalize(parentTask?.assignee, '') });
         setSubtaskModal(prev => ({ open: true, taskId, instanceId: prev.instanceId + 1 }));
     };
 
@@ -130,9 +131,9 @@ export default function Tasks() {
         setSubtaskForm({
             title: subtask.title,
             notes: subtask.notes,
-            startDate: subtask.startDate ?? '',
-            endDate: subtask.endDate ?? '',
-            assignee: subtask.assignee ?? '',
+            startDate: normalize(subtask.startDate, ''),
+            endDate: normalize(subtask.endDate, ''),
+            assignee: normalize(subtask.assignee, ''),
             completed: subtask.completed,
             dependsOn: subtask.dependsOn ?? []
         });
@@ -167,10 +168,10 @@ export default function Tasks() {
         if (performSaveSubtask()) {
             const { taskId } = subtaskModal;
             const parentTask = state.tasks.find(t => t.id === taskId);
-            const startDate = parentTask?.startDate ?? getToday();
-            const parentEndDate = parentTask?.endDate ?? '';
+            const startDate = normalize(parentTask?.startDate, getToday());
+            const parentEndDate = normalize(parentTask?.endDate, '');
             const endDate = parentEndDate || startDate;
-            setSubtaskForm({ ...emptySubtaskForm, startDate, endDate, assignee: parentTask?.assignee ?? '' });
+            setSubtaskForm({ ...emptySubtaskForm, startDate, endDate, assignee: normalize(parentTask?.assignee, '') });
             setSubtaskModal(prev => ({ open: true, taskId, instanceId: prev.instanceId + 1 }));
         }
     };
@@ -186,9 +187,9 @@ export default function Tasks() {
         setSubtaskForm({
             title: subtask.title,
             notes: subtask.notes,
-            startDate: subtask.startDate ?? '',
-            endDate: subtask.endDate ?? '',
-            assignee: subtask.assignee ?? '',
+            startDate: normalize(subtask.startDate, ''),
+            endDate: normalize(subtask.endDate, ''),
+            assignee: normalize(subtask.assignee, ''),
             completed: false,
             dependsOn: subtask.dependsOn ?? []
         });
@@ -308,7 +309,7 @@ export default function Tasks() {
                 <SubtaskModal
                     key={subtaskModal.instanceId}
                     editSubtask={subtaskModal.editSubtask}
-                    parentTaskTitle={state.tasks.find(t => t.id === subtaskModal.taskId)?.title ?? ''}
+                    parentTaskTitle={normalize(state.tasks.find(t => t.id === subtaskModal.taskId)?.title, '')}
                     form={subtaskForm}
                     allSubtasks={allSubtasks}
                     onFormChange={update => {
