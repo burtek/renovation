@@ -410,7 +410,8 @@ describe('Finance page', () => {
             ]
         });
         render(<Finance />, { wrapper: Wrapper });
-        const labels = screen.getAllByTestId('pie-label');
+        const categoryChart = screen.getByTestId('category-chart');
+        const labels = [...categoryChart.querySelectorAll('[data-testid="pie-label"]')];
         expect(labels.some(l => l.textContent?.includes('Materials'))).toBe(true);
         expect(labels.some(l => l.textContent?.includes('Labor'))).toBe(true);
     });
@@ -423,7 +424,8 @@ describe('Finance page', () => {
             ]
         });
         render(<Finance />, { wrapper: Wrapper });
-        const labels = screen.getAllByTestId('pie-label');
+        const categoryChart = screen.getByTestId('category-chart');
+        const labels = [...categoryChart.querySelectorAll('[data-testid="pie-label"]')];
         expect(labels.some(l => l.textContent?.includes('Uncategorized'))).toBe(true);
     });
 
@@ -447,7 +449,8 @@ describe('Finance page', () => {
         });
         render(<Finance />, { wrapper: Wrapper });
         // total = 400; Materials: 300/400 = 75%, Labor: 100/400 = 25%
-        const labels = screen.getAllByTestId('pie-label');
+        const categoryChart = screen.getByTestId('category-chart');
+        const labels = [...categoryChart.querySelectorAll('[data-testid="pie-label"]')];
         expect(labels.some(l => l.textContent?.includes(`Materials: ${formatPct(0.75)}`))).toBe(true);
         expect(labels.some(l => l.textContent?.includes(`Labor: ${formatPct(0.25)}`))).toBe(true);
     });
