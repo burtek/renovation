@@ -6,6 +6,7 @@ import { normalize } from './string';
 describe('normalize', () => {
     it('trims non-empty values', () => {
         expect(normalize('  abc  ')).toBe('abc');
+        expect(normalize('  abc  ', 'fallback')).toBe('abc');
     });
 
     it('returns fallback for undefined and blank values', () => {

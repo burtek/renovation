@@ -133,15 +133,16 @@ export default function Finance() {
             return;
         }
         const { paymentConfirmationType, paymentConfirmationLink, ...formRest } = form;
-        if (paymentConfirmationType === 'gdrive' && !paymentConfirmationLink.trim()) {
-            return;
+        let paymentConfirmation: Expense['paymentConfirmation'];
+        if (paymentConfirmationType === 'on-invoice') {
+            paymentConfirmation = { type: 'on-invoice' };
+        } else if (paymentConfirmationType === 'gdrive') {
+            const link = normalize(paymentConfirmationLink);
+            if (!link) {
+                return;
+            }
+            paymentConfirmation = { type: 'gdrive', link };
         }
-        const paymentConfirmation: Expense['paymentConfirmation']
-            = paymentConfirmationType === 'on-invoice'
-                ? { type: 'on-invoice' }
-                : paymentConfirmationType === 'gdrive'
-                    ? { type: 'gdrive', link: normalize(paymentConfirmationLink, '') }
-                    : undefined;
         const data = {
             ...formRest,
             price,
