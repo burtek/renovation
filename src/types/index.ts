@@ -33,6 +33,7 @@ export interface Task {
 export interface Expense {
     id: string;
     description: string;
+    category?: string;
     date: string;
     price: number;
     shopName: string;
