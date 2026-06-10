@@ -948,4 +948,130 @@ describe('Finance page', () => {
 
         expect(screen.getByDisplayValue('https://ksef.mf.gov.pl/invoice/edit-test')).toBeInTheDocument();
     });
+
+    // ── Category field ────────────────────────────────────────────────────
+
+    it('shows category input in the Add Expense modal', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        expect(screen.getByPlaceholderText(/^category$/i)).toBeInTheDocument();
+    });
+
+    it('saves expense with category stored in localStorage', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'Category Test');
+        await user.type(screen.getByPlaceholderText(/price \*/i), '100');
+        await user.type(screen.getByPlaceholderText(/^category$/i), 'Materials');
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.expenses.find((e: { description: string }) => e.description === 'Category Test');
+            expect(saved?.category).toBe('Materials');
+        });
+    });
+
+    it('coerces empty category to undefined on save', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'No Category');
+        await user.type(screen.getByPlaceholderText(/price \*/i), '50');
+        // leave category empty
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.expenses.find((e: { description: string }) => e.description === 'No Category');
+            expect(saved?.category).toBeUndefined();
+        });
+    });
+
+    it('coerces whitespace-only category to undefined on save', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+        await user.type(screen.getByPlaceholderText(/description \*/i), 'Whitespace Category');
+        await user.type(screen.getByPlaceholderText(/price \*/i), '50');
+        await user.type(screen.getByPlaceholderText(/^category$/i), '   ');
+        await user.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => {
+            const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
+            const saved = stored.data.expenses.find((e: { description: string }) => e.description === 'Whitespace Category');
+            expect(saved?.category).toBeUndefined();
+        });
+    });
+
+    it('renders category-suggestions datalist in the Add Expense modal', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        expect(document.getElementById('category-suggestions')).toBeInTheDocument();
+    });
+
+    it('populates category datalist with unique categories from existing expenses', async () => {
+        preloadState({
+            expenses: [
+                makeExpense({ id: 'e1', category: 'Materials' }),
+                makeExpense({ id: 'e2', category: 'Labor' }),
+                makeExpense({ id: 'e3', category: 'Materials' }) // duplicate
+            ]
+        });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        const datalist = document.getElementById('category-suggestions') as HTMLDataListElement;
+        expect(datalist).toBeInTheDocument();
+        const options = [...datalist.querySelectorAll('option')].map(o => o.value);
+        expect(options).toContain('Materials');
+        expect(options).toContain('Labor');
+        // Duplicates should be removed
+        expect(options.filter(o => o === 'Materials').length).toBe(1);
+    });
+
+    it('pre-fills category in the Edit Expense modal', async () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1', category: 'Furniture' })] });
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        const editButtons = screen.getAllByRole('button', { name: /^edit$/i });
+        await user.click(editButtons[0]);
+
+        expect(screen.getByDisplayValue('Furniture')).toBeInTheDocument();
+    });
+
+    it('displays category with 🏷 icon in the mobile card view', () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1', category: 'Electronics' })] });
+        render(<Finance />, { wrapper: Wrapper });
+
+        expect(screen.getByText('🏷 Electronics')).toBeInTheDocument();
+    });
+
+    it('does not display category icon in mobile card when category is absent', () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1', category: undefined })] });
+        render(<Finance />, { wrapper: Wrapper });
+
+        expect(screen.queryByText(/🏷/)).not.toBeInTheDocument();
+    });
+
+    it('displays category in the desktop table cell', () => {
+        preloadState({ expenses: [makeExpense({ id: 'e1', category: 'Plumbing' })] });
+        render(<Finance />, { wrapper: Wrapper });
+
+        // The desktop table renders `e.category ?? ''`
+        expect(screen.getAllByText('Plumbing').length).toBeGreaterThan(0);
+    });
 });

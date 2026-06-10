@@ -22,6 +22,7 @@ function todayLocalDate(): string {
 
 const emptyForm: ExpenseFormData = {
     description: '',
+    category: '',
     date: '',
     price: '',
     shopName: '',
@@ -67,6 +68,9 @@ export default function Finance() {
     // Unique shop names for autosuggest
     const shopNames = Array.from(new Set(state.expenses.map(e => e.shopName).filter(Boolean)));
 
+    // Unique categories for autosuggest
+    const categories = Array.from(new Set(state.expenses.map(e => e.category).filter((c): c is string => Boolean(c))));
+
     const toggleSort = (key: SortKey) => {
         if (sortKey === key) {
             setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
@@ -97,6 +101,7 @@ export default function Finance() {
     const openEdit = (e: Expense) => {
         setForm({
             description: e.description,
+            category: e.category ?? '',
             date: e.date,
             price: String(e.price),
             shopName: e.shopName,
@@ -129,6 +134,7 @@ export default function Finance() {
         const data = {
             ...formRest,
             price,
+            category: form.category.trim() === '' ? undefined : form.category.trim(),
             invoiceLink: form.invoiceLink === '' ? undefined : form.invoiceLink,
             ksefLink: form.ksefLink === '' ? undefined : form.ksefLink,
             paymentConfirmation
@@ -244,6 +250,7 @@ export default function Finance() {
                 <ExpenseModal
                     editExpense={modal.editExpense}
                     form={form}
+                    categories={categories}
                     shopNames={shopNames}
                     onFormChange={update => {
                         setForm(f => ({ ...f, ...update }));

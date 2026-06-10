@@ -94,18 +94,19 @@ export function generateReport(state: AppData): void {
   <table>
     <thead>
       <tr>
-        <th>Description</th><th>Date</th><th>Price</th><th>Shop</th>
+        <th>Description</th><th>Category</th><th>Date</th><th>Price</th><th>Shop</th>
         <th>Invoice No</th><th>Invoice</th><th>Payment</th><th>Loan</th>
       </tr>
     </thead>
     <tbody>
       ${
             expenses.length === 0
-                ? '<tr><td colspan="8" style="text-align:center;color:#999">No expenses.</td></tr>'
+                ? '<tr><td colspan="9" style="text-align:center;color:#999">No expenses.</td></tr>'
                 : expenses
                     .map(
                         e => `<tr>
         <td>${esc(e.description)}</td>
+        <td>${e.category ? esc(e.category) : '—'}</td>
         <td>${esc(e.date)}</td>
         <td>${formatPLN(e.price)}</td>
         <td>${esc(e.shopName === '' ? '—' : e.shopName)}</td>

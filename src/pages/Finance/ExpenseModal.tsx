@@ -5,6 +5,7 @@ import { formatPLN } from '../../utils/format';
 
 export interface ExpenseFormData {
     description: string;
+    category: string;
     date: string;
     price: string;
     shopName: string;
@@ -20,13 +21,14 @@ export interface ExpenseFormData {
 interface Props {
     editExpense: Expense | undefined;
     form: ExpenseFormData;
+    categories: string[];
     shopNames: string[];
     onFormChange: (update: Partial<ExpenseFormData>) => void;
     onSave: () => void;
     onClose: () => void;
 }
 
-export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSave, onClose }: Props) {
+export function ExpenseModal({ editExpense, form, categories, shopNames, onFormChange, onSave, onClose }: Props) {
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-lg mx-4 shadow-xl">
@@ -41,6 +43,25 @@ export function ExpenseModal({ editExpense, form, shopNames, onFormChange, onSav
                         }}
                         className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                     />
+                    <div>
+                        <input
+                            list="category-suggestions"
+                            placeholder="Category"
+                            value={form.category}
+                            onChange={e => {
+                                onFormChange({ category: e.target.value });
+                            }}
+                            className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+                        />
+                        <datalist id="category-suggestions">
+                            {categories.map(cat => (
+                                <option
+                                    key={cat}
+                                    value={cat}
+                                />
+                            ))}
+                        </datalist>
+                    </div>
                     <div className="flex gap-2">
                         <input
                             type="date"
@@ -233,6 +254,7 @@ type Column = SortableColumn | UnsortableColumn;
 
 const EXPENSE_COLUMNS: Column[] = [
     { label: 'Description', key: 'description' },
+    { label: 'Category' },
     { label: 'Date', key: 'date' },
     { label: 'Price', key: 'price', className: 'text-right' },
     { label: 'Shop', key: 'shopName' },
@@ -283,6 +305,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-3 gap-y-1">
                             <span>📅 {e.date}</span>
+                            {e.category && <span>🏷 {e.category}</span>}
                             {e.shopName && <span>🏪 {e.shopName}</span>}
                             {e.invoiceNo && <span>🧾 {e.invoiceNo}</span>}
                             {e.ksefLink && (
@@ -379,7 +402,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                             && (
                                 <tr>
                                     <td
-                                        colSpan={10}
+                                        colSpan={11}
                                         className="text-center text-gray-400 dark:text-gray-500 py-8"
                                     >No expenses yet.
                                     </td>
@@ -391,6 +414,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                 className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                             >
                                 <td className="px-3 py-2">{e.description}</td>
+                                <td className="px-3 py-2">{e.category ?? ''}</td>
                                 <td className="px-3 py-2">{e.date}</td>
                                 <td className="px-3 py-2 font-medium text-right">{formatPLN(e.price)}</td>
                                 <td className="px-3 py-2">{e.shopName}</td>
