@@ -65,6 +65,17 @@ export default function Finance() {
     const pieColors = ['#10B981', '#F59E0B', '#3B82F6'];
     const pieTotal = pieData.reduce((s, d) => s + d.value, 0);
 
+    const categoryColors = ['#6366F1', '#EC4899', '#F97316', '#14B8A6', '#8B5CF6', '#EAB308', '#06B6D4', '#F43F5E', '#22C55E', '#A855F7'];
+    const categoryMap = new Map<string, number>();
+    for (const e of state.expenses) {
+        const rawCat = e.category?.trim() ?? 'Uncategorized';
+        const cat = rawCat === '' ? 'Uncategorized' : rawCat;
+        categoryMap.set(cat, (categoryMap.get(cat) ?? 0) + e.price);
+    }
+    const categoryPieData = Array.from(categoryMap.entries())
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value);
+
     // Unique shop names for autosuggest
     const shopNames = Array.from(new Set(state.expenses.map(e => e.shopName).filter(Boolean)));
 
@@ -207,31 +218,65 @@ export default function Finance() {
             </div>
 
             {total > 0 && (
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700 h-64">
-                    <ResponsiveContainer
-                        width="100%"
-                        height="100%"
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div
+                        data-testid="budget-chart"
+                        className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700 h-64"
                     >
-                        <PieChart>
-                            <Pie
-                                data={pieData}
-                                cx="50%"
-                                cy="50%"
-                                outerRadius={80}
-                                dataKey="value"
-                                label={({ name, percent }: { name: string; percent: number }) => `${name}: ${formatPct(percent)}`}
-                            >
-                                {pieData.map((entry, i) => (
-                                    <Cell
-                                        key={entry.name}
-                                        fill={pieColors[i % pieColors.length]}
-                                    />
-                                ))}
-                            </Pie>
-                            <Tooltip formatter={(v: unknown) => formatPLN(Number(v))} />
-                            <Legend />
-                        </PieChart>
-                    </ResponsiveContainer>
+                        <ResponsiveContainer
+                            width="100%"
+                            height="100%"
+                        >
+                            <PieChart>
+                                <Pie
+                                    data={pieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={80}
+                                    dataKey="value"
+                                    label={({ name, percent }: { name: string; percent: number }) => `${name}: ${formatPct(percent)}`}
+                                >
+                                    {pieData.map((entry, i) => (
+                                        <Cell
+                                            key={entry.name}
+                                            fill={pieColors[i % pieColors.length]}
+                                        />
+                                    ))}
+                                </Pie>
+                                <Tooltip formatter={(v: unknown) => formatPLN(Number(v))} />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div
+                        data-testid="category-chart"
+                        className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700 h-64"
+                    >
+                        <ResponsiveContainer
+                            width="100%"
+                            height="100%"
+                        >
+                            <PieChart>
+                                <Pie
+                                    data={categoryPieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={80}
+                                    dataKey="value"
+                                    label={({ name, percent }: { name: string; percent: number }) => `${name}: ${formatPct(percent)}`}
+                                >
+                                    {categoryPieData.map((entry, i) => (
+                                        <Cell
+                                            key={entry.name}
+                                            fill={categoryColors[i % categoryColors.length]}
+                                        />
+                                    ))}
+                                </Pie>
+                                <Tooltip formatter={(v: unknown) => formatPLN(Number(v))} />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             )}
 
