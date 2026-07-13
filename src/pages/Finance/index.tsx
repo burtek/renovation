@@ -70,10 +70,14 @@ export default function Finance() {
     const budgetPieData = [
         { name: 'Loan Approved', value: budgetPieApproved },
         { name: 'Not Approved', value: budgetPieUnapproved },
-        { name: 'Remaining Budget', value: budgetPieRemaining },
-        ...budgetPieOverspending > 0 ? [{ name: 'Overspending', value: budgetPieOverspending }] : []
+        { name: 'Remaining Budget', value: budgetPieRemaining }
     ];
-    const budgetPieColors = ['#10B981', '#F59E0B', '#9CA3AF', '#EF4444'];
+    const budgetPieColors = ['#10B981', '#F59E0B', '#9CA3AF'];
+
+    // Overspending ring: arc covers overspending/budget of the full circle (capped at 360°)
+    const overspendingArcDegrees = state.budget > 0
+        ? Math.min(360, (budgetPieOverspending / state.budget) * 360)
+        : 360;
 
     const categoryColors = ['#6366F1', '#EC4899', '#F97316', '#14B8A6', '#8B5CF6', '#EAB308', '#06B6D4', '#F43F5E', '#22C55E', '#A855F7'];
     const categoryMap = new Map<string, number>();
@@ -242,7 +246,7 @@ export default function Finance() {
                                     data={budgetPieData}
                                     cx="50%"
                                     cy="50%"
-                                    outerRadius={80}
+                                    outerRadius={70}
                                     dataKey="value"
                                     label={({ name, value }: { name: string; value: number }) => {
                                         if (state.budget > 0) {
@@ -258,6 +262,29 @@ export default function Finance() {
                                         />
                                     ))}
                                 </Pie>
+                                {budgetPieOverspending > 0 && (
+                                    <Pie
+                                        data={[{ name: 'Overspending', value: budgetPieOverspending }]}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={75}
+                                        outerRadius={85}
+                                        startAngle={90}
+                                        endAngle={90 - overspendingArcDegrees}
+                                        dataKey="value"
+                                        label={({ name, value }: { name: string; value: number }) => {
+                                            if (state.budget > 0) {
+                                                return `${name}: ${formatPct(value / state.budget)}`;
+                                            }
+                                            return name;
+                                        }}
+                                    >
+                                        <Cell
+                                            key="overspending"
+                                            fill="#EF4444"
+                                        />
+                                    </Pie>
+                                )}
                                 <Tooltip formatter={(v: unknown) => formatPLN(Number(v))} />
                                 <Legend />
                             </PieChart>
