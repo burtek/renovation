@@ -20,7 +20,7 @@ vi.mock('recharts', () => {
 
         Pie: ({ children, label, data }: {
             children?: ReactNode;
-            label?: (entry: { name: string; percent: number }) => string;
+            label?: (entry: { name: string; percent: number; value: number }) => string;
             data?: Array<{ name: string; value: number }>;
         }) => {
             const total = (data ?? []).reduce((s, d) => s + d.value, 0);
@@ -31,7 +31,7 @@ vi.mock('recharts', () => {
                         <span
                             key={d.name}
                             data-testid="pie-label"
-                        >{label({ name: d.name, percent: total > 0 ? d.value / total : 0 })}
+                        >{label({ name: d.name, percent: total > 0 ? d.value / total : 0, value: d.value })}
                         </span>
                     ))}
                 </div>

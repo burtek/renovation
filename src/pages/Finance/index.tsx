@@ -58,13 +58,22 @@ export default function Finance() {
     const total = totalApproved + totalNotApproved;
     const remaining = state.budget - total;
 
-    const pieData = [
-        { name: 'Loan Approved', value: totalApproved },
-        { name: 'Not Approved', value: totalNotApproved },
-        { name: 'Remaining Budget', value: Math.max(remaining, 0) }
+    // Summary card percentages denominator (unchanged)
+    const pieTotal = totalApproved + totalNotApproved + Math.max(remaining, 0);
+
+    // Budget pie chart: capped values so slices never exceed the budget
+    const budgetPieApproved = Math.min(totalApproved, state.budget);
+    const budgetPieUnapproved = Math.min(totalNotApproved, Math.max(0, state.budget - budgetPieApproved));
+    const budgetPieRemaining = state.budget - (budgetPieApproved + budgetPieUnapproved);
+    const budgetPieOverspending = Math.max(0, total - state.budget);
+
+    const budgetPieData = [
+        { name: 'Loan Approved', value: budgetPieApproved },
+        { name: 'Not Approved', value: budgetPieUnapproved },
+        { name: 'Remaining Budget', value: budgetPieRemaining },
+        ...budgetPieOverspending > 0 ? [{ name: 'Overspending', value: budgetPieOverspending }] : []
     ];
-    const pieColors = ['#10B981', '#F59E0B', '#3B82F6'];
-    const pieTotal = pieData.reduce((s, d) => s + d.value, 0);
+    const budgetPieColors = ['#10B981', '#F59E0B', '#9CA3AF', '#EF4444'];
 
     const categoryColors = ['#6366F1', '#EC4899', '#F97316', '#14B8A6', '#8B5CF6', '#EAB308', '#06B6D4', '#F43F5E', '#22C55E', '#A855F7'];
     const categoryMap = new Map<string, number>();
@@ -230,17 +239,22 @@ export default function Finance() {
                         >
                             <PieChart>
                                 <Pie
-                                    data={pieData}
+                                    data={budgetPieData}
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={80}
                                     dataKey="value"
-                                    label={({ name, percent }: { name: string; percent: number }) => `${name}: ${formatPct(percent)}`}
+                                    label={({ name, value }: { name: string; value: number }) => {
+                                        if (state.budget > 0) {
+                                            return `${name}: ${formatPct(value / state.budget)}`;
+                                        }
+                                        return name;
+                                    }}
                                 >
-                                    {pieData.map((entry, i) => (
+                                    {budgetPieData.map((entry, i) => (
                                         <Cell
                                             key={entry.name}
-                                            fill={pieColors[i % pieColors.length]}
+                                            fill={budgetPieColors[i % budgetPieColors.length]}
                                         />
                                     ))}
                                 </Pie>
