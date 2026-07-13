@@ -280,8 +280,10 @@ interface ExpenseListProps {
 }
 
 export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onToggleSort, onEdit, onDelete, onAdd }: ExpenseListProps) {
-    const seqMap = new Map(expenses.map((e, i) => [e.id, i + 1]));
-    const formatSeq = (id: string) => String(seqMap.get(id) ?? 0).padStart(3, '0');
+    const getSeq = (id: string) => {
+        const idx = expenses.findIndex(e => e.id === id);
+        return String(idx + 1).padStart(3, '0');
+    };
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700">
             <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
@@ -306,7 +308,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                         <div className="flex justify-between items-start gap-2">
                             <span className="font-medium text-gray-800 dark:text-gray-100">{e.description}</span>
                             <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">#{formatSeq(e.id)}</span>
+                                <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">#{getSeq(e.id)}</span>
                                 <span className="font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">{formatPLN(e.price)}</span>
                             </div>
                         </div>
@@ -420,7 +422,7 @@ export function ExpenseList({ expenses, sortedExpenses, sortKey, sortDir, onTogg
                                 key={e.id}
                                 className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                             >
-                                <td className="px-3 py-2 font-mono text-gray-400 dark:text-gray-500">#{formatSeq(e.id)}</td>
+                                <td className="px-3 py-2 font-mono text-gray-400 dark:text-gray-500">#{getSeq(e.id)}</td>
                                 <td className="px-3 py-2">{e.description}</td>
                                 <td className="px-3 py-2">{normalize(e.category, '')}</td>
                                 <td className="px-3 py-2">{e.date}</td>
