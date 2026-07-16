@@ -598,6 +598,23 @@ describe('Finance page', () => {
         expect(screen.getByPlaceholderText(/google drive link/i)).toBeInTheDocument();
     });
 
+    // -- no invoice form ---------------------------------------------------
+
+    it('shows Google Drive link input when gdrive is selected in the form', async () => {
+        const user = userEvent.setup();
+        render(<Finance />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: /\+ add expense/i }));
+
+        await user.selectOptions(screen.getByLabelText(/invoice form/i), 'none');
+
+        expect(screen.queryByPlaceholderText(/invoice no/i)).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText(/ksef link/i)).not.toBeInTheDocument();
+        expect(screen.queryByRole('checkbox', { name: /loan approved/i })).not.toBeInTheDocument();
+    });
+
+    it.todo('saves entry without hidden data');
+
     // ── payment confirmation type ─────────────────────────────────────────
 
     it('shows payment confirmation GDrive link input when gdrive is selected', async () => {

@@ -38,7 +38,7 @@ export interface Expense {
     price: number;
     shopName: string;
     invoiceNo: string;
-    invoiceForm: 'paper' | 'gdrive';
+    invoiceForm: 'none' | 'paper' | 'gdrive';
     invoiceLink?: string;
     ksefLink?: string;
     paymentConfirmation?: { type: 'on-invoice' } | { type: 'gdrive'; link: string };
