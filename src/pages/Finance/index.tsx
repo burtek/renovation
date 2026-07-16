@@ -68,11 +68,10 @@ export default function Finance() {
     const budgetPieOverspending = Math.max(0, total - state.budget);
 
     const budgetPieData = [
-        { name: 'Loan Approved', value: budgetPieApproved },
-        { name: 'Not Approved', value: budgetPieUnapproved },
-        { name: 'Remaining Budget', value: budgetPieRemaining }
-    ];
-    const budgetPieColors = ['#10B981', '#F59E0B', '#9CA3AF'];
+        { name: 'Loan Approved', value: budgetPieApproved, color: '#10B981' },
+        { name: 'Not Approved', value: budgetPieUnapproved, color: '#F59E0B' },
+        { name: 'Remaining Budget', value: budgetPieRemaining, color: '#9CA3AF' }
+    ].filter(entry => entry.value > 0);
 
     // Overspending ring: arc covers overspending/budget of the full circle (capped at 360°)
     const overspendingArcDegrees = state.budget > 0
@@ -217,12 +216,11 @@ export default function Finance() {
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
                     <div className="text-sm text-gray-500 dark:text-gray-400">Loan Approved</div>
                     <div className="text-2xl font-bold text-green-600">{formatPLN(totalApproved)}</div>
-                    {pieTotal > 0 && <div className="text-sm text-gray-500 dark:text-gray-400">{formatPct(totalApproved / pieTotal)}</div>}
+                    {pieTotal > 0 && <div className="text-sm text-gray-500 dark:text-gray-400">{formatPct(Math.min(1, totalApproved / state.budget))}</div>}
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
                     <div className="text-sm text-gray-500 dark:text-gray-400">Not Approved</div>
                     <div className="text-2xl font-bold text-yellow-600">{formatPLN(totalNotApproved)}</div>
-                    {pieTotal > 0 && <div className="text-sm text-gray-500 dark:text-gray-400">{formatPct(totalNotApproved / pieTotal)}</div>}
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
                     <div className="text-sm text-gray-500 dark:text-gray-400">Remaining Budget</div>
@@ -255,10 +253,10 @@ export default function Finance() {
                                         return name;
                                     }}
                                 >
-                                    {budgetPieData.map((entry, i) => (
+                                    {budgetPieData.map(entry => (
                                         <Cell
                                             key={entry.name}
-                                            fill={budgetPieColors[i % budgetPieColors.length]}
+                                            fill={entry.color}
                                         />
                                     ))}
                                 </Pie>
@@ -269,8 +267,8 @@ export default function Finance() {
                                         cy="50%"
                                         innerRadius={75}
                                         outerRadius={85}
-                                        startAngle={90}
-                                        endAngle={90 - overspendingArcDegrees}
+                                        startAngle={0}
+                                        endAngle={overspendingArcDegrees}
                                         dataKey="value"
                                         label={({ name, value }: { name: string; value: number }) => {
                                             if (state.budget > 0) {

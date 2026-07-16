@@ -27,7 +27,7 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
-    "@dtrw/eslint-config": "^6.0.2",
+    "@dtrw/eslint-config": "~6.1.4",
     "@tailwindcss/typography": "^0.5.19",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -52,5 +52,6 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": "eslint --fix"
-  }
+  },
+  "packageManager": "yarn@1.22.22"
 }
