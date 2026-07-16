@@ -684,4 +684,15 @@ describe('Calendar page', () => {
         const stored = JSON.parse(localStorage.getItem(`${STORAGE_KEY_PREFIX}${TEST_PROJECT_ID}`) ?? '{}') as { data: AppData };
         expect(stored.data.expenses[0].date).toBe('2024-03-01');
     });
+
+    it('ignores selectSlot event when modal is open', async () => {
+        preloadState({ calendarEvents: [makeCalendarEvent({ id: 'ev1', title: 'My Event' })] });
+        const user = userEvent.setup();
+        render(<CalendarPage />, { wrapper: Wrapper });
+
+        await user.click(screen.getByRole('button', { name: 'My Event' }));
+        expect(screen.getByPlaceholderText('Title *')).toHaveValue('My Event');
+        await user.click(screen.getByRole('button', { name: 'Select slot' }));
+        expect(screen.getByPlaceholderText('Title *')).toHaveValue('My Event');
+    });
 });
