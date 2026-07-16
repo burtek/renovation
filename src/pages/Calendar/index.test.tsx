@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { AppProvider } from '../../contexts/AppContext';
 import { ACTIVE_PROJECT_KEY, STORAGE_KEY_PREFIX } from '../../storage/types';
-import type { AppData, CalendarEvent, CalendarEventType, Expense } from '../../types';
+import type { AppData, CalendarEvent, Expense } from '../../types';
 import { formatPLN } from '../../utils/format';
 
 import CalendarPage from '.';
@@ -182,7 +182,7 @@ function makeCalendarEvent(overrides: Partial<CalendarEvent> = {}): CalendarEven
         id: 'ev1',
         title: 'Test Event',
         date: '2024-03-01',
-        eventType: 'event' as CalendarEventType,
+        eventType: 'event',
         ...overrides
     };
 }

@@ -1,4 +1,4 @@
-import type { AppData, CalendarEvent, CalendarEventType, Expense, Note, Task } from '../types';
+import type { AppData, CalendarEvent, Expense, Note, Task } from '../types';
 
 import { generateReport } from './report';
 
@@ -60,7 +60,7 @@ function makeCalendarEvent(overrides: Partial<CalendarEvent> = {}): CalendarEven
         id: 'ev1',
         title: 'Site visit',
         date: '2024-03-01',
-        eventType: 'event' as CalendarEventType,
+        eventType: 'event',
         contractor: 'Bob',
         notes: 'Bring the plans',
         ...overrides
