@@ -20,7 +20,7 @@ vi.mock('recharts', () => {
 
         Pie: ({ children, label, data }: {
             children?: ReactNode;
-            label?: (entry: { name: string; percent: number }) => string;
+            label?: (entry: { name: string; percent: number; value: number }) => string;
             data?: Array<{ name: string; value: number }>;
         }) => {
             const total = (data ?? []).reduce((s, d) => s + d.value, 0);
@@ -31,7 +31,7 @@ vi.mock('recharts', () => {
                         <span
                             key={d.name}
                             data-testid="pie-label"
-                        >{label({ name: d.name, percent: total > 0 ? d.value / total : 0 })}
+                        >{label({ name: d.name, percent: total > 0 ? d.value / total : 0, value: d.value })}
                         </span>
                     ))}
                 </div>
@@ -383,7 +383,7 @@ describe('Finance page', () => {
         expect(descriptions.length).toBeGreaterThan(0);
     });
 
-    it('pie chart labels use formatPct to display the percentage', () => {
+    it('pie chart labels use formatPct to display the percentage relative to budget', () => {
         preloadState({
             budget: 1000,
             expenses: [
@@ -392,12 +392,99 @@ describe('Finance page', () => {
             ]
         });
         render(<Finance />, { wrapper: Wrapper });
-        // pieData = [{value:300}, {value:100}, {value:600}], total=1000
-        // Each label is rendered as "Name: XX%" via the mock
-        const labels = screen.getAllByTestId('pie-label');
-        expect(labels.some(l => l.textContent?.includes(formatPct(0.3)))).toBe(true);
-        expect(labels.some(l => l.textContent?.includes(formatPct(0.1)))).toBe(true);
-        expect(labels.some(l => l.textContent?.includes(formatPct(0.6)))).toBe(true);
+        // budget=1000, approved=300, unapproved=100, remaining=600, overspending=0
+        // Budget chart labels show value/budget: 300/1000=30%, 100/1000=10%, 600/1000=60%
+        const budgetChart = screen.getByTestId('budget-chart');
+        const labels = [...budgetChart.querySelectorAll('[data-testid="pie-label"]')];
+        expect(labels.some(l => l.textContent?.includes(`Loan Approved: ${formatPct(0.3)}`))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes(`Not Approved: ${formatPct(0.1)}`))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes(`Remaining Budget: ${formatPct(0.6)}`))).toBe(true);
+    });
+
+    // ── Budget chart scenarios ─────────────────────────────────────────────
+
+    it('budget chart scenario: total < budget — no overspending slice', () => {
+        preloadState({
+            budget: 1000,
+            expenses: [
+                makeExpense({ id: 'e1', price: 300, loanApproved: true }),
+                makeExpense({ id: 'e2', price: 100, loanApproved: false })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        const budgetChart = screen.getByTestId('budget-chart');
+        const labels = [...budgetChart.querySelectorAll('[data-testid="pie-label"]')];
+        expect(labels.some(l => l.textContent?.includes('Overspending'))).toBe(false);
+        expect(labels.some(l => l.textContent?.includes('Remaining Budget'))).toBe(true);
+    });
+
+    it('budget chart scenario: total > budget && approved < budget — shows overspending and caps unapproved', () => {
+        // budget=500, approved=200, unapproved=400 => total=600 (overspending=100)
+        // pieApproved=200, pieUnapproved=min(400, 300)=300, pieRemaining=0, pieOverspending=100
+        preloadState({
+            budget: 500,
+            expenses: [
+                makeExpense({ id: 'e1', price: 200, loanApproved: true }),
+                makeExpense({ id: 'e2', price: 400, loanApproved: false })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        const budgetChart = screen.getByTestId('budget-chart');
+        const labels = [...budgetChart.querySelectorAll('[data-testid="pie-label"]')];
+        // Approved: 200/500=40%, Unapproved (capped): 300/500=60%, Overspending: 100/500=20%
+        expect(labels.some(l => l.textContent?.includes(`Loan Approved: ${formatPct(0.4)}`))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes(`Not Approved: ${formatPct(0.6)}`))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes(`Overspending: ${formatPct(0.2)}`))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes('Remaining Budget'))).toBe(false);
+    });
+
+    it('budget chart scenario: approved > budget — approved capped at budget, overspending shown', () => {
+        // budget=500, approved=700, unapproved=100 => total=800 (overspending=300)
+        // pieApproved=min(700,500)=500, pieUnapproved=min(100,0)=0, pieRemaining=0, pieOverspending=300
+        preloadState({
+            budget: 500,
+            expenses: [
+                makeExpense({ id: 'e1', price: 700, loanApproved: true }),
+                makeExpense({ id: 'e2', price: 100, loanApproved: false })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        const budgetChart = screen.getByTestId('budget-chart');
+        const labels = [...budgetChart.querySelectorAll('[data-testid="pie-label"]')];
+        // Approved (capped): 500/500=100%, Overspending: 300/500=60%
+        expect(labels.some(l => l.textContent?.includes(`Loan Approved: ${formatPct(1)}`))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes('Not Approved'))).toBe(false);
+        expect(labels.some(l => l.textContent?.includes(`Overspending: ${formatPct(0.6)}`))).toBe(true);
+    });
+
+    it('budget chart scenario: expenses exactly equal budget — remaining is 0, no overspending', () => {
+        // budget=400, approved=200, unapproved=200 => total=400
+        preloadState({
+            budget: 400,
+            expenses: [
+                makeExpense({ id: 'e1', price: 200, loanApproved: true }),
+                makeExpense({ id: 'e2', price: 200, loanApproved: false })
+            ]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        const budgetChart = screen.getByTestId('budget-chart');
+        const labels = [...budgetChart.querySelectorAll('[data-testid="pie-label"]')];
+        expect(labels.some(l => l.textContent?.includes('Overspending'))).toBe(false);
+        expect(labels.some(l => l.textContent?.includes(`Loan Approved: ${formatPct(0.5)}`))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes(`Not Approved: ${formatPct(0.5)}`))).toBe(true);
+        expect(labels.some(l => l.textContent?.includes('Remaining Budget'))).toBe(false);
+    });
+
+    it('budget chart: label shows only name (no percentage) when budget is 0', () => {
+        // When budget=0, value/budget would be NaN, so label falls back to just the name
+        preloadState({
+            budget: 0,
+            expenses: [makeExpense({ id: 'e1', price: 100, loanApproved: false })]
+        });
+        render(<Finance />, { wrapper: Wrapper });
+        const budgetChart = screen.getByTestId('budget-chart');
+        const labels = [...budgetChart.querySelectorAll('[data-testid="pie-label"]')];
+        expect(labels.some(l => l.textContent === 'Overspending')).toBe(true);
     });
 
     // ── Category pie chart ────────────────────────────────────────────────
@@ -467,7 +554,7 @@ describe('Finance page', () => {
         preloadState({ budget: 1000 });
         render(<Finance />, { wrapper: Wrapper });
         // pieTotal = 0 + 0 + 1000 = 1000; approved=0%, notApproved=0%, remaining=100%
-        expect(screen.getAllByText(formatPct(0)).length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByText(formatPct(0)).length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText(formatPct(1)).length).toBeGreaterThanOrEqual(1);
     });
 
@@ -483,7 +570,6 @@ describe('Finance page', () => {
         // pieTotal = 300 + 100 + max(600, 0) = 1000
         // approved: 300/1000 = 30%, notApproved: 100/1000 = 10%, remaining: 600/1000 = 60%
         expect(screen.getByText(formatPct(0.3))).toBeInTheDocument();
-        expect(screen.getByText(formatPct(0.1))).toBeInTheDocument();
         expect(screen.getByText(formatPct(0.6))).toBeInTheDocument();
     });
 
@@ -495,7 +581,6 @@ describe('Finance page', () => {
         render(<Finance />, { wrapper: Wrapper });
         // remaining = 500 - 700 = -200 (over budget), so Math.max(remaining, 0) = 0
         // pieTotal = 0 + 700 + 0 = 700; notApproved: 700/700 = 100%, approved: 0%, remaining: 0%
-        expect(screen.getByText(formatPct(1))).toBeInTheDocument();
         // Both approved and remaining are 0%; there should be two of them
         expect(screen.getAllByText(formatPct(0)).length).toBeGreaterThanOrEqual(2);
     });

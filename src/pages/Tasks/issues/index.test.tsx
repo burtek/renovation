@@ -163,7 +163,7 @@ describe('issuePlugins — dependency-order plugin', () => {
     });
 
     it('renderFix() returns null when called with a non-dependency-order issue', () => {
-        const result = depPlugin.renderFix(subtaskFitIssue as unknown as TaskIssue, vi.fn());
+        const result = depPlugin.renderFix(subtaskFitIssue, vi.fn());
         expect(result).toBeNull();
     });
 
@@ -194,7 +194,7 @@ describe('issuePlugins — subtask-fit plugin', () => {
     });
 
     it('renderFix() returns null when called with a non-subtask-fit issue', () => {
-        const result = fitPlugin.renderFix(depOrderIssue as unknown as TaskIssue, vi.fn());
+        const result = fitPlugin.renderFix(depOrderIssue, vi.fn());
         expect(result).toBeNull();
     });
 

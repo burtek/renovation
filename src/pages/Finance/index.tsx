@@ -58,13 +58,25 @@ export default function Finance() {
     const total = totalApproved + totalNotApproved;
     const remaining = state.budget - total;
 
-    const pieData = [
-        { name: 'Loan Approved', value: totalApproved },
-        { name: 'Not Approved', value: totalNotApproved },
-        { name: 'Remaining Budget', value: Math.max(remaining, 0) }
-    ];
-    const pieColors = ['#10B981', '#F59E0B', '#3B82F6'];
-    const pieTotal = pieData.reduce((s, d) => s + d.value, 0);
+    // Summary card percentages denominator (unchanged)
+    const pieTotal = totalApproved + totalNotApproved + Math.max(remaining, 0);
+
+    // Budget pie chart: capped values so slices never exceed the budget
+    const budgetPieApproved = Math.min(totalApproved, state.budget);
+    const budgetPieUnapproved = Math.min(totalNotApproved, Math.max(0, state.budget - budgetPieApproved));
+    const budgetPieRemaining = state.budget - (budgetPieApproved + budgetPieUnapproved);
+    const budgetPieOverspending = Math.max(0, total - state.budget);
+
+    const budgetPieData = [
+        { name: 'Loan Approved', value: budgetPieApproved, color: '#10B981' },
+        { name: 'Not Approved', value: budgetPieUnapproved, color: '#F59E0B' },
+        { name: 'Remaining Budget', value: budgetPieRemaining, color: '#9CA3AF' }
+    ].filter(entry => entry.value > 0);
+
+    // Overspending ring: arc covers overspending/budget of the full circle (capped at 360°)
+    const overspendingArcDegrees = state.budget > 0
+        ? Math.min(360, (budgetPieOverspending / state.budget) * 360)
+        : 360;
 
     const categoryColors = ['#6366F1', '#EC4899', '#F97316', '#14B8A6', '#8B5CF6', '#EAB308', '#06B6D4', '#F43F5E', '#22C55E', '#A855F7'];
     const categoryMap = new Map<string, number>();
@@ -204,12 +216,11 @@ export default function Finance() {
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
                     <div className="text-sm text-gray-500 dark:text-gray-400">Loan Approved</div>
                     <div className="text-2xl font-bold text-green-600">{formatPLN(totalApproved)}</div>
-                    {pieTotal > 0 && <div className="text-sm text-gray-500 dark:text-gray-400">{formatPct(totalApproved / pieTotal)}</div>}
+                    {pieTotal > 0 && <div className="text-sm text-gray-500 dark:text-gray-400">{formatPct(Math.min(1, totalApproved / state.budget))}</div>}
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
                     <div className="text-sm text-gray-500 dark:text-gray-400">Not Approved</div>
                     <div className="text-2xl font-bold text-yellow-600">{formatPLN(totalNotApproved)}</div>
-                    {pieTotal > 0 && <div className="text-sm text-gray-500 dark:text-gray-400">{formatPct(totalNotApproved / pieTotal)}</div>}
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
                     <div className="text-sm text-gray-500 dark:text-gray-400">Remaining Budget</div>
@@ -230,20 +241,48 @@ export default function Finance() {
                         >
                             <PieChart>
                                 <Pie
-                                    data={pieData}
+                                    data={budgetPieData}
                                     cx="50%"
                                     cy="50%"
-                                    outerRadius={80}
+                                    outerRadius={70}
                                     dataKey="value"
-                                    label={({ name, percent }: { name: string; percent: number }) => `${name}: ${formatPct(percent)}`}
+                                    label={({ name, value }: { name: string; value: number }) => {
+                                        if (state.budget > 0) {
+                                            return `${name}: ${formatPct(value / state.budget)}`;
+                                        }
+                                        return name;
+                                    }}
                                 >
-                                    {pieData.map((entry, i) => (
+                                    {budgetPieData.map(entry => (
                                         <Cell
                                             key={entry.name}
-                                            fill={pieColors[i % pieColors.length]}
+                                            fill={entry.color}
                                         />
                                     ))}
                                 </Pie>
+                                {budgetPieOverspending > 0 && (
+                                    <Pie
+                                        data={[{ name: 'Overspending', value: budgetPieOverspending }]}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={75}
+                                        outerRadius={85}
+                                        startAngle={0}
+                                        endAngle={overspendingArcDegrees}
+                                        dataKey="value"
+                                        label={({ name, value }: { name: string; value: number }) => {
+                                            if (state.budget > 0) {
+                                                return `${name}: ${formatPct(value / state.budget)}`;
+                                            }
+                                            return name;
+                                        }}
+                                    >
+                                        <Cell
+                                            key="overspending"
+                                            fill="#EF4444"
+                                        />
+                                    </Pie>
+                                )}
                                 <Tooltip formatter={(v: unknown) => formatPLN(Number(v))} />
                                 <Legend />
                             </PieChart>

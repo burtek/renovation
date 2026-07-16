@@ -276,7 +276,7 @@ function makeMockDirHandle(initialFiles: Record<string, string> = {}) {
     );
 
     const dirHandle = {
-        requestPermission: vi.fn(async (_opts: unknown) => 'granted' as PermissionState),
+        requestPermission: vi.fn(async (_opts: unknown): Promise<PermissionState> => 'granted'),
         getFileHandle: vi.fn(async (name: string, opts?: { create?: boolean }) => {
             if (fileMap.has(name)) {
                 return fileMap.get(name)!;
@@ -556,7 +556,7 @@ describe('LocalStorageProvider – OPFS mode', () => {
 
     it('initialize – permission not granted falls back to localStorage mode', async () => {
         const { dirHandle } = makeMockDirHandle();
-        dirHandle.requestPermission.mockResolvedValue('denied' as PermissionState);
+        dirHandle.requestPermission.mockResolvedValue('denied');
         setupOPFS(dirHandle);
         const p = new LocalStorageProvider();
 
