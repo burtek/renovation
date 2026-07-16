@@ -36,6 +36,10 @@ const EVENT_TYPE_COLOR: Record<CalendarEventType, string> = {
 
 const EXPENSE_COLOR = '#EF4444';
 
+// Max events shown per day cell before the "+N more" popup overflow appears.
+// Calendar events are sorted first, so expenses are the first to be hidden in the popup.
+export const MAX_VISIBLE_EVENTS = 3;
+
 const emptyForm: EventFormData = {
     title: '',
     startDate: '',
@@ -122,6 +126,8 @@ export default function CalendarPage() {
             return { title: formatExpenseTitle(e), start, end, allDay: true, resource: e };
         });
 
+    // Calendar events first so they occupy the top MAX_VISIBLE_EVENTS slots;
+    // expense events last so they are the first to overflow into the "+N more" popup.
     const events: BigCalItem[] = [...calEvents, ...expenseEvents];
 
     const eventPropGetter = (event: BigCalItem) => {
@@ -224,6 +230,7 @@ export default function CalendarPage() {
                     views={['month', 'week', 'day']}
                     defaultView="month"
                     components={{ event: EventComponent }}
+                    popup
                 />
             </div>
 
