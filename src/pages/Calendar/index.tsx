@@ -130,6 +130,18 @@ export default function CalendarPage() {
     };
 
     const handleSelectSlot = (slot: SlotInfo) => {
+        // react-dnd-calendar has a bug where it reacts to keydown event even if it is not focused
+        // when an event modal is opened and the input field is autofocused,
+        //   pressing a key triggers `onSelectSlot` clearing the form
+        // this doesn't happen if user manually clicks on the input field prior to typing
+        //   even if clicking on already focused input
+        // to workaround the issue, we'll ignore `onSelectSlot` event when the modal is open
+        if (modal.open) {
+            // eslint-disable-next-line no-console
+            console.warn('handleSelectSlot ignored due to open modal', slot);
+            return;
+        }
+
         const startDate = format(slot.start, 'yyyy-MM-dd');
         // slot.end is exclusive – subtract 1 day to get the inclusive end date
         const slotEnd = new Date(slot.end);
@@ -140,19 +152,25 @@ export default function CalendarPage() {
     };
 
     const handleSelectEvent = (event: BigCalItem) => {
+        // this doesn't happen, but just to be on the safe side, we'll add same check as in `handleSelectSlot`
+        if (modal.open) {
+            // eslint-disable-next-line no-console
+            console.warn('handleSelectEvent ignored due to open modal', event);
+            return;
+        }
         if (isExpenseItem(event)) {
             return;
         }
-        const e = event.resource;
+        const editEvent = event.resource;
         setForm({
-            title: e.title,
-            startDate: e.date,
-            endDate: normalize(e.endDate, ''),
-            contractor: normalize(e.contractor, ''),
-            eventType: e.eventType,
-            notes: normalize(e.notes, '')
+            title: editEvent.title,
+            startDate: editEvent.date,
+            endDate: normalize(editEvent.endDate, ''),
+            contractor: normalize(editEvent.contractor, ''),
+            eventType: editEvent.eventType,
+            notes: normalize(editEvent.notes, '')
         });
-        setModal({ open: true, editEvent: e });
+        setModal({ open: true, editEvent });
     };
 
     const save = () => {
