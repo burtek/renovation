@@ -15,4 +15,5 @@ interface ImportMetaEnv {
     readonly VITE_VERCEL_GIT_REPO_SLUG?: string;
     readonly VITE_BUILD_DATE?: string;
     readonly VITE_VERCEL_PROJECT?: string;
+    readonly VITE_STORAGE_GDRIVE_CLIENT_ID?: string;
 }
