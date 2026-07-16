@@ -163,6 +163,14 @@ export default function Finance() {
             ksefLink: normalize(form.ksefLink),
             paymentConfirmation
         };
+        if (data.invoiceForm === 'none') {
+            data.loanApproved = false;
+            data.ksefLink = '';
+            data.invoiceNo = '';
+            data.invoiceLink = '';
+        } else if (data.invoiceForm === 'paper') {
+            data.invoiceLink = '';
+        }
         if (modal.editExpense) {
             dispatch({ type: 'UPDATE_EXPENSE', payload: { ...modal.editExpense, ...data } });
         } else {

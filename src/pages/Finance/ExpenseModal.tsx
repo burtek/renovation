@@ -11,7 +11,7 @@ export interface ExpenseFormData {
     price: string;
     shopName: string;
     invoiceNo: string;
-    invoiceForm: 'paper' | 'gdrive';
+    invoiceForm: 'none' | 'paper' | 'gdrive';
     invoiceLink: string;
     ksefLink: string;
     paymentConfirmationType: '' | 'on-invoice' | 'gdrive';
@@ -101,14 +101,6 @@ export function ExpenseModal({ editExpense, form, categories, shopNames, onFormC
                             ))}
                         </datalist>
                     </div>
-                    <input
-                        placeholder="Invoice No"
-                        value={form.invoiceNo}
-                        onChange={e => {
-                            onFormChange({ invoiceNo: e.target.value });
-                        }}
-                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
-                    />
                     <div className="flex gap-2 items-center">
                         <label
                             htmlFor="invoice-form-select"
@@ -120,16 +112,28 @@ export function ExpenseModal({ editExpense, form, categories, shopNames, onFormC
                             value={form.invoiceForm}
                             onChange={e => {
                                 const { value } = e.target;
-                                if (value === 'paper' || value === 'gdrive') {
-                                    onFormChange({ invoiceForm: value });
+                                if (value === 'none' || value === 'paper' || value === 'gdrive') {
+                                    onFormChange({ invoiceForm: value, paymentConfirmationType: value === 'none' ? '' : 'on-invoice' });
                                 }
                             }}
                             className="border dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                         >
+                            <option value="none">No invoice</option>
                             <option value="paper">Paper</option>
                             <option value="gdrive">Google Drive</option>
                         </select>
                     </div>
+                    {form.invoiceForm !== 'none'
+                        && (
+                            <input
+                                placeholder="Invoice No"
+                                value={form.invoiceNo}
+                                onChange={e => {
+                                    onFormChange({ invoiceNo: e.target.value });
+                                }}
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+                            />
+                        )}
                     {form.invoiceForm === 'gdrive'
                         && (
                             <input
@@ -141,14 +145,17 @@ export function ExpenseModal({ editExpense, form, categories, shopNames, onFormC
                                 className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                         )}
-                    <input
-                        placeholder="KSeF link"
-                        value={form.ksefLink}
-                        onChange={e => {
-                            onFormChange({ ksefLink: e.target.value });
-                        }}
-                        className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
-                    />
+                    {form.invoiceForm !== 'none'
+                        && (
+                            <input
+                                placeholder="KSeF link"
+                                value={form.ksefLink}
+                                onChange={e => {
+                                    onFormChange({ ksefLink: e.target.value });
+                                }}
+                                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+                            />
+                        )}
                     <div className="flex gap-2 items-center">
                         <label
                             htmlFor="payment-confirmation-select"
@@ -167,7 +174,7 @@ export function ExpenseModal({ editExpense, form, categories, shopNames, onFormC
                             className="border dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                         >
                             <option value="">—</option>
-                            <option value="on-invoice">on invoice</option>
+                            {form.invoiceForm !== 'none' && <option value="on-invoice">on invoice</option>}
                             <option value="gdrive">Google Drive</option>
                         </select>
                     </div>
@@ -182,17 +189,20 @@ export function ExpenseModal({ editExpense, form, categories, shopNames, onFormC
                                 className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white dark:bg-gray-700 dark:text-gray-100"
                             />
                         )}
-                    <label className="flex items-center gap-2 text-sm dark:text-gray-300">
-                        <input
-                            type="checkbox"
-                            checked={form.loanApproved}
-                            onChange={e => {
-                                onFormChange({ loanApproved: e.target.checked });
-                            }}
-                        />
-                        {' '}
-                        Loan Approved
-                    </label>
+                    {form.invoiceForm !== 'none'
+                        && (
+                            <label className="flex items-center gap-2 text-sm dark:text-gray-300">
+                                <input
+                                    type="checkbox"
+                                    checked={form.loanApproved}
+                                    onChange={e => {
+                                        onFormChange({ loanApproved: e.target.checked });
+                                    }}
+                                />
+                                {' '}
+                                Loan Approved
+                            </label>
+                        )}
                 </div>
                 <div className="flex gap-2 mt-4 justify-end">
                     <button
